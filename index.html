@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>KAY // COMMAND</title>
+  <style>
+    :root{
+      --bg:#071018;--panel:#0d1a23;--panel2:#0a141c;--line:#28404f;
+      --cyan:#43d8ff;--cyan2:#1595b8;--text:#f5f8fb;--muted:#9dafbb;
+      --good:#4df2a6;--warn:#ffcf66;--bad:#ff6b6b;--shadow:0 14px 40px rgba(0,0,0,.35)
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;background:radial-gradient(circle at 85% 5%,rgba(40,192,225,.10),transparent 25%),var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    button,input,textarea,select{font:inherit}
+    button{cursor:pointer}
+    .wrap{max-width:1320px;margin:0 auto;padding:22px}
+    .top{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:18px}
+    .brand h1{margin:2px 0 0;font-size:clamp(26px,4vw,44px);letter-spacing:.02em}
+    .eyebrow{font-weight:800;font-size:12px;letter-spacing:.24em;color:var(--cyan)}
+    .status{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .pill{border:1px solid var(--line);background:#0d1820;border-radius:999px;padding:8px 12px;color:var(--muted);font-size:13px}
+    .pill.good{color:var(--good);border-color:rgba(77,242,166,.35)}
+    .grid{display:grid;grid-template-columns:1.1fr .9fr;gap:18px}
+    .card{background:linear-gradient(180deg,rgba(17,35,47,.96),rgba(10,22,31,.96));border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);overflow:hidden}
+    .card h2{font-size:21px;margin:0}
+    .cardhead{padding:20px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:16px;align-items:center}
+    .body{padding:18px 22px}
+    .scroll{max-height:380px;overflow:auto}
+    .brief ul{padding-left:20px;margin:8px 0}
+    .brief li{margin:9px 0;line-height:1.45}
+    .project{padding:14px 0;border-bottom:1px solid rgba(93,126,143,.22)}
+    .project:last-child{border-bottom:0}
+    .project strong{display:block;margin-bottom:5px}
+    .meta{font-size:13px;color:var(--muted)}
+    .task{border:1px solid rgba(93,126,143,.30);border-radius:15px;padding:14px;margin:10px 0;background:#0a151d}
+    .task.done{opacity:.58}
+    .taskname{font-weight:760;line-height:1.35}
+    .taskdetails{margin-top:7px;color:var(--muted);font-size:13px}
+    .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    .btn{border:1px solid #31576a;background:#102735;color:var(--text);border-radius:12px;padding:10px 13px;font-weight:700}
+    .btn:hover,.btn:focus{border-color:var(--cyan)}
+    .btn.primary{background:linear-gradient(180deg,#154d61,#103747);border-color:#2686a5}
+    .btn.danger{border-color:rgba(255,107,107,.5);color:#ffaaaa;background:#251318}
+    .btn.ghost{background:transparent}
+    .quick{display:flex;gap:10px;flex-wrap:wrap;padding:18px 22px;border-top:1px solid var(--line)}
+    .chatlog{height:280px;overflow:auto;padding:18px 22px;display:flex;flex-direction:column;gap:12px}
+    .bubble{max-width:86%;padding:11px 13px;border-radius:14px;line-height:1.4;white-space:pre-wrap}
+    .bubble.user{align-self:flex-end;background:#12394a;border:1px solid #1f6d8a}
+    .bubble.assistant{align-self:flex-start;background:#101b23;border:1px solid var(--line)}
+    .composer{display:grid;grid-template-columns:1fr auto auto;gap:10px;padding:14px 22px 20px;border-top:1px solid var(--line)}
+    .composer textarea{min-height:68px;resize:vertical;border:1px solid #276c87;background:#07131b;color:white;border-radius:14px;padding:14px;outline:none}
+    .composer textarea:focus{box-shadow:0 0 0 2px rgba(67,216,255,.16)}
+    .auth{display:none;position:fixed;inset:0;background:rgba(3,9,14,.76);backdrop-filter:blur(10px);z-index:20;align-items:center;justify-content:center;padding:24px}
+    .auth.show{display:flex}
+    .authbox{width:min(480px,100%);background:#0d1a23;border:1px solid var(--line);border-radius:22px;padding:24px;box-shadow:var(--shadow)}
+    .authbox input{width:100%;padding:13px;border-radius:12px;border:1px solid #2f576b;background:#08151d;color:white;margin:12px 0}
+    .notice{font-size:13px;color:var(--muted);line-height:1.45}
+    .small{font-size:12px;color:var(--muted)}
+    .empty{padding:22px;color:var(--muted);text-align:center}
+    @media(max-width:900px){.grid{grid-template-columns:1fr}.wrap{padding:14px}.composer{grid-template-columns:1fr auto}.composer .send{grid-row:1/3;grid-column:2}.top{align-items:flex-start}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">
+      <div class="eyebrow">MISSION CONTROL</div>
+      <h1>KAY // COMMAND</h1>
+    </div>
+    <div class="status">
+      <span id="dbStatus" class="pill">DB: connecting…</span>
+      <span id="userStatus" class="pill">Not signed in</span>
+      <button id="signOutBtn" class="btn ghost" style="display:none">Sign out</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <section class="card">
+      <div class="cardhead">
+        <div>
+          <div class="eyebrow">EXECUTIVE COMMAND BRIEF</div>
+          <h2>What needs your attention</h2>
+        </div>
+        <button id="refreshBtn" class="btn">Refresh</button>
+      </div>
+      <div id="briefs" class="body scroll brief"><div class="empty">Loading brief…</div></div>
+    </section>
+
+    <section class="card">
+      <div class="cardhead">
+        <div>
+          <div class="eyebrow">PROJECT CENTER</div>
+          <h2>Active projects</h2>
+        </div>
+      </div>
+      <div id="projects" class="body scroll"><div class="empty">Loading projects…</div></div>
+    </section>
+
+    <section class="card">
+      <div class="cardhead">
+        <div>
+          <div class="eyebrow">ACTION CENTER</div>
+          <h2>Master To-Do List</h2>
+        </div>
+        <button id="addTaskBtn" class="btn primary">+ Add task</button>
+      </div>
+      <div id="tasks" class="body scroll"><div class="empty">Loading tasks…</div></div>
+    </section>
+
+    <section class="card">
+      <div class="cardhead">
+        <div>
+          <div class="eyebrow">COMMAND CHAT</div>
+          <h2>💬 Ask KAY // COMMAND</h2>
+        </div>
+        <span class="pill good">DB-AWARE</span>
+      </div>
+      <div id="chatlog" class="chatlog">
+        <div class="bubble assistant">I’m connected to your Command Center. Use the quick buttons below, type a task command, or ask a question.</div>
+      </div>
+      <div class="quick">
+        <button class="btn filterBtn" data-filter="urgent">Urgent</button>
+        <button class="btn filterBtn" data-filter="risk">At-risk</button>
+        <button class="btn filterBtn" data-filter="week">Due this week</button>
+        <button class="btn filterBtn" data-filter="wedding">Wedding tasks</button>
+      </div>
+      <div class="composer">
+        <textarea id="chatInput" placeholder="Ask about projects or update a task…"></textarea>
+        <button id="speakBtn" class="btn">🎙 Speak</button>
+        <button id="sendBtn" class="btn primary send">Send</button>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div id="authModal" class="auth">
+  <div class="authbox">
+    <div class="eyebrow">SECURE ACCESS</div>
+    <h2>Sign in once</h2>
+    <p class="notice">Your Supabase session is stored on this device, so you should not have to log in every visit. Enter your email and we’ll send a magic link.</p>
+    <input id="emailInput" type="email" placeholder="you@example.com" autocomplete="email" />
+    <button id="magicBtn" class="btn primary" style="width:100%">Send magic link</button>
+    <p id="authMsg" class="notice"></p>
+  </div>
+</div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+const SUPABASE_URL = 'https://najlvczgxwvqjvpvfzji.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_4S9mvRol3OhFYpADykEGDw_MP-IhaZu';
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+});
+
+const $ = (id) => document.getElementById(id);
+const dbStatus = $('dbStatus'), userStatus = $('userStatus'), signOutBtn = $('signOutBtn');
+const authModal = $('authModal'), authMsg = $('authMsg'), emailInput = $('emailInput');
+let state = { tasks: [], projects: [], briefs: [], user: null };
+
+function esc(v=''){return String(v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function fmtDate(v){ if(!v) return 'No due date'; const d=new Date(v+'T12:00:00'); return d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})}
+function todayStart(){const d=new Date(); d.setHours(0,0,0,0); return d}
+function weekEnd(){const d=todayStart(); d.setDate(d.getDate()+7); return d}
+function isWeddingTask(t){
+  const p = state.projects.find(p=>p.id===t.project_id);
+  return /wedding|kiyomi|rasheen|k\/r/i.test(`${t.name} ${t.details||''} ${p?.name||''}`);
+}
+function isUrgent(t){
+  const text=`${t.name} ${t.details||''}`.toLowerCase();
+  if(/urgent|asap|today|immediate/.test(text)) return true;
+  if(t.due_date){const d=new Date(t.due_date+'T12:00:00'); return d<=new Date(Date.now()+2*86400000)}
+  return false;
+}
+function dueThisWeek(t){
+  if(!t.due_date) return false;
+  const d=new Date(t.due_date+'T12:00:00'); return d>=todayStart() && d<=weekEnd();
+}
+function atRiskTask(t){
+  const text=`${t.name} ${t.details||''}`.toLowerCase();
+  if(/risk|blocked|late|overdue|issue|dependency/.test(text)) return true;
+  if(t.due_date){const d=new Date(t.due_date+'T12:00:00'); return !t.is_done && d<todayStart()}
+  return false;
+}
+
+async function ensureAuth(){
+  const { data:{session} } = await supabase.auth.getSession();
+  state.user = session?.user || null;
+  if(!state.user){ authModal.classList.add('show'); userStatus.textContent='Not signed in'; signOutBtn.style.display='none'; return false; }
+  authModal.classList.remove('show'); userStatus.textContent='Signed in'; signOutBtn.style.display='inline-block'; return true;
+}
+
+$('magicBtn').onclick = async () => {
+  const email=emailInput.value.trim();
+  if(!email){authMsg.textContent='Enter your email first.';return}
+  authMsg.textContent='Sending…';
+  const {error}=await supabase.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin}});
+  authMsg.textContent=error?error.message:'Magic link sent. Open it on this device, then return here.';
+};
+signOutBtn.onclick=async()=>{await supabase.auth.signOut();location.reload()};
+
+async function loadAll(){
+  if(!await ensureAuth()) return;
+  dbStatus.textContent='DB: syncing…';
+  const [p,t,b] = await Promise.all([
+    supabase.from('kay_projects').select('*').order('created_at',{ascending:true}),
+    supabase.from('kay_tasks').select('*').order('is_done',{ascending:true}).order('due_date',{ascending:true,nullsFirst:false}),
+    supabase.from('kay_briefs').select('*').order('created_at',{ascending:false}).limit(8)
+  ]);
+  if(p.error||t.error||b.error){
+    dbStatus.textContent='DB: error';
+    dbStatus.className='pill';
+    appendChat('assistant',`Database error: ${p.error?.message||t.error?.message||b.error?.message}`);
+    return;
+  }
+  state.projects=p.data||[]; state.tasks=t.data||[]; state.briefs=b.data||[];
+  dbStatus.textContent='DB: synced'; dbStatus.className='pill good';
+  renderProjects(); renderTasks(state.tasks); renderBriefs();
+}
+
+function renderProjects(){
+  const el=$('projects');
+  if(!state.projects.length){el.innerHTML='<div class="empty">No projects found.</div>';return}
+  el.innerHTML=state.projects.map(p=>`<div class="project"><strong>${esc(p.name||p.title||'Untitled project')}</strong><div class="meta">${esc(p.status||'Active')}${p.details?` · ${esc(p.details)}`:''}</div></div>`).join('');
+}
+function renderBriefs(){
+  const el=$('briefs');
+  if(!state.briefs.length){
+    const urgent=state.tasks.filter(t=>!t.is_done&&isUrgent(t)).slice(0,6);
+    el.innerHTML=urgent.length?`<ul>${urgent.map(t=>`<li>${esc(t.name)}</li>`).join('')}</ul>`:'<div class="empty">Nothing urgent right now.</div>';
+    return;
+  }
+  const items=state.briefs.flatMap(b=>{
+    const text=b.content||b.brief||b.summary||b.message||b.title||'';
+    return String(text).split(/\n+/).filter(Boolean).map(x=>x.replace(/^[-•]\s*/,''));
+  }).slice(0,14);
+  el.innerHTML=`<ul>${items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`;
+}
+function renderTasks(tasks){
+  const el=$('tasks');
+  if(!tasks.length){el.innerHTML='<div class="empty">No tasks in this view.</div>';return}
+  el.innerHTML=tasks.map(t=>`
+    <div class="task ${t.is_done?'done':''}" data-id="${t.id}">
+      <div class="taskname">${esc(t.name)}</div>
+      <div class="meta">${esc(fmtDate(t.due_date))}${t.owner?` · ${esc(t.owner)}`:''}</div>
+      ${t.details?`<div class="taskdetails">${esc(t.details)}</div>`:''}
+      <div class="actions">
+        <button class="btn saveBtn" data-id="${t.id}">Save for later</button>
+        <button class="btn completeBtn" data-id="${t.id}">${t.is_done?'Reopen':'Mark complete'}</button>
+        <button class="btn danger deleteBtn" data-id="${t.id}">Delete task</button>
+      </div>
+    </div>`).join('');
+  document.querySelectorAll('.completeBtn').forEach(b=>b.onclick=()=>toggleComplete(b.dataset.id));
+  document.querySelectorAll('.deleteBtn').forEach(b=>b.onclick=()=>deleteTask(b.dataset.id));
+  document.querySelectorAll('.saveBtn').forEach(b=>b.onclick=()=>saveForLater(b.dataset.id));
+}
+
+async function toggleComplete(id){
+  const t=state.tasks.find(x=>x.id===id); if(!t)return;
+  const {error}=await supabase.from('kay_tasks').update({is_done:!t.is_done,updated_at:new Date().toISOString()}).eq('id',id);
+  if(error)return alert(error.message);
+  appendChat('assistant',`${t.name} → ${!t.is_done?'completed':'reopened'}.`);
+  await loadAll();
+}
+async function deleteTask(id){
+  const t=state.tasks.find(x=>x.id===id); if(!t)return;
+  if(!confirm(`Delete "${t.name}"?`))return;
+  const {error}=await supabase.from('kay_tasks').delete().eq('id',id);
+  if(error)return alert(error.message);
+  appendChat('assistant',`Deleted: ${t.name}`);
+  await loadAll();
+}
+async function saveForLater(id){
+  const t=state.tasks.find(x=>x.id===id); if(!t)return;
+  const date=prompt('Move this task to what date? Use YYYY-MM-DD.',t.due_date||'');
+  if(!date)return;
+  const {error}=await supabase.from('kay_tasks').update({due_date:date,updated_at:new Date().toISOString()}).eq('id',id);
+  if(error)return alert(error.message);
+  appendChat('assistant',`${t.name} moved to ${fmtDate(date)}.`);
+  await loadAll();
+}
+$('addTaskBtn').onclick=async()=>{
+  if(!await ensureAuth())return;
+  const name=prompt('What do you need to do?'); if(!name)return;
+  const date=prompt('Due date (YYYY-MM-DD), or leave blank:','')||null;
+  const project=state.projects[0];
+  if(!project){alert('Create a project first.');return}
+  const {error}=await supabase.from('kay_tasks').insert({name,project_id:project.id,user_id:state.user.id,due_date:date,is_done:false});
+  if(error)return alert(error.message);
+  appendChat('assistant',`Added task: ${name}`);
+  await loadAll();
+};
+$('refreshBtn').onclick=loadAll;
+
+document.querySelectorAll('.filterBtn').forEach(btn=>btn.onclick=()=>{
+  const f=btn.dataset.filter;
+  const rows=state.tasks.filter(t=>!t.is_done).filter(t=>f==='urgent'?isUrgent(t):f==='risk'?atRiskTask(t):f==='week'?dueThisWeek(t):isWeddingTask(t));
+  renderTasks(rows);
+  const label={urgent:'urgent',risk:'at-risk',week:'due this week',wedding:'wedding'}[f];
+  appendChat('assistant',rows.length?`Showing ${rows.length} ${label} task${rows.length===1?'':'s'} in the Action Center.`:`I don’t see any ${label} tasks right now.`);
+});
+
+function appendChat(role,text){
+  const el=$('chatlog'),d=document.createElement('div');d.className=`bubble ${role}`;d.textContent=text;el.appendChild(d);el.scrollTop=el.scrollHeight;
+}
+async function handleLocalCommand(text){
+  let m;
+  if((m=text.match(/^(?:show|list)\s+(urgent|at[- ]risk|due this week|wedding)\s*(?:tasks)?/i))){
+    const key=/urgent/i.test(m[1])?'urgent':/risk/i.test(m[1])?'risk':/week/i.test(m[1])?'week':'wedding';
+    document.querySelector(`.filterBtn[data-filter="${key}"]`).click(); return true;
+  }
+  if((m=text.match(/^mark\s+(.+?)\s+(?:complete|done)$/i))){
+    const q=m[1].toLowerCase(); const t=state.tasks.find(x=>x.name.toLowerCase().includes(q)&&!x.is_done);
+    if(t){await toggleComplete(t.id);return true}
+  }
+  if((m=text.match(/^delete\s+(?:task\s+)?(.+)$/i))){
+    const q=m[1].toLowerCase(); const t=state.tasks.find(x=>x.name.toLowerCase().includes(q));
+    if(t){await deleteTask(t.id);return true}
+  }
+  if((m=text.match(/^move\s+(.+?)\s+to\s+(\d{4}-\d{2}-\d{2})$/i))){
+    const q=m[1].toLowerCase(); const t=state.tasks.find(x=>x.name.toLowerCase().includes(q));
+    if(t){const {error}=await supabase.from('kay_tasks').update({due_date:m[2],updated_at:new Date().toISOString()}).eq('id',t.id);if(error)appendChat('assistant',error.message);else{appendChat('assistant',`${t.name} moved to ${fmtDate(m[2])}.`);await loadAll()}return true}
+  }
+  return false;
+}
+async function askAI(text){
+  const context = {
+    projects: state.projects.slice(0,20).map(p=>({name:p.name||p.title,status:p.status,details:p.details})),
+    tasks: state.tasks.filter(t=>!t.is_done).slice(0,50).map(t=>({name:t.name,due_date:t.due_date,details:t.details,project_id:t.project_id}))
+  };
+  const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text,context})});
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.error||'Command Chat backend is not configured yet.');
+  return data.reply||'Done.';
+}
+async function sendChat(){
+  const input=$('chatInput'),text=input.value.trim(); if(!text)return;
+  input.value=''; appendChat('user',text);
+  if(await handleLocalCommand(text))return;
+  appendChat('assistant','Working…');
+  const working=$('chatlog').lastElementChild;
+  try{working.textContent=await askAI(text)}catch(e){working.textContent=`${e.message}\n\nQuick task commands still work here: “show urgent tasks”, “mark <task> complete”, “delete <task>”, or “move <task> to YYYY-MM-DD”.`}
+}
+$('sendBtn').onclick=sendChat;
+$('chatInput').addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key==='Enter')sendChat()});
+
+$('speakBtn').onclick=()=>{
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){alert('Browser speech capture is not available here. Tap the microphone on your iPad/iPhone keyboard and dictate into the command box.');$('chatInput').focus();return}
+  const r=new SR();r.lang='en-US';r.interimResults=false;r.maxAlternatives=1;
+  r.onresult=e=>{$('chatInput').value=e.results[0][0].transcript;$('chatInput').focus()};
+  r.onerror=e=>alert(`Voice input error: ${e.error}`);
+  r.start();
+};
+
+supabase.auth.onAuthStateChange(()=>setTimeout(loadAll,0));
+await loadAll();
+</script>
+</body>
+</html>
