@@ -1,361 +1,495 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>KAY // COMMAND</title>
-  <style>
-    :root{
-      --bg:#071018;--panel:#0d1a23;--panel2:#0a141c;--line:#28404f;
-      --cyan:#43d8ff;--cyan2:#1595b8;--text:#f5f8fb;--muted:#9dafbb;
-      --good:#4df2a6;--warn:#ffcf66;--bad:#ff6b6b;--shadow:0 14px 40px rgba(0,0,0,.35)
-    }
-    *{box-sizing:border-box}
-    html,body{margin:0;background:radial-gradient(circle at 85% 5%,rgba(40,192,225,.10),transparent 25%),var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-    button,input,textarea,select{font:inherit}
-    button{cursor:pointer}
-    .wrap{max-width:1320px;margin:0 auto;padding:22px}
-    .top{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:18px}
-    .brand h1{margin:2px 0 0;font-size:clamp(26px,4vw,44px);letter-spacing:.02em}
-    .eyebrow{font-weight:800;font-size:12px;letter-spacing:.24em;color:var(--cyan)}
-    .status{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .pill{border:1px solid var(--line);background:#0d1820;border-radius:999px;padding:8px 12px;color:var(--muted);font-size:13px}
-    .pill.good{color:var(--good);border-color:rgba(77,242,166,.35)}
-    .grid{display:grid;grid-template-columns:1.1fr .9fr;gap:18px}
-    .card{background:linear-gradient(180deg,rgba(17,35,47,.96),rgba(10,22,31,.96));border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);overflow:hidden}
-    .card h2{font-size:21px;margin:0}
-    .cardhead{padding:20px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:16px;align-items:center}
-    .body{padding:18px 22px}
-    .scroll{max-height:380px;overflow:auto}
-    .brief ul{padding-left:20px;margin:8px 0}
-    .brief li{margin:9px 0;line-height:1.45}
-    .project{padding:14px 0;border-bottom:1px solid rgba(93,126,143,.22)}
-    .project:last-child{border-bottom:0}
-    .project strong{display:block;margin-bottom:5px}
-    .meta{font-size:13px;color:var(--muted)}
-    .task{border:1px solid rgba(93,126,143,.30);border-radius:15px;padding:14px;margin:10px 0;background:#0a151d}
-    .task.done{opacity:.58}
-    .taskname{font-weight:760;line-height:1.35}
-    .taskdetails{margin-top:7px;color:var(--muted);font-size:13px}
-    .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-    .btn{border:1px solid #31576a;background:#102735;color:var(--text);border-radius:12px;padding:10px 13px;font-weight:700}
-    .btn:hover,.btn:focus{border-color:var(--cyan)}
-    .btn.primary{background:linear-gradient(180deg,#154d61,#103747);border-color:#2686a5}
-    .btn.danger{border-color:rgba(255,107,107,.5);color:#ffaaaa;background:#251318}
-    .btn.ghost{background:transparent}
-    .quick{display:flex;gap:10px;flex-wrap:wrap;padding:18px 22px;border-top:1px solid var(--line)}
-    .chatlog{height:280px;overflow:auto;padding:18px 22px;display:flex;flex-direction:column;gap:12px}
-    .bubble{max-width:86%;padding:11px 13px;border-radius:14px;line-height:1.4;white-space:pre-wrap}
-    .bubble.user{align-self:flex-end;background:#12394a;border:1px solid #1f6d8a}
-    .bubble.assistant{align-self:flex-start;background:#101b23;border:1px solid var(--line)}
-    .composer{display:grid;grid-template-columns:1fr auto auto;gap:10px;padding:14px 22px 20px;border-top:1px solid var(--line)}
-    .composer textarea{min-height:68px;resize:vertical;border:1px solid #276c87;background:#07131b;color:white;border-radius:14px;padding:14px;outline:none}
-    .composer textarea:focus{box-shadow:0 0 0 2px rgba(67,216,255,.16)}
-    .auth{display:none;position:fixed;inset:0;background:rgba(3,9,14,.76);backdrop-filter:blur(10px);z-index:20;align-items:center;justify-content:center;padding:24px}
-    .auth.show{display:flex}
-    .authbox{width:min(480px,100%);background:#0d1a23;border:1px solid var(--line);border-radius:22px;padding:24px;box-shadow:var(--shadow)}
-    .authbox input{width:100%;padding:13px;border-radius:12px;border:1px solid #2f576b;background:#08151d;color:white;margin:12px 0}
-    .notice{font-size:13px;color:var(--muted);line-height:1.45}
-    .small{font-size:12px;color:var(--muted)}
-    .empty{padding:22px;color:var(--muted);text-align:center}
-    @media(max-width:900px){.grid{grid-template-columns:1fr}.wrap{padding:14px}.composer{grid-template-columns:1fr auto}.composer .send{grid-row:1/3;grid-column:2}.top{align-items:flex-start}}
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>KAY // COMMAND</title>
+<style>
+:root{
+ --bg:#061018;--panel:#0b1720;--panel2:#0a141c;--line:#213a48;--line2:#294957;
+ --cyan:#45d9ff;--cyan2:#119dc2;--text:#f5f7fa;--muted:#94a8b5;--green:#47eca1;
+ --amber:#ffca62;--red:#ff7079;--shadow:0 16px 44px rgba(0,0,0,.30)
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:linear-gradient(180deg,#041018,#07131b 55%,#071018);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button,input,textarea{font:inherit} button{cursor:pointer}
+.shell{max-width:1450px;margin:0 auto;padding:16px 22px 34px}
+.topbar{height:72px;display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid rgba(56,90,107,.35);margin-bottom:18px}
+.brand{display:flex;align-items:center;gap:14px;min-width:0}
+.logo{width:50px;height:50px;border:1px solid #285d72;border-radius:14px;display:grid;place-items:center;color:var(--cyan);font-weight:900;font-style:italic;background:#0a1a23;box-shadow:inset 0 0 22px rgba(69,217,255,.04)}
+.brandTitle{font-weight:900;letter-spacing:.12em;font-size:20px}
+.tagline{font-size:12px;color:var(--muted);letter-spacing:.28em;margin-top:4px}
+.topActions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.chip,.btn{border:1px solid var(--line2);background:#0b1821;color:var(--text);border-radius:14px;padding:10px 14px;font-weight:750}
+.chip{border-radius:999px;color:var(--green);font-size:12px}
+.btn:hover,.btn:focus{border-color:var(--cyan)}
+.btn.primary{background:linear-gradient(180deg,#15536a,#103b4b);border-color:#2586a5}
+.btn.danger{background:#291319;border-color:#a84249;color:#ff9da3}
+.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px}
+.card{background:linear-gradient(180deg,rgba(13,29,39,.98),rgba(8,21,29,.98));border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);overflow:hidden;min-width:0}
+.cardHeader{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;padding:19px 20px 12px}
+.cardTitle{font-size:20px;font-weight:900;letter-spacing:-.02em}
+.cardSub{font-size:12px;color:var(--muted);margin-top:3px}
+.sectionLabel{font-size:11px;letter-spacing:.20em;color:var(--cyan);font-weight:900;margin-bottom:8px}
+.badge{padding:7px 10px;border:1px solid #244857;border-radius:999px;color:var(--green);font-size:11px;font-weight:900;white-space:nowrap}
+.hero{grid-column:span 8;height:305px}
+.milestones{grid-column:span 4;height:305px}
+.heroBody{padding:0 20px 18px;height:232px;overflow:auto}
+.heroGreeting{font-size:38px;line-height:1.08;font-weight:950;letter-spacing:-.035em;margin:4px 0 10px}
+.briefList{margin:0;padding-left:20px;font-size:15px;line-height:1.55}
+.briefList li{margin:8px 0}
+.liveBar{border:1px solid rgba(71,236,161,.34);color:#b7f9d9;background:rgba(27,109,75,.13);border-radius:999px;padding:9px 12px;font-size:11px;font-weight:750;margin-top:10px}
+.milestoneBody{padding:0 20px 18px}
+.milestone{padding:12px 0 18px;border-bottom:1px solid rgba(70,101,116,.26)}
+.milestone:last-child{border-bottom:0}
+.milestoneNum{font-size:47px;font-weight:950;line-height:1}
+.milestoneDesc{font-size:14px;color:var(--muted);margin-top:3px}
+.milestoneDate{font-weight:850;margin-top:2px}
+.action{grid-column:span 7;height:330px}
+.career{grid-column:span 5;height:330px}
+.scroll{overflow:auto}
+.actionBody{height:252px;padding:2px 20px 18px;overflow:auto}
+.actionRow{border:1px solid #263f4d;border-radius:14px;padding:12px 14px;margin:9px 0;background:#0a151d;display:flex;gap:10px;align-items:flex-start;cursor:pointer}
+.actionRow:hover{border-color:#3c6a80}
+.pin{font-size:16px}
+.actionName{font-weight:850;font-size:14px}
+.actionMeta{font-size:12px;color:var(--muted);margin-top:2px}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:0 20px 8px}
+.kpi{border:1px solid #263f4d;border-radius:12px;padding:8px 10px;background:#0a151d}
+.kpi strong{font-size:20px;display:block;line-height:1}
+.kpi span{font-size:9px;color:var(--muted);line-height:1.2;display:block;margin-top:4px}
+.careerBody{height:190px;padding:0 20px 18px;overflow:auto}
+.careerRow{border:1px solid #263f4d;border-radius:13px;padding:10px 12px;margin:7px 0;background:#0a151d;display:flex;justify-content:space-between;gap:12px;align-items:center;cursor:pointer}
+.careerName{font-weight:850}
+.careerDesc{font-size:12px;color:var(--muted);margin-top:2px}
+.careerCount{font-size:12px;font-weight:850;text-align:right;white-space:nowrap}
+.trio{grid-column:span 4;height:288px}
+.trioBody{padding:0 20px 18px;height:210px;overflow:auto}
+.moneyBoxes{display:grid;grid-template-columns:1fr;gap:10px}
+.moneyBox{border:1px solid #263f4d;border-radius:13px;padding:14px;background:#0a151d}
+.moneyVal{font-size:28px;font-weight:950}
+.moneyLabel{font-size:11px;color:var(--muted);margin-top:6px}
+.inboxKpis{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.inboxKpi{border:1px solid #263f4d;border-radius:13px;padding:14px 12px;background:#0a151d}
+.inboxKpi strong{display:block;font-size:27px}
+.inboxKpi span{font-size:10px;color:var(--muted);line-height:1.25;display:block}
+.calendarText{font-size:15px;color:var(--muted);line-height:1.45}
+.projects{grid-column:span 12;height:385px}
+.tableWrap{height:303px;overflow:auto;padding:0 20px 18px}
+table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid #263f4d;border-radius:14px;overflow:hidden;min-width:980px;background:#09151d}
+th{font-size:9px;letter-spacing:.18em;text-align:left;color:#9bb0bd;padding:12px 13px;border-bottom:1px solid #263f4d;background:#0b1821}
+td{padding:13px;font-size:12px;border-bottom:1px solid rgba(51,80,94,.45);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+.projectName{font-weight:850;font-size:13px}
+.health{font-weight:800} .health.warn{color:var(--amber)} .health.good{color:var(--green)} .health.bad{color:var(--red)}
+.lower{grid-column:span 6;height:300px}
+.systemGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:0 20px 18px}
+.system{border:1px solid #263f4d;border-radius:13px;padding:13px;background:#0a151d}
+.systemTop{display:flex;justify-content:space-between;gap:10px;font-weight:850}
+.systemStatus{font-size:10px;color:var(--green);text-transform:uppercase}
+.systemMeta{font-size:11px;color:var(--muted);margin-top:6px}
+.chatLog{height:135px;overflow:auto;padding:0 20px;display:flex;flex-direction:column;gap:8px}
+.bubble{padding:9px 11px;border:1px solid #263f4d;border-radius:12px;background:#0a151d;font-size:12px;line-height:1.4;max-width:88%}
+.bubble.user{align-self:flex-end;background:#103443}
+.chatCompose{display:grid;grid-template-columns:1fr auto auto;gap:8px;padding:10px 20px 18px}
+.chatCompose textarea{min-height:54px;max-height:80px;resize:none;border:1px solid #28586c;border-radius:13px;background:#07131b;color:white;padding:12px}
+
+.taskEditGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.taskEditGrid label{font-size:11px;color:var(--muted);display:block}
+.taskEditGrid input,.taskEditGrid textarea{width:100%;margin-top:5px;border:1px solid #2a4f61;border-radius:11px;background:#07131b;color:#fff;padding:10px}
+.taskEditGrid textarea{min-height:90px;resize:vertical}
+.taskEditGrid .full{grid-column:1/-1}
+.jobList{display:flex;flex-direction:column;gap:9px;margin-top:12px}
+.jobItem{border:1px solid #284452;border-radius:13px;padding:12px;background:#08151d;cursor:pointer}
+.jobItem:hover{border-color:var(--cyan)}
+.jobTop{display:flex;justify-content:space-between;gap:12px}
+.jobTitle{font-weight:900}
+.jobMeta{font-size:11px;color:var(--muted);margin-top:4px}
+.jobStatus{font-size:10px;color:var(--green);font-weight:900;white-space:nowrap}
+.jobActions{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}
+@media(max-width:560px){.taskEditGrid{grid-template-columns:1fr}.taskEditGrid .full{grid-column:1}.modalActions{grid-template-columns:1fr}.modalActions .danger{grid-column:1}}
+
+.modal{display:none;position:fixed;inset:0;background:rgba(2,7,11,.82);backdrop-filter:blur(8px);z-index:50;align-items:center;justify-content:center;padding:18px}
+.modal.show{display:flex}
+.modalBox{width:min(620px,100%);max-height:86vh;overflow:auto;background:#0c1922;border:1px solid #2a4858;border-radius:20px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.modalTop{display:flex;justify-content:space-between;gap:14px;align-items:flex-start}
+.modalTitle{font-size:25px;font-weight:900;margin:5px 0}
+.modalMeta{font-size:12px;color:var(--muted)}
+.modalDetails{white-space:pre-wrap;border:1px solid #263f4d;border-radius:13px;background:#08141b;padding:13px;margin:14px 0;line-height:1.5;color:#d7e0e5}
+.modalActions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.modalActions .danger{grid-column:1/-1}
+.auth{display:none;position:fixed;inset:0;background:rgba(2,7,11,.85);z-index:60;align-items:center;justify-content:center;padding:20px}
+.auth.show{display:flex}
+.authBox{width:min(460px,100%);background:#0c1922;border:1px solid #2a4858;border-radius:20px;padding:22px}
+.authBox input{width:100%;padding:12px;border-radius:12px;background:#07131b;color:#fff;border:1px solid #2a4858;margin:10px 0}
+@media(max-width:900px){
+ .shell{padding:12px} .topbar{height:auto;padding:10px 0;align-items:flex-start}
+ .brandTitle{font-size:17px} .tagline{letter-spacing:.15em}
+ .hero,.milestones,.action,.career,.trio,.projects,.lower{grid-column:span 12}
+ .hero,.milestones{height:auto;min-height:275px} .action,.career{height:310px}
+ .trio{height:auto;min-height:250px} .projects{height:390px}
+ .lower{height:auto;min-height:290px}
+}
+@media(max-width:560px){
+ .shell{padding:10px} .logo{width:42px;height:42px} .topActions{gap:6px}
+ .chip,.btn{padding:9px 11px} .heroGreeting{font-size:30px}
+ .milestoneNum{font-size:40px} .kpis,.inboxKpis{grid-template-columns:repeat(3,1fr)}
+ .cardHeader{padding:16px 16px 10px} .heroBody,.milestoneBody,.actionBody,.careerBody,.trioBody,.tableWrap{padding-left:16px;padding-right:16px}
+ .kpis{padding-left:16px;padding-right:16px} .systemGrid{padding-left:16px;padding-right:16px}
+ .chatCompose{grid-template-columns:1fr auto;padding-left:16px;padding-right:16px} .chatCompose .send{grid-row:1/3;grid-column:2}
+}
+</style>
 </head>
 <body>
-<div class="wrap">
-  <div class="top">
+<div class="shell">
+  <header class="topbar">
     <div class="brand">
-      <div class="eyebrow">MISSION CONTROL</div>
-      <h1>KAY // COMMAND</h1>
+      <div class="logo">K//</div>
+      <div><div class="brandTitle">KAY // COMMAND</div><div class="tagline">LIFE · WORK · MONEY · MOVES</div></div>
     </div>
-    <div class="status">
-      <span id="dbStatus" class="pill">DB: connecting…</span>
-      <span id="userStatus" class="pill">Not signed in</span>
-      <button id="signOutBtn" class="btn ghost" style="display:none">Sign out</button>
+    <div class="topActions">
+      <span id="emailChip" class="chip">signed in</span>
+      <button id="refreshBtn" class="btn">↻ Refresh</button>
+      <button id="signOutBtn" class="btn">Sign out</button>
+    </div>
+  </header>
+
+  <main class="grid">
+    <section class="card hero">
+      <div class="cardHeader">
+        <div><div class="sectionLabel">EXECUTIVE COMMAND BRIEF</div><div id="greeting" class="heroGreeting">Good morning, Kay.</div></div>
+      </div>
+      <div class="heroBody">
+        <div id="briefs"><div class="cardSub">Loading live command brief…</div></div>
+        <div id="liveBar" class="liveBar">● Loading live data…</div>
+      </div>
+    </section>
+
+    <section class="card milestones">
+      <div class="cardHeader"><div><div class="sectionLabel">NEXT MAJOR MILESTONES</div></div></div>
+      <div class="milestoneBody">
+        <div class="milestone"><div id="turn50Days" class="milestoneNum">—</div><div class="milestoneDesc">days until The ’76s Turn 50</div><div class="milestoneDate">October 3, 2026 · Atlanta</div></div>
+        <div class="milestone"><div id="weddingDays" class="milestoneNum">—</div><div class="milestoneDesc">days until K / R · 11.7.26</div></div>
+      </div>
+    </section>
+
+    <section class="card action">
+      <div class="cardHeader">
+        <div><div class="cardTitle">🎯 Action Center</div><div class="cardSub">Scroll all open actions</div></div>
+        <span id="openCount" class="badge">— OPEN</span>
+      </div>
+      <div id="actionList" class="actionBody scroll"><div class="cardSub">Loading actions…</div></div>
+    </section>
+
+    <section class="card career">
+      <div class="cardHeader">
+        <div><div class="cardTitle">💼 Career Command</div><div class="cardSub">Director+ strategy & immediate income</div></div>
+        <span class="badge">$240K+ TARGET</span>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><strong id="careerLeads">—</strong><span>Active / Warm leads</span></div>
+        <div class="kpi"><strong>$70/hr</strong><span>Hard floor</span></div>
+        <div class="kpi"><strong>&lt;2</strong><span>Hybrid days preferred</span></div>
+      </div>
+      <div id="careerRows" class="careerBody scroll"></div>
+    </section>
+
+    <section class="card trio">
+      <div class="cardHeader"><div><div class="cardTitle">💰 Money Snapshot</div><div class="cardSub">Private by default</div></div><span id="financeBadge" class="badge">LINKING</span></div>
+      <div class="trioBody">
+        <div class="moneyBoxes">
+          <div class="moneyBox"><div id="availableCash" class="moneyVal">—</div><div class="moneyLabel">Available cash</div></div>
+          <div class="moneyBox"><div id="upcomingBills" class="moneyVal">—</div><div class="moneyLabel">Upcoming bills</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card trio">
+      <div class="cardHeader"><div><div class="cardTitle">📨 Inbox Intelligence</div><div class="cardSub">Connected Gmail snapshot</div></div><span id="gmailBadge" class="badge">LIVE</span></div>
+      <div class="trioBody">
+        <div class="inboxKpis">
+          <div class="inboxKpi"><strong id="unreadCount">—</strong><span>Unread</span></div>
+          <div class="inboxKpi"><strong id="priorityCount">—</strong><span>Priority alerts</span></div>
+          <div class="inboxKpi"><strong id="gmailSync">—</strong><span>Last sync</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card trio">
+      <div class="cardHeader"><div><div class="cardTitle">📅 Today / This Week</div><div class="cardSub">Google Calendar</div></div><span id="calendarBadge" class="badge">LIVE</span></div>
+      <div class="trioBody"><div id="calendarText" class="calendarText">Loading calendar snapshot…</div></div>
+    </section>
+
+    <section class="card projects">
+      <div class="cardHeader">
+        <div><div class="cardTitle">📁 Project Command Center</div><div class="cardSub">Project portfolio · scroll to see all</div></div>
+        <span id="projectBadge" class="badge">— PROJECTS</span>
+      </div>
+      <div class="tableWrap">
+        <table>
+          <thead><tr><th>PROJECT</th><th>WORKSPACE</th><th>PROJECT HEALTH</th><th>DUE / GO-LIVE</th><th>COUNTDOWN</th><th>TASK DELIVERY</th><th>NEXT MOVE</th></tr></thead>
+          <tbody id="projectTable"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card lower">
+      <div class="cardHeader"><div><div class="cardTitle">🛰 Systems Check</div><div class="cardSub">Workspace connections</div></div><span id="systemsBadge" class="badge">CHECKING</span></div>
+      <div id="systemGrid" class="systemGrid"></div>
+    </section>
+
+    <section class="card lower">
+      <div class="cardHeader"><div><div class="cardTitle">💬 Command Chat</div><div class="cardSub">Ask about projects or update a task</div></div><span class="badge">DB-AWARE</span></div>
+      <div id="chatLog" class="chatLog"><div class="bubble">KAY // COMMAND is ready.</div></div>
+      <div class="chatCompose"><textarea id="chatInput" placeholder="Ask about projects or update a task…"></textarea><button id="speakBtn" class="btn">🎙</button><button id="sendBtn" class="btn primary send">Send</button></div>
+    </section>
+  </main>
+</div>
+
+<div id="taskModal" class="modal">
+ <div class="modalBox">
+  <div class="modalTop"><div><div class="sectionLabel">TASK DETAILS</div><div id="taskTitle" class="modalTitle"></div></div><button id="taskClose" class="btn">✕</button></div>
+  <div id="taskMeta" class="modalMeta"></div>
+  <div class="taskEditGrid">
+    <label class="full">Task name<input id="taskNameEdit"></label>
+    <label>Due date<input id="taskDueEdit" type="date"></label>
+    <label>Owner<input id="taskOwnerEdit"></label>
+    <label class="full">Details<textarea id="taskDetailsEdit"></textarea></label>
+  </div>
+  <div class="modalActions">
+    <button id="saveLaterBtn" class="btn">Save for later</button>
+    <button id="completeBtn" class="btn primary">Mark complete</button>
+    <button id="updateTaskBtn" class="btn">Update task</button>
+    <button id="deleteBtn" class="btn danger">Delete / remove from list</button>
+  </div>
+ </div>
+</div>
+
+<div id="jobModal" class="modal">
+ <div class="modalBox">
+  <div class="modalTop"><div><div class="sectionLabel">CAREER COMMAND</div><div id="jobModalTitle" class="modalTitle">Jobs</div></div><button id="jobClose" class="btn">✕</button></div>
+  <div id="jobModalMeta" class="modalMeta"></div>
+  <div id="jobList" class="jobList"></div>
+  <div id="jobDetail" style="display:none">
+    <div id="jobDetailTitle" class="modalTitle"></div>
+    <div id="jobDetailMeta" class="modalMeta"></div>
+    <div id="jobDetailText" class="modalDetails"></div>
+    <div class="jobActions">
+      <button id="jobBack" class="btn">← Back to jobs</button>
+      <button id="jobApply" class="btn primary">Apply</button>
+      <button id="jobMarkApplied" class="btn">Mark applied</button>
     </div>
   </div>
-
-  <div class="grid">
-    <section class="card">
-      <div class="cardhead">
-        <div>
-          <div class="eyebrow">EXECUTIVE COMMAND BRIEF</div>
-          <h2>What needs your attention</h2>
-        </div>
-        <button id="refreshBtn" class="btn">Refresh</button>
-      </div>
-      <div id="briefs" class="body scroll brief"><div class="empty">Loading brief…</div></div>
-    </section>
-
-    <section class="card">
-      <div class="cardhead">
-        <div>
-          <div class="eyebrow">PROJECT CENTER</div>
-          <h2>Active projects</h2>
-        </div>
-      </div>
-      <div id="projects" class="body scroll"><div class="empty">Loading projects…</div></div>
-    </section>
-
-    <section class="card">
-      <div class="cardhead">
-        <div>
-          <div class="eyebrow">ACTION CENTER</div>
-          <h2>Master To-Do List</h2>
-        </div>
-        <button id="addTaskBtn" class="btn primary">+ Add task</button>
-      </div>
-      <div id="tasks" class="body scroll"><div class="empty">Loading tasks…</div></div>
-    </section>
-
-    <section class="card">
-      <div class="cardhead">
-        <div>
-          <div class="eyebrow">COMMAND CHAT</div>
-          <h2>💬 Ask KAY // COMMAND</h2>
-        </div>
-        <span class="pill good">DB-AWARE</span>
-      </div>
-      <div id="chatlog" class="chatlog">
-        <div class="bubble assistant">I’m connected to your Command Center. Use the quick buttons below, type a task command, or ask a question.</div>
-      </div>
-      <div class="quick">
-        <button class="btn filterBtn" data-filter="urgent">Urgent</button>
-        <button class="btn filterBtn" data-filter="risk">At-risk</button>
-        <button class="btn filterBtn" data-filter="week">Due this week</button>
-        <button class="btn filterBtn" data-filter="wedding">Wedding tasks</button>
-      </div>
-      <div class="composer">
-        <textarea id="chatInput" placeholder="Ask about projects or update a task…"></textarea>
-        <button id="speakBtn" class="btn">🎙 Speak</button>
-        <button id="sendBtn" class="btn primary send">Send</button>
-      </div>
-    </section>
-  </div>
+ </div>
 </div>
 
 <div id="authModal" class="auth">
-  <div class="authbox">
-    <div class="eyebrow">SECURE ACCESS</div>
-    <h2>Sign in once</h2>
-    <p class="notice">Your Supabase session is stored on this device, so you should not have to log in every visit. Enter your email and we’ll send a magic link.</p>
-    <input id="emailInput" type="email" placeholder="you@example.com" autocomplete="email" />
-    <button id="magicBtn" class="btn primary" style="width:100%">Send magic link</button>
-    <p id="authMsg" class="notice"></p>
-  </div>
+ <div class="authBox"><div class="sectionLabel">SECURE ACCESS</div><h2>Sign in once</h2><p class="cardSub">Your Supabase session is stored on this device.</p><input id="emailInput" type="email" placeholder="you@example.com"><button id="magicBtn" class="btn primary" style="width:100%">Send magic link</button><p id="authMsg" class="cardSub"></p></div>
 </div>
 
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-
-const SUPABASE_URL = 'https://najlvczgxwvqjvpvfzji.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_4S9mvRol3OhFYpADykEGDw_MP-IhaZu';
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
-});
-
-const $ = (id) => document.getElementById(id);
-const dbStatus = $('dbStatus'), userStatus = $('userStatus'), signOutBtn = $('signOutBtn');
-const authModal = $('authModal'), authMsg = $('authMsg'), emailInput = $('emailInput');
-let state = { tasks: [], projects: [], briefs: [], user: null };
-
-function esc(v=''){return String(v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-function fmtDate(v){ if(!v) return 'No due date'; const d=new Date(v+'T12:00:00'); return d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})}
-function todayStart(){const d=new Date(); d.setHours(0,0,0,0); return d}
-function weekEnd(){const d=todayStart(); d.setDate(d.getDate()+7); return d}
-function isWeddingTask(t){
-  const p = state.projects.find(p=>p.id===t.project_id);
-  return /wedding|kiyomi|rasheen|k\/r/i.test(`${t.name} ${t.details||''} ${p?.name||''}`);
-}
-function isUrgent(t){
-  const text=`${t.name} ${t.details||''}`.toLowerCase();
-  if(/urgent|asap|today|immediate/.test(text)) return true;
-  if(t.due_date){const d=new Date(t.due_date+'T12:00:00'); return d<=new Date(Date.now()+2*86400000)}
-  return false;
-}
-function dueThisWeek(t){
-  if(!t.due_date) return false;
-  const d=new Date(t.due_date+'T12:00:00'); return d>=todayStart() && d<=weekEnd();
-}
-function atRiskTask(t){
-  const text=`${t.name} ${t.details||''}`.toLowerCase();
-  if(/risk|blocked|late|overdue|issue|dependency/.test(text)) return true;
-  if(t.due_date){const d=new Date(t.due_date+'T12:00:00'); return !t.is_done && d<todayStart()}
-  return false;
-}
-
+const SUPABASE_URL='https://najlvczgxwvqjvpvfzji.supabase.co', SUPABASE_KEY='sb_publishable_4S9mvRol3OhFYpADykEGDw_MP-IhaZu';
+const supabase=createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+const $=id=>document.getElementById(id);
+let state={tasks:[],projects:[],briefs:[],sources:[],jobs:[],user:null},activeTaskId=null,activeJobId=null,currentJobLane=null;
+const esc=(v='')=>String(v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const fmtDate=v=>{if(!v)return '—';const d=new Date(v+'T12:00:00');return d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})};
+const daysUntil=v=>{const a=new Date();a.setHours(0,0,0,0);const b=new Date(v+'T12:00:00');return Math.max(0,Math.ceil((b-a)/86400000))};
+const source=(n)=>state.sources.find(x=>String(x.source||x.name||'').toLowerCase()===n.toLowerCase());
+const sourceGood=s=>/connected|synced|ready|healthy|active|ok|live/i.test(String(s||''));
+const today=()=>{const d=new Date();d.setHours(0,0,0,0);return d};
+function dueWeek(t){if(!t.due_date)return false;const d=new Date(t.due_date+'T12:00:00'),e=today();e.setDate(e.getDate()+7);return d>=today()&&d<=e}
+function atRisk(t){if(t.is_done)return false;const txt=`${t.name} ${t.details||''}`;if(/risk|blocked|overdue|dependency|late/i.test(txt))return true;if(t.due_date)return new Date(t.due_date+'T12:00:00')<today();return false}
+function projectFor(t){return state.projects.find(p=>p.id===t.project_id)}
+function setGreeting(){const h=new Date().getHours();$('greeting').textContent=`Good ${h<12?'morning':h<18?'afternoon':'evening'}, Kay.`;$('turn50Days').textContent=daysUntil('2026-10-03');$('weddingDays').textContent=daysUntil('2026-11-07')}
 async function ensureAuth(){
-  const { data:{session} } = await supabase.auth.getSession();
-  state.user = session?.user || null;
-  if(!state.user){ authModal.classList.add('show'); userStatus.textContent='Not signed in'; signOutBtn.style.display='none'; return false; }
-  authModal.classList.remove('show'); userStatus.textContent='Signed in'; signOutBtn.style.display='inline-block'; return true;
+ const {data:{session}}=await supabase.auth.getSession();state.user=session?.user||null;
+ if(!state.user){$('authModal').classList.add('show');return false}
+ $('authModal').classList.remove('show');$('emailChip').textContent=state.user.email||'signed in';return true
 }
-
-$('magicBtn').onclick = async () => {
-  const email=emailInput.value.trim();
-  if(!email){authMsg.textContent='Enter your email first.';return}
-  authMsg.textContent='Sending…';
-  const {error}=await supabase.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin}});
-  authMsg.textContent=error?error.message:'Magic link sent. Open it on this device, then return here.';
-};
-signOutBtn.onclick=async()=>{await supabase.auth.signOut();location.reload()};
-
+$('magicBtn').onclick=async()=>{const email=$('emailInput').value.trim();if(!email)return;$('authMsg').textContent='Sending…';const {error}=await supabase.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin}});$('authMsg').textContent=error?error.message:'Magic link sent.'};
+$('signOutBtn').onclick=async()=>{await supabase.auth.signOut();location.reload()};
 async function loadAll(){
-  if(!await ensureAuth()) return;
-  dbStatus.textContent='DB: syncing…';
-  const [p,t,b] = await Promise.all([
-    supabase.from('kay_projects').select('*').order('created_at',{ascending:true}),
-    supabase.from('kay_tasks').select('*').order('is_done',{ascending:true}).order('due_date',{ascending:true,nullsFirst:false}),
-    supabase.from('kay_briefs').select('*').order('created_at',{ascending:false}).limit(8)
-  ]);
-  if(p.error||t.error||b.error){
-    dbStatus.textContent='DB: error';
-    dbStatus.className='pill';
-    appendChat('assistant',`Database error: ${p.error?.message||t.error?.message||b.error?.message}`);
-    return;
-  }
-  state.projects=p.data||[]; state.tasks=t.data||[]; state.briefs=b.data||[];
-  dbStatus.textContent='DB: synced'; dbStatus.className='pill good';
-  renderProjects(); renderTasks(state.tasks); renderBriefs();
+ if(!await ensureAuth())return;
+ $('liveBar').textContent='● Syncing live data…';
+ const [p,t,b,s,j]=await Promise.all([
+  supabase.from('kay_projects').select('*').order('created_at',{ascending:true}),
+  supabase.from('kay_tasks').select('*').order('is_done',{ascending:true}).order('due_date',{ascending:true,nullsFirst:false}),
+  supabase.from('kay_briefs').select('*').order('created_at',{ascending:false}).limit(8),
+  supabase.from('kay_source_status').select('*'),
+  supabase.from('kay_jobs').select('*').order('source_date',{ascending:false})
+ ]);
+ if(p.error||t.error||b.error){$('liveBar').textContent='● Data sync error';appendChat('assistant',p.error?.message||t.error?.message||b.error?.message);return}
+ state.projects=p.data||[];state.tasks=t.data||[];state.briefs=b.data||[];state.sources=s.error?[]:(s.data||[]);state.jobs=j?.error?[]:(j?.data||[]);
+ renderAll();$('liveBar').textContent='● Live data loaded';
 }
-
-function renderProjects(){
-  const el=$('projects');
-  if(!state.projects.length){el.innerHTML='<div class="empty">No projects found.</div>';return}
-  el.innerHTML=state.projects.map(p=>`<div class="project"><strong>${esc(p.name||p.title||'Untitled project')}</strong><div class="meta">${esc(p.status||'Active')}${p.details?` · ${esc(p.details)}`:''}</div></div>`).join('');
-}
+function renderAll(){setGreeting();renderBriefs();renderActions();renderCareer();renderMoney();renderInbox();renderCalendar();renderProjects();renderSystems()}
 function renderBriefs(){
-  const el=$('briefs');
-  if(!state.briefs.length){
-    const urgent=state.tasks.filter(t=>!t.is_done&&isUrgent(t)).slice(0,6);
-    el.innerHTML=urgent.length?`<ul>${urgent.map(t=>`<li>${esc(t.name)}</li>`).join('')}</ul>`:'<div class="empty">Nothing urgent right now.</div>';
-    return;
-  }
-  const items=state.briefs.flatMap(b=>{
-    const text=b.content||b.brief||b.summary||b.message||b.title||'';
-    return String(text).split(/\n+/).filter(Boolean).map(x=>x.replace(/^[-•]\s*/,''));
-  }).slice(0,14);
-  el.innerHTML=`<ul>${items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`;
+ const items=state.briefs.flatMap(b=>String(b.content||b.brief||b.summary||b.message||b.title||'').split(/\n+/).filter(Boolean).map(x=>x.replace(/^[-•]\s*/,''))).slice(0,10);
+ $('briefs').innerHTML=items.length?`<ul class="briefList">${items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:'<div class="cardSub">Nothing urgent right now.</div>';
 }
-function renderTasks(tasks){
-  const el=$('tasks');
-  if(!tasks.length){el.innerHTML='<div class="empty">No tasks in this view.</div>';return}
-  el.innerHTML=tasks.map(t=>`
-    <div class="task ${t.is_done?'done':''}" data-id="${t.id}">
-      <div class="taskname">${esc(t.name)}</div>
-      <div class="meta">${esc(fmtDate(t.due_date))}${t.owner?` · ${esc(t.owner)}`:''}</div>
-      ${t.details?`<div class="taskdetails">${esc(t.details)}</div>`:''}
-      <div class="actions">
-        <button class="btn saveBtn" data-id="${t.id}">Save for later</button>
-        <button class="btn completeBtn" data-id="${t.id}">${t.is_done?'Reopen':'Mark complete'}</button>
-        <button class="btn danger deleteBtn" data-id="${t.id}">Delete task</button>
-      </div>
-    </div>`).join('');
-  document.querySelectorAll('.completeBtn').forEach(b=>b.onclick=()=>toggleComplete(b.dataset.id));
-  document.querySelectorAll('.deleteBtn').forEach(b=>b.onclick=()=>deleteTask(b.dataset.id));
-  document.querySelectorAll('.saveBtn').forEach(b=>b.onclick=()=>saveForLater(b.dataset.id));
+function renderActions(){
+ const rows=state.tasks.filter(t=>!t.is_done);$('openCount').textContent=`${rows.length} OPEN`;
+ $('actionList').innerHTML=rows.length?rows.map(t=>{const p=projectFor(t);return `<div class="actionRow" data-id="${t.id}"><div class="pin">📌</div><div><div class="actionName">${esc(t.name)}</div><div class="actionMeta">${esc(p?.name||p?.title||'Kay')}${t.due_date?` · due ${fmtDate(t.due_date)}`:''}</div></div></div>`}).join(''):'<div class="cardSub">No open actions.</div>';
+ document.querySelectorAll('.actionRow').forEach(x=>x.onclick=()=>openTask(x.dataset.id));
 }
+function renderCareer(){
+ const open=state.tasks.filter(t=>!t.is_done), strategic=open.filter(t=>/strategic move|director|vp|pmo|transformation|recruiter|job/i.test(`${t.name} ${projectFor(t)?.name||''}`)), immediate=open.filter(t=>/immediate income|contract|hour|recruiter|job/i.test(`${t.name} ${projectFor(t)?.name||''}`));
+ $('careerLeads').textContent=strategic.length||'—';
+ $('careerRows').innerHTML=`<div class="careerRow"><div><div class="careerName">🚀 Strategic Move</div><div class="careerDesc">Director / VP / PMO / Transformation</div></div><div class="careerCount">${strategic.length} jobs<br><span class="cardSub">Tap Action Center</span></div></div><div class="careerRow"><div><div class="careerName">⚡ Immediate Income</div><div class="careerDesc">High-value contract / near-term income</div></div><div class="careerCount">${immediate.length} jobs<br><span class="cardSub">Tap Action Center</span></div></div>`;
+}
+function renderMoney(){
+ const f=source('Finances'),d=(f&&typeof f.details==='object')?f.details:{};const good=sourceGood(f?.status);
+ $('financeBadge').textContent=good?'LIVE':'LINKING';$('availableCash').textContent=d.available_cash!==undefined?formatMoney(d.available_cash):'—';$('upcomingBills').textContent=d.upcoming_bills!==undefined?formatMoney(d.upcoming_bills):'—';
+}
+function formatMoney(v){return typeof v==='number'?new Intl.NumberFormat(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}).format(v):String(v??'—')}
+function renderInbox(){
+ const g=source('Gmail'),d=(g&&typeof g.details==='object')?g.details:{};
+ $('gmailBadge').textContent=sourceGood(g?.status)?'LIVE':'CHECK';$('unreadCount').textContent=d.unread_count??d.unread??extractUnread()??'—';$('priorityCount').textContent=d.priority_alerts??d.priority_count??1;$('gmailSync').textContent=g?.last_sync_at?new Date(g.last_sync_at).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):'—';
+}
+function extractUnread(){const txt=state.briefs.map(b=>b.content||b.brief||b.summary||'').join(' '),m=txt.match(/([\d,]+)\s+unread/i);return m?m[1]:null}
+function renderCalendar(){
+ const c=source('Calendar'),d=(c&&typeof c.details==='object')?c.details:{};$('calendarBadge').textContent=sourceGood(c?.status)?'LIVE':'CHECK';$('calendarText').textContent=d.summary||d.message||'No active events in the current synced window.';
+}
+function renderProjects(){
+ const active=state.projects.filter(p=>String(p.status||'active').toLowerCase()!=='complete');$('projectBadge').textContent=`${active.length} PROJECTS`;
+ $('projectTable').innerHTML=active.map(p=>{const ts=state.tasks.filter(t=>t.project_id===p.id),done=ts.filter(t=>t.is_done).length,health=p.health||p.project_health||p.status||'Active',date=p.target_date||p.due_date||p.go_live||null,cls=/risk|watch|amber/i.test(health)?'warn':/bad|red|blocked/i.test(health)?'bad':'good';return `<tr><td><div class="projectName">${esc(p.name||p.title||'Untitled')}</div></td><td>${esc(p.workspace||p.type||'Personal')}</td><td><span class="health ${cls}">${esc(health)}</span></td><td>${date?fmtDate(date):'—'}</td><td>${date?daysUntil(date)+' days':'—'}</td><td>${done}/${ts.length}</td><td>${esc(p.next_move||p.details||'—')}</td></tr>`}).join('');
+}
+function renderSystems(){
+ const rows=[['Database','Synced','Supabase live workspace'],['Gmail',source('Gmail')?.status||'Not connected',source('Gmail')?.last_sync_at?'Recently synced':'No sync time'],['Calendar',source('Calendar')?.status||'Not connected',source('Calendar')?.last_sync_at?'Recently synced':'No sync time'],['Finances',source('Finances')?.status||'Not connected','Private financial connection'],['Command Chat','Ready','Task commands available']];
+ const good=rows.filter(r=>sourceGood(r[1])).length;$('systemsBadge').textContent=`${good}/${rows.length} ONLINE`;
+ $('systemGrid').innerHTML=rows.map(r=>`<div class="system"><div class="systemTop"><span>${esc(r[0])}</span><span class="systemStatus">${esc(r[1])}</span></div><div class="systemMeta">${esc(r[2])}</div></div>`).join('');
+}
+function openTask(id){
+ const t=state.tasks.find(x=>String(x.id)===String(id));if(!t)return;activeTaskId=t.id;const p=projectFor(t);
+ $('taskTitle').textContent=t.name;
+ $('taskMeta').textContent=[p?.name||p?.title||'Kay',t.due_date?fmtDate(t.due_date):'No due date',t.owner||'Kay'].join(' · ');
+ $('taskNameEdit').value=t.name||'';
+ $('taskDueEdit').value=t.due_date||'';
+ $('taskOwnerEdit').value=t.owner||'Kay';
+ $('taskDetailsEdit').value=t.details||'';
+ $('completeBtn').textContent=t.is_done?'Reopen task':'Mark complete';
+ $('taskModal').classList.add('show')
+}
+function closeTask(){$('taskModal').classList.remove('show');activeTaskId=null}
+$('taskClose').onclick=closeTask;$('taskModal').onclick=e=>{if(e.target===$('taskModal'))closeTask()};
 
-async function toggleComplete(id){
-  const t=state.tasks.find(x=>x.id===id); if(!t)return;
-  const {error}=await supabase.from('kay_tasks').update({is_done:!t.is_done,updated_at:new Date().toISOString()}).eq('id',id);
-  if(error)return alert(error.message);
-  appendChat('assistant',`${t.name} → ${!t.is_done?'completed':'reopened'}.`);
-  await loadAll();
+async function logTaskAction(t,action,message,requestedDate=null){
+ try{
+  await supabase.from('kay_task_updates').insert({
+    user_id:state.user?.id||null,
+    task_id:action==='delete'?null:t.id,
+    project_id:t.project_id||null,
+    action_type:action,
+    message,
+    requested_date:requestedDate||null,
+    status:'processed',
+    processed_at:new Date().toISOString()
+  });
+  await supabase.from('kay_chat_messages').insert({
+    user_id:state.user?.id||null,
+    role:'system',
+    message:`Dashboard task action: ${message}`
+  });
+ }catch(e){}
 }
-async function deleteTask(id){
-  const t=state.tasks.find(x=>x.id===id); if(!t)return;
-  if(!confirm(`Delete "${t.name}"?`))return;
-  const {error}=await supabase.from('kay_tasks').delete().eq('id',id);
-  if(error)return alert(error.message);
-  appendChat('assistant',`Deleted: ${t.name}`);
-  await loadAll();
-}
-async function saveForLater(id){
-  const t=state.tasks.find(x=>x.id===id); if(!t)return;
-  const date=prompt('Move this task to what date? Use YYYY-MM-DD.',t.due_date||'');
-  if(!date)return;
-  const {error}=await supabase.from('kay_tasks').update({due_date:date,updated_at:new Date().toISOString()}).eq('id',id);
-  if(error)return alert(error.message);
-  appendChat('assistant',`${t.name} moved to ${fmtDate(date)}.`);
-  await loadAll();
-}
-$('addTaskBtn').onclick=async()=>{
-  if(!await ensureAuth())return;
-  const name=prompt('What do you need to do?'); if(!name)return;
-  const date=prompt('Due date (YYYY-MM-DD), or leave blank:','')||null;
-  const project=state.projects[0];
-  if(!project){alert('Create a project first.');return}
-  const {error}=await supabase.from('kay_tasks').insert({name,project_id:project.id,user_id:state.user.id,due_date:date,is_done:false});
-  if(error)return alert(error.message);
-  appendChat('assistant',`Added task: ${name}`);
-  await loadAll();
+$('saveLaterBtn').onclick=async()=>{
+ const t=state.tasks.find(x=>x.id===activeTaskId);if(!t)return;
+ const d=prompt('Save for later until what date? Enter YYYY-MM-DD.',t.due_date||'');
+ if(!d)return;
+ const {error}=await supabase.from('kay_tasks').update({due_date:d,updated_at:new Date().toISOString()}).eq('id',t.id);
+ if(error)return alert(error.message);
+ await logTaskAction(t,'save_for_later',`Saved "${t.name}" for later until ${d}.`,d);
+ closeTask();await loadAll()
 };
+$('completeBtn').onclick=async()=>{
+ const t=state.tasks.find(x=>x.id===activeTaskId);if(!t)return;
+ const next=!t.is_done;
+ const {error}=await supabase.from('kay_tasks').update({is_done:next,updated_at:new Date().toISOString()}).eq('id',t.id);
+ if(error)return alert(error.message);
+ await logTaskAction(t,next?'complete':'reopen',`${next?'Completed':'Reopened'} "${t.name}".`);
+ closeTask();await loadAll()
+};
+$('updateTaskBtn').onclick=async()=>{
+ const t=state.tasks.find(x=>x.id===activeTaskId);if(!t)return;
+ const patch={
+   name:$('taskNameEdit').value.trim()||t.name,
+   due_date:$('taskDueEdit').value||null,
+   owner:$('taskOwnerEdit').value.trim()||'Kay',
+   details:$('taskDetailsEdit').value.trim()||null,
+   updated_at:new Date().toISOString()
+ };
+ const {error}=await supabase.from('kay_tasks').update(patch).eq('id',t.id);
+ if(error)return alert(error.message);
+ await logTaskAction(t,'update',`Updated "${patch.name}"${patch.due_date?` due ${patch.due_date}`:''}.`,patch.due_date);
+ closeTask();await loadAll()
+};
+$('deleteBtn').onclick=async()=>{
+ const t=state.tasks.find(x=>x.id===activeTaskId);if(!t||!confirm(`Delete "${t.name}" from the list?`))return;
+ const snapshot={...t};
+ const {error}=await supabase.from('kay_tasks').delete().eq('id',t.id);
+ if(error)return alert(error.message);
+ await logTaskAction(snapshot,'delete',`Deleted "${snapshot.name}" from the Action Center.`);
+ closeTask();await loadAll()
+};
+
+function jobsForLane(lane){
+ if(lane==='Applications') return state.jobs.filter(j=>/applied|applying|interview|screen/i.test(String(j.status||'')));
+ return state.jobs.filter(j=>String(j.lane||'')===lane && !['closed','rejected','withdrawn'].includes(String(j.status||'').toLowerCase()));
+}
+function openJobLane(lane){
+ currentJobLane=lane;activeJobId=null;
+ $('jobModalTitle').textContent=lane;
+ $('jobModalMeta').textContent='Tap a job to view details and application actions.';
+ $('jobDetail').style.display='none';$('jobList').style.display='flex';
+ renderJobList(lane);$('jobModal').classList.add('show');
+}
+function renderJobList(lane){
+ const jobs=jobsForLane(lane);
+ $('jobList').innerHTML=jobs.length?jobs.map(j=>`<div class="jobItem" data-job="${j.id}">
+  <div class="jobTop"><div><div class="jobTitle">${esc(j.title||'Untitled role')}</div><div class="jobMeta">${esc(j.employer||'')} · ${esc(j.location||'')} · ${esc(j.work_arrangement||'')}</div></div><div class="jobStatus">${esc(j.status||'Open')}</div></div>
+  <div class="jobMeta">${esc(j.compensation||'Comp not listed')}</div>
+ </div>`).join(''):'<div class="cardSub">No jobs in this category yet.</div>';
+ document.querySelectorAll('.jobItem').forEach(x=>x.onclick=()=>openJob(x.dataset.job));
+}
+function openJob(id){
+ const j=state.jobs.find(x=>String(x.id)===String(id));if(!j)return;activeJobId=j.id;
+ $('jobList').style.display='none';$('jobDetail').style.display='block';
+ $('jobDetailTitle').textContent=j.title||'Role';
+ $('jobDetailMeta').textContent=[j.employer,j.location,j.work_arrangement,j.compensation,j.status].filter(Boolean).join(' · ');
+ $('jobDetailText').textContent=j.fit_note||'No additional fit notes are saved for this role.';
+ $('jobApply').disabled=!j.apply_url;
+}
+$('jobClose').onclick=()=>{$('jobModal').classList.remove('show');activeJobId=null};
+$('jobModal').onclick=e=>{if(e.target===$('jobModal'))$('jobModal').classList.remove('show')};
+$('jobBack').onclick=()=>{activeJobId=null;$('jobDetail').style.display='none';$('jobList').style.display='flex';renderJobList(currentJobLane)};
+async function logJobAction(j,message){
+ try{
+  await supabase.from('kay_chat_messages').insert({user_id:state.user?.id||null,role:'system',message:`Career Command action: ${message}`});
+ }catch(e){}
+}
+$('jobApply').onclick=async()=>{
+ const j=state.jobs.find(x=>x.id===activeJobId);if(!j)return;
+ if(j.apply_url) window.open(j.apply_url,'_blank','noopener');
+ const {error}=await supabase.from('kay_jobs').update({status:'Applying',updated_at:new Date().toISOString()}).eq('id',j.id);
+ if(!error){await logJobAction(j,`Opened application for ${j.title} at ${j.employer}; status set to Applying.`);await loadAll();openJob(j.id)}
+};
+$('jobMarkApplied').onclick=async()=>{
+ const j=state.jobs.find(x=>x.id===activeJobId);if(!j)return;
+ const {error}=await supabase.from('kay_jobs').update({status:'Applied',updated_at:new Date().toISOString()}).eq('id',j.id);
+ if(error)return alert(error.message);
+ await logJobAction(j,`Marked ${j.title} at ${j.employer} as Applied.`);
+ await loadAll();openJob(j.id)
+};
+
+function appendChat(role,text){const d=document.createElement('div');d.className='bubble '+role;d.textContent=text;$('chatLog').appendChild(d);$('chatLog').scrollTop=$('chatLog').scrollHeight}
+async function sendChat(){const q=$('chatInput').value.trim();if(!q)return;appendChat('user',q);$('chatInput').value='';try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:q,context:{tasks:state.tasks,projects:state.projects}})}),j=await r.json();appendChat('assistant',j.reply||j.message||'Command received.')}catch(e){appendChat('assistant','Command chat is unavailable right now.')}}
+$('sendBtn').onclick=sendChat;$('chatInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat()}});
+$('speakBtn').onclick=()=>{const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)return $('chatInput').focus();const r=new SR();r.onresult=e=>$('chatInput').value=e.results[0][0].transcript;r.start()};
 $('refreshBtn').onclick=loadAll;
-
-document.querySelectorAll('.filterBtn').forEach(btn=>btn.onclick=()=>{
-  const f=btn.dataset.filter;
-  const rows=state.tasks.filter(t=>!t.is_done).filter(t=>f==='urgent'?isUrgent(t):f==='risk'?atRiskTask(t):f==='week'?dueThisWeek(t):isWeddingTask(t));
-  renderTasks(rows);
-  const label={urgent:'urgent',risk:'at-risk',week:'due this week',wedding:'wedding'}[f];
-  appendChat('assistant',rows.length?`Showing ${rows.length} ${label} task${rows.length===1?'':'s'} in the Action Center.`:`I don’t see any ${label} tasks right now.`);
-});
-
-function appendChat(role,text){
-  const el=$('chatlog'),d=document.createElement('div');d.className=`bubble ${role}`;d.textContent=text;el.appendChild(d);el.scrollTop=el.scrollHeight;
-}
-async function handleLocalCommand(text){
-  let m;
-  if((m=text.match(/^(?:show|list)\s+(urgent|at[- ]risk|due this week|wedding)\s*(?:tasks)?/i))){
-    const key=/urgent/i.test(m[1])?'urgent':/risk/i.test(m[1])?'risk':/week/i.test(m[1])?'week':'wedding';
-    document.querySelector(`.filterBtn[data-filter="${key}"]`).click(); return true;
-  }
-  if((m=text.match(/^mark\s+(.+?)\s+(?:complete|done)$/i))){
-    const q=m[1].toLowerCase(); const t=state.tasks.find(x=>x.name.toLowerCase().includes(q)&&!x.is_done);
-    if(t){await toggleComplete(t.id);return true}
-  }
-  if((m=text.match(/^delete\s+(?:task\s+)?(.+)$/i))){
-    const q=m[1].toLowerCase(); const t=state.tasks.find(x=>x.name.toLowerCase().includes(q));
-    if(t){await deleteTask(t.id);return true}
-  }
-  if((m=text.match(/^move\s+(.+?)\s+to\s+(\d{4}-\d{2}-\d{2})$/i))){
-    const q=m[1].toLowerCase(); const t=state.tasks.find(x=>x.name.toLowerCase().includes(q));
-    if(t){const {error}=await supabase.from('kay_tasks').update({due_date:m[2],updated_at:new Date().toISOString()}).eq('id',t.id);if(error)appendChat('assistant',error.message);else{appendChat('assistant',`${t.name} moved to ${fmtDate(m[2])}.`);await loadAll()}return true}
-  }
-  return false;
-}
-async function askAI(text){
-  const context = {
-    projects: state.projects.slice(0,20).map(p=>({name:p.name||p.title,status:p.status,details:p.details})),
-    tasks: state.tasks.filter(t=>!t.is_done).slice(0,50).map(t=>({name:t.name,due_date:t.due_date,details:t.details,project_id:t.project_id}))
-  };
-  const res=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text,context})});
-  const data=await res.json().catch(()=>({}));
-  if(!res.ok) throw new Error(data.error||'Command Chat backend is not configured yet.');
-  return data.reply||'Done.';
-}
-async function sendChat(){
-  const input=$('chatInput'),text=input.value.trim(); if(!text)return;
-  input.value=''; appendChat('user',text);
-  if(await handleLocalCommand(text))return;
-  appendChat('assistant','Working…');
-  const working=$('chatlog').lastElementChild;
-  try{working.textContent=await askAI(text)}catch(e){working.textContent=`${e.message}\n\nQuick task commands still work here: “show urgent tasks”, “mark <task> complete”, “delete <task>”, or “move <task> to YYYY-MM-DD”.`}
-}
-$('sendBtn').onclick=sendChat;
-$('chatInput').addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key==='Enter')sendChat()});
-
-$('speakBtn').onclick=()=>{
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR){alert('Browser speech capture is not available here. Tap the microphone on your iPad/iPhone keyboard and dictate into the command box.');$('chatInput').focus();return}
-  const r=new SR();r.lang='en-US';r.interimResults=false;r.maxAlternatives=1;
-  r.onresult=e=>{$('chatInput').value=e.results[0][0].transcript;$('chatInput').focus()};
-  r.onerror=e=>alert(`Voice input error: ${e.error}`);
-  r.start();
-};
-
 supabase.auth.onAuthStateChange(()=>setTimeout(loadAll,0));
-await loadAll();
+setGreeting();loadAll();
 </script>
 </body>
 </html>
