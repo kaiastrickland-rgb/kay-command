@@ -170,6 +170,52 @@ tr:last-child td{border-bottom:0}
 .taskEditGrid textarea{min-height:90px;resize:vertical}
 .taskEditGrid .full{grid-column:1/-1}
 
+
+.financeEntry{cursor:pointer}
+.financeEntry:hover{border-color:#2d6a82}
+.financeEntryHint{font-size:10px;color:#66dfff;margin-top:8px;font-weight:800}
+.financeModalBox{width:min(1120px,96vw);max-height:90vh;overflow:auto}
+.financeKpiGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}
+.financeKpi{border:1px solid #284452;border-radius:14px;background:#08151d;padding:12px}
+.financeKpi b{display:block;font-size:22px;line-height:1.05}
+.financeKpi span{display:block;font-size:10px;color:#8fa2ad;margin-top:5px}
+.financeSection{border:1px solid #284452;border-radius:15px;background:#091821;padding:12px;margin-top:12px;min-width:0}
+.financeSectionHead{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px}
+.financeSplit{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.financeTableWrap{max-height:300px;overflow:auto;border:1px solid #203744;border-radius:12px}
+.financeTable{width:100%;border-collapse:collapse;font-size:12px}
+.financeTable th{position:sticky;top:0;background:#0d202a;z-index:2;text-align:left;color:#8fa2ad;font-size:10px;letter-spacing:.08em;padding:9px}
+.financeTable td{padding:9px;border-top:1px solid #203744;vertical-align:top}
+.financePayRow{cursor:pointer}
+.financePayRow:hover td{background:rgba(67,216,255,.04)}
+.financeStatus{font-weight:850}
+.financeStatus.paid{color:#5ef0ad}
+.financeStatus.partial{color:#ffd36a}
+.financeStatus.overdue{color:#ff7b83}
+.financeList{display:flex;flex-direction:column;gap:8px;max-height:260px;overflow:auto}
+.financeListItem{border:1px solid #263f4d;border-radius:11px;padding:9px 10px;background:#08151d}
+.financeListTop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.financeListTitle{font-weight:850}
+.financeListMeta{font-size:10px;color:#8fa2ad;margin-top:3px;line-height:1.35}
+.financeAmount{font-weight:900;white-space:nowrap}
+.financeAlertLink{color:#66dfff;text-decoration:none;font-size:10px;font-weight:800}
+.financeQuickActions{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}
+.financeQuickBtn{border:1px solid #31566a;background:#0d2530;color:#ecf7fb;border-radius:9px;padding:7px 10px;font-size:10px;font-weight:850;cursor:pointer}
+.financeQuickBtn:hover{border-color:#43d8ff}
+.financeQuickBtn.paid{border-color:#1f7f61;color:#75efb9;background:#09241d}
+.financeQuickBtn.edit{color:#66dfff}
+.financeQuickBtn.done{border-color:#1f7f61;color:#75efb9;background:#09241d}
+
+.westlakeBar{height:12px;border-radius:999px;background:#152833;overflow:hidden;margin:10px 0}
+.westlakeFill{height:100%;background:linear-gradient(90deg,#19bb88,#43d8ff)}
+.westlakeBig{font-size:28px;font-weight:950}
+.westlakeMeta{font-size:11px;color:#8fa2ad;line-height:1.5}
+@media(max-width:760px){
+ .financeKpiGrid{grid-template-columns:repeat(2,1fr)}
+ .financeSplit{grid-template-columns:1fr}
+ .financeTable{min-width:760px}
+}
+
 .projectRowClickable{cursor:pointer}
 .projectRowClickable:hover td{background:rgba(67,216,255,.035)}
 .projectTabs{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
@@ -287,13 +333,14 @@ tr:last-child td{border-bottom:0}
       <div id="careerRows" class="careerBody scroll"></div>
     </section>
 
-    <section class="card trio">
+    <section id="moneySnapshotCard" class="card trio financeEntry" title="Open Financial Command Center">
       <div class="cardHeader"><div><div class="cardTitle">💰 Money Snapshot</div><div class="cardSub">Private by default</div></div><span id="financeBadge" class="badge">LINKING</span></div>
       <div class="trioBody">
         <div class="moneyBoxes">
-          <div class="moneyBox"><div id="availableCash" class="moneyVal">—</div><div class="moneyLabel">Available cash</div></div>
-          <div class="moneyBox"><div id="upcomingBills" class="moneyVal">—</div><div class="moneyLabel">Upcoming bills</div></div>
+          <div class="moneyBox"><div id="availableCash" class="moneyVal">—</div><div class="moneyLabel">Navy spending cash</div></div>
+          <div class="moneyBox"><div id="upcomingBills" class="moneyVal">—</div><div class="moneyLabel">Sequence allocated</div></div>
         </div>
+        <div class="financeEntryHint">Tap to open Financial Command Center →</div>
       </div>
     </section>
 
@@ -429,6 +476,89 @@ tr:last-child td{border-bottom:0}
 </div>
 
 
+
+<div id="financeModal" class="modal">
+ <div class="modalBox financeModalBox">
+  <div class="modalTop">
+   <div>
+    <div class="sectionLabel">FINANCIAL COMMAND CENTER</div>
+    <div class="modalTitle">Recovery + Westlake Payoff</div>
+    <div class="modalMeta">Plan vs actual · Sequence buckets · alerts · accountability</div>
+   </div>
+   <button id="financeClose" class="btn">✕</button>
+  </div>
+
+  <div id="financeKpis" class="financeKpiGrid"></div>
+
+  <div class="financeSection">
+   <div class="financeSectionHead"><div><b>📋 Plan vs actual</b><div class="cardSub">Click any payment to record actual amount/date/status</div></div><span id="financePlanBadge" class="badge">—</span></div>
+   <div class="financeTableWrap"><table class="financeTable">
+    <thead><tr><th>Date</th><th>Payee</th><th>Plan</th><th>Actual</th><th>Status</th><th>Funding</th></tr></thead>
+    <tbody id="financePlanRows"></tbody>
+   </table></div>
+  </div>
+
+  <div class="financeSplit">
+   <div class="financeSection">
+    <div class="financeSectionHead"><div><b>🪣 Sequence bucket balances</b><div class="cardSub">Connected balances — no spending-account double count</div></div></div>
+    <div id="sequenceBuckets" class="financeList"></div>
+   </div>
+
+   <div class="financeSection">
+    <div class="financeSectionHead"><div><b>🚗 Westlake payoff</b><div class="cardSub">Baseline payoff quote: $4,105.71 on Sep 6</div></div></div>
+    <div id="westlakeProgress"></div>
+   </div>
+  </div>
+
+  <div class="financeSplit">
+   <div class="financeSection">
+    <div class="financeSectionHead"><div><b>⏰ Upcoming / overdue</b><div class="cardSub">Recovery-plan deadlines and attention items</div></div></div>
+    <div id="financeUpcoming" class="financeList"></div>
+   </div>
+
+   <div class="financeSection">
+    <div class="financeSectionHead"><div><b>📨 Financial Gmail alerts</b><div class="cardSub">Open the email directly from the alert</div></div></div>
+    <div id="financeAlerts" class="financeList"></div>
+   </div>
+  </div>
+
+  <div class="financeSection">
+   <div class="financeSectionHead">
+    <div><b>✅ Financial accountability tasks</b><div class="cardSub">These are the open Personal Finance items in your Action Center.</div></div>
+    <span id="financeTaskBadge" class="badge">—</span>
+   </div>
+   <div id="financeAccountability" class="financeList"></div>
+  </div>
+ </div>
+</div>
+
+<div id="financePaymentModal" class="modal">
+ <div class="modalBox" style="width:min(650px,94vw)">
+  <div class="modalTop">
+   <div><div class="sectionLabel">PAYMENT ACTUAL</div><div id="financePaymentTitle" class="modalTitle">Payment</div></div>
+   <button id="financePaymentClose" class="btn">✕</button>
+  </div>
+  <div id="financePaymentMeta" class="modalMeta"></div>
+  <div class="taskEditGrid">
+   <label>Actual amount<input id="financeActualAmount" type="number" step="0.01"></label>
+   <label>Actual date<input id="financeActualDate" type="date"></label>
+   <label class="full">Status
+    <select id="financeActualStatus">
+     <option>Planned</option>
+     <option>Paid</option>
+     <option>Partial</option>
+     <option>Skipped</option>
+    </select>
+   </label>
+   <label class="full">Actual source / note<textarea id="financeActualSource" placeholder="Confirmation source, note, or reference"></textarea></label>
+  </div>
+  <div class="jobActions">
+   <button id="financePaymentCancel" class="btn">Cancel</button>
+   <button id="financePaymentSave" class="btn primary">Save actual</button>
+  </div>
+ </div>
+</div>
+
 <div id="projectModal" class="modal">
  <div class="modalBox" style="width:min(900px,96vw);max-height:88vh;overflow:auto">
   <div class="modalTop">
@@ -463,7 +593,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const SUPABASE_URL='https://najlvczgxwvqjvpvfzji.supabase.co', SUPABASE_KEY='sb_publishable_4S9mvRol3OhFYpADykEGDw_MP-IhaZu';
 const supabase=createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const $=id=>document.getElementById(id);
-let state={tasks:[],projects:[],briefs:[],sources:[],jobs:[],plans:[],planTasks:[],milestones:[],risks:[],decisions:[],user:null},activeTaskId=null,activeJobId=null,currentJobLane=null,activeProjectId=null;
+let state={tasks:[],projects:[],briefs:[],sources:[],jobs:[],plans:[],planTasks:[],milestones:[],risks:[],decisions:[],financePayments:[],financeAccounts:[],financeAlerts:[],user:null},activeTaskId=null,activeJobId=null,currentJobLane=null,activeProjectId=null,activeFinancePaymentId=null;
 const esc=(v='')=>String(v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const fmtDate=v=>{if(!v)return '—';const d=new Date(v+'T12:00:00');return d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})};
 const daysUntil=v=>{const a=new Date();a.setHours(0,0,0,0);const b=new Date(v+'T12:00:00');return Math.max(0,Math.ceil((b-a)/86400000))};
@@ -484,7 +614,7 @@ $('signOutBtn').onclick=async()=>{await supabase.auth.signOut();location.reload(
 async function loadAll(){
  if(!await ensureAuth())return;
  $('liveBar').textContent='● Syncing live data…';
- const [p,t,b,s,j,pl,pt,ms,rs,ds]=await Promise.all([
+ const [p,t,b,s,j,pl,pt,ms,rs,ds,fp,fa,fal]=await Promise.all([
   supabase.from('kay_projects').select('*').order('created_at',{ascending:true}),
   supabase.from('kay_tasks').select('*').order('is_done',{ascending:true}).order('due_date',{ascending:true,nullsFirst:false}),
   supabase.from('kay_briefs').select('*').order('created_at',{ascending:false}).limit(8),
@@ -494,10 +624,13 @@ async function loadAll(){
   supabase.from('kay_project_plan_tasks').select('*').order('due_date',{ascending:true}),
   supabase.from('kay_milestones').select('*').order('milestone_date',{ascending:true}),
   supabase.from('kay_risks').select('*').order('created_at',{ascending:false}),
-  supabase.from('kay_decisions').select('*').order('created_at',{ascending:false})
+  supabase.from('kay_decisions').select('*').order('created_at',{ascending:false}),
+  supabase.from('kay_finance_plan_payments').select('*').order('payment_date',{ascending:true}).order('sequence_no',{ascending:true}),
+  supabase.from('kay_finance_account_snapshot').select('*').order('source',{ascending:true}).order('account_name',{ascending:true}),
+  supabase.from('kay_finance_alerts').select('*').eq('is_open',true).order('due_date',{ascending:true,nullsFirst:false}).order('created_at',{ascending:false})
  ]);
  if(p.error||t.error||b.error){$('liveBar').textContent='● Data sync error';appendChat('assistant',p.error?.message||t.error?.message||b.error?.message);return}
- state.projects=p.data||[];state.tasks=t.data||[];state.briefs=b.data||[];state.sources=s.error?[]:(s.data||[]);state.jobs=j?.error?[]:(j?.data||[]);state.plans=pl?.error?[]:(pl?.data||[]);state.planTasks=pt?.error?[]:(pt?.data||[]);state.milestones=ms?.error?[]:(ms?.data||[]);state.risks=rs?.error?[]:(rs?.data||[]);state.decisions=ds?.error?[]:(ds?.data||[]);state.jobs=j?.error?[]:(j?.data||[]);
+ state.projects=p.data||[];state.tasks=t.data||[];state.briefs=b.data||[];state.sources=s.error?[]:(s.data||[]);state.jobs=j?.error?[]:(j?.data||[]);state.plans=pl?.error?[]:(pl?.data||[]);state.planTasks=pt?.error?[]:(pt?.data||[]);state.milestones=ms?.error?[]:(ms?.data||[]);state.risks=rs?.error?[]:(rs?.data||[]);state.decisions=ds?.error?[]:(ds?.data||[]);state.financePayments=fp?.error?[]:(fp?.data||[]);state.financeAccounts=fa?.error?[]:(fa?.data||[]);state.financeAlerts=fal?.error?[]:(fal?.data||[]);
  renderAll();$('liveBar').textContent='● Live data loaded';
 }
 function renderAll(){setGreeting();renderBriefs();renderActions();renderCareer();renderMoney();renderInbox();renderCalendar();renderProjects();renderSystems()}
@@ -527,11 +660,190 @@ function renderCareer(){
    row('📨','Applications','Applying / Applied / Interview',applications.length,'Applications');
  document.querySelectorAll('.careerRow').forEach(x=>x.onclick=()=>openJobLane(x.dataset.lane));
 }
+function financeAccount(sourceName,accountName){
+ return state.financeAccounts.find(x=>String(x.source||'').toLowerCase()===sourceName.toLowerCase()&&String(x.account_name||'').toLowerCase()===accountName.toLowerCase());
+}
+function financeStatus(row){
+ if(!row)return 'Planned';
+ const st=String(row.actual_status||'Planned');
+ if(/paid/i.test(st))return 'Paid';
+ if(/partial/i.test(st))return 'Partial';
+ if(/skipped/i.test(st))return 'Skipped';
+ if(row.payment_date && new Date(row.payment_date+'T12:00:00')<today())return 'Overdue';
+ return 'Planned';
+}
+function money2(v){return new Intl.NumberFormat(undefined,{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(v||0))}
 function renderMoney(){
- const f=source('Finances'),d=(f&&typeof f.details==='object')?f.details:{};const good=sourceGood(f?.status);
- $('financeBadge').textContent=good?'LIVE':'LINKING';$('availableCash').textContent=d.available_cash!==undefined?formatMoney(d.available_cash):'—';$('upcomingBills').textContent=d.upcoming_bills!==undefined?formatMoney(d.upcoming_bills):'—';
+ const navy=financeAccount('Navy Federal','EveryDay Checking');
+ const seq=state.financeAccounts.filter(x=>x.source==='Sequence').reduce((a,x)=>a+Number(x.current_balance||0),0);
+ $('financeBadge').textContent=state.financeAccounts.length?'LIVE':'LINKING';
+ $('availableCash').textContent=navy?money2(navy.available_balance??navy.current_balance):'—';
+ $('upcomingBills').textContent=state.financeAccounts.length?money2(seq):'—';
+ renderFinanceCenter();
 }
 function formatMoney(v){return typeof v==='number'?new Intl.NumberFormat(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}).format(v):String(v??'—')}
+
+function renderFinanceCenter(){
+ const rows=state.financePayments;
+ const seq=state.financeAccounts.filter(x=>x.source==='Sequence');
+ const navy=financeAccount('Navy Federal','EveryDay Checking');
+ const seqCurrent=seq.reduce((a,x)=>a+Number(x.current_balance||0),0);
+ const seven=new Date(today());seven.setDate(seven.getDate()+7);
+ const upcoming=rows.filter(r=>{
+   if(!r.payment_date||financeStatus(r)==='Paid')return false;
+   const d=new Date(r.payment_date+'T12:00:00');
+   return d>=today()&&d<=seven;
+ });
+ const upcomingAmt=upcoming.reduce((a,r)=>a+Number(r.planned_amount||0),0);
+ const overdue=rows.filter(r=>financeStatus(r)==='Overdue');
+ const paid=rows.filter(r=>financeStatus(r)==='Paid');
+ const plannedTotal=rows.filter(r=>!String(r.payment_type||'').toLowerCase().includes('transfer')).reduce((a,r)=>a+Number(r.planned_amount||0),0);
+ const actualTotal=rows.reduce((a,r)=>a+Number(r.actual_amount||0),0);
+
+ $('financeKpis').innerHTML=[
+  [navy?money2(navy.available_balance??navy.current_balance):'—','Navy spending cash'],
+  [money2(seqCurrent),'Sequence current balance'],
+  [money2(upcomingAmt),'Planned next 7 days'],
+  [`${paid.length}/${rows.length}`,'Plan tasks completed']
+ ].map(([v,l])=>`<div class="financeKpi"><b>${v}</b><span>${l}</span></div>`).join('');
+ $('financePlanBadge').textContent=`${paid.length}/${rows.length} PAID · ${money2(actualTotal)} ACTUAL`;
+
+ $('financePlanRows').innerHTML=rows.length?rows.map(r=>{
+   const st=financeStatus(r),cls=st.toLowerCase();
+   return `<tr class="financePayRow" data-finpay="${r.id}">
+    <td>${fmtDate(r.payment_date)}</td>
+    <td><b>${esc(r.creditor)}</b><div class="cardSub">${esc(r.payment_type||'')}</div></td>
+    <td>${money2(r.planned_amount)}</td>
+    <td>${r.actual_amount!==null&&r.actual_amount!==undefined?money2(r.actual_amount):'—'}</td>
+    <td><span class="financeStatus ${cls}">${esc(st)}</span></td>
+    <td>${esc(r.funding_source||'—')}</td>
+   </tr>`;
+ }).join(''):'<tr><td colspan="6">No payment plan loaded.</td></tr>';
+ document.querySelectorAll('.financePayRow').forEach(x=>x.onclick=()=>openFinancePayment(x.dataset.finpay));
+
+ $('sequenceBuckets').innerHTML=seq.length?seq.map(a=>`<div class="financeListItem">
+  <div class="financeListTop"><div><div class="financeListTitle">${esc(a.account_name)}</div><div class="financeListMeta">${esc(a.account_group||'Sequence bucket')} · as of ${new Date(a.as_of).toLocaleString()}</div></div><div class="financeAmount">${money2(a.current_balance)}</div></div>
+  <div class="financeListMeta">Available: ${money2(a.available_balance)}</div>
+ </div>`).join(''):'<div class="cardSub">No Sequence balances loaded.</div>';
+
+ const west=rows.filter(r=>/westlake/i.test(r.creditor||''));
+ const westPaid=west.filter(r=>financeStatus(r)==='Paid').sort((a,b)=>String(a.payment_date).localeCompare(String(b.payment_date)));
+ const baseline=4105.71;
+ const projectedRemaining=westPaid.length?Number(westPaid[westPaid.length-1].projected_remaining||baseline):baseline;
+ const progress=Math.max(0,Math.min(100,(baseline-projectedRemaining)/baseline*100));
+ const final=west[west.length-1];
+ $('westlakeProgress').innerHTML=`<div class="westlakeBig">${money2(projectedRemaining)}</div>
+  <div class="westlakeMeta">Projected remaining after recorded plan payments · ${progress.toFixed(0)}% payoff progress</div>
+  <div class="westlakeBar"><div class="westlakeFill" style="width:${progress}%"></div></div>
+  <div class="westlakeMeta">Planned final payoff: <b>${final?fmtDate(final.payment_date):'Dec 8, 2026'}</b><br>APR baseline: 19.49% · refresh payoff quote before final payment.</div>`;
+
+ const attention=[...overdue,...upcoming].slice(0,10);
+ $('financeUpcoming').innerHTML=attention.length?attention.map(r=>`<div class="financeListItem">
+  <div class="financeListTop"><div><div class="financeListTitle">${esc(r.creditor)}</div><div class="financeListMeta">${fmtDate(r.payment_date)} · ${esc(financeStatus(r))} · ${esc(r.funding_source||'')}</div></div><div class="financeAmount">${money2(r.planned_amount)}</div></div>
+  <div class="financeQuickActions">
+    <button class="financeQuickBtn paid" data-finpaid="${r.id}">✓ Paid / done</button>
+    <button class="financeQuickBtn edit" data-finedit="${r.id}">Edit actual</button>
+  </div>
+ </div>`).join(''):'<div class="cardSub">Nothing overdue or due in the next 7 days.</div>';
+ document.querySelectorAll('[data-finpaid]').forEach(b=>b.onclick=()=>quickMarkFinancePaid(b.dataset.finpaid));
+ document.querySelectorAll('[data-finedit]').forEach(b=>b.onclick=()=>openFinancePayment(b.dataset.finedit));
+
+ $('financeAlerts').innerHTML=state.financeAlerts.length?state.financeAlerts.map(a=>`<div class="financeListItem">
+  <div class="financeListTitle">${esc(a.title)}</div>
+  <div class="financeListMeta">${esc(a.provider||'Financial alert')}${a.due_date?` · due ${fmtDate(a.due_date)}`:''}<br>${esc(a.detail||'')}</div>
+  ${a.gmail_url?`<a class="financeAlertLink" href="${esc(a.gmail_url)}" target="_blank" rel="noopener">Open email ↗</a>`:''}
+ </div>`).join(''):'<div class="cardSub">No open financial Gmail alerts.</div>';
+ const financeProject=state.projects.find(p=>p.name==='Personal Finance');
+ const financeTasks=financeProject?state.tasks.filter(t=>t.project_id===financeProject.id&&!t.is_done):[];
+ $('financeTaskBadge').textContent=`${financeTasks.length} OPEN`;
+ $('financeAccountability').innerHTML=financeTasks.length?financeTasks.map(t=>`<div class="financeListItem">
+  <div class="financeListTitle">${esc(t.name)}</div>
+  <div class="financeListMeta">${t.due_date?`Due ${fmtDate(t.due_date)} · `:''}${esc(t.details||'')}</div>
+  <div class="financeQuickActions">
+    <button class="financeQuickBtn done" data-fintaskdone="${t.id}">✓ Mark done</button>
+    <button class="financeQuickBtn edit" data-fintaskopen="${t.id}">Open task</button>
+  </div>
+ </div>`).join(''):'<div class="cardSub">No open financial accountability tasks.</div>';
+ document.querySelectorAll('[data-fintaskdone]').forEach(b=>b.onclick=()=>quickCompleteFinanceTask(b.dataset.fintaskdone));
+ document.querySelectorAll('[data-fintaskopen]').forEach(b=>b.onclick=()=>{ $('financeModal').classList.remove('show'); openTask(b.dataset.fintaskopen); });
+}
+function openFinance(){
+ renderFinanceCenter();
+ $('financeModal').classList.add('show');
+}
+$('moneySnapshotCard').onclick=openFinance;
+$('financeClose').onclick=()=>$('financeModal').classList.remove('show');
+$('financeModal').onclick=e=>{if(e.target===$('financeModal'))$('financeModal').classList.remove('show')};
+
+
+async function quickMarkFinancePaid(id){
+ const r=state.financePayments.find(x=>String(x.id)===String(id));if(!r)return;
+ const ok=confirm(`Mark ${r.creditor} paid/done for ${money2(r.planned_amount)} today?`);
+ if(!ok)return;
+ const {error}=await supabase.from('kay_finance_plan_payments').update({
+   actual_amount:Number(r.planned_amount||0),
+   actual_date:new Date().toISOString().slice(0,10),
+   actual_status:'Paid',
+   actual_source:'Kay Command quick complete',
+   updated_at:new Date().toISOString()
+ }).eq('id',r.id);
+ if(error)return alert(error.message);
+ await loadAll();
+ openFinance();
+}
+async function quickCompleteFinanceTask(id){
+ const t=state.tasks.find(x=>String(x.id)===String(id));if(!t)return;
+ const ok=confirm(`Mark "${t.name}" complete?`);
+ if(!ok)return;
+ const {error}=await supabase.from('kay_tasks').update({
+   is_done:true,updated_at:new Date().toISOString()
+ }).eq('id',t.id);
+ if(error)return alert(error.message);
+ try{
+   await supabase.from('kay_chat_messages').insert({
+     user_id:state.user.id,role:'system',
+     message:`Kay Command financial accountability update: "${t.name}" marked complete.`
+   });
+ }catch(e){}
+ await loadAll();
+ openFinance();
+}
+
+function openFinancePayment(id){
+ const r=state.financePayments.find(x=>String(x.id)===String(id));if(!r)return;
+ activeFinancePaymentId=r.id;
+ $('financePaymentTitle').textContent=r.creditor;
+ $('financePaymentMeta').textContent=`${fmtDate(r.payment_date)} · planned ${money2(r.planned_amount)} · ${r.funding_source||''}`;
+ $('financeActualAmount').value=r.actual_amount??r.planned_amount??'';
+ $('financeActualDate').value=r.actual_date||r.payment_date||'';
+ $('financeActualStatus').value=r.actual_status||'Planned';
+ $('financeActualSource').value=r.actual_source||'';
+ $('financePaymentModal').classList.add('show');
+}
+function closeFinancePayment(){$('financePaymentModal').classList.remove('show');activeFinancePaymentId=null}
+$('financePaymentClose').onclick=closeFinancePayment;
+$('financePaymentCancel').onclick=closeFinancePayment;
+$('financePaymentModal').onclick=e=>{if(e.target===$('financePaymentModal'))closeFinancePayment()};
+$('financePaymentSave').onclick=async()=>{
+ const r=state.financePayments.find(x=>x.id===activeFinancePaymentId);if(!r)return;
+ const amount=$('financeActualAmount').value?Number($('financeActualAmount').value):null;
+ const date=$('financeActualDate').value||null;
+ const status=$('financeActualStatus').value;
+ const sourceNote=$('financeActualSource').value.trim()||null;
+ const {error}=await supabase.from('kay_finance_plan_payments').update({
+   actual_amount:amount,actual_date:date,actual_status:status,actual_source:sourceNote,updated_at:new Date().toISOString()
+ }).eq('id',r.id);
+ if(error)return alert(error.message);
+ if(r.plan_task_id){
+   const done=status==='Paid';
+   await supabase.from('kay_project_plan_tasks').update({is_done:done,status:done?'Complete':status,updated_at:new Date().toISOString()}).eq('id',r.plan_task_id);
+ }
+ try{await supabase.from('kay_chat_messages').insert({user_id:state.user.id,role:'system',message:`Financial plan update: ${r.creditor} on ${r.payment_date} marked ${status}${amount!==null?` for ${money2(amount)}`:''}${date?` on ${date}`:''}.`})}catch(e){}
+ closeFinancePayment();
+ await loadAll();
+ openFinance();
+};
+
 function renderInbox(){
  const g=source('Gmail'),d=(g&&typeof g.details==='object')?g.details:{};
  $('gmailBadge').textContent=sourceGood(g?.status)?'LIVE':'CHECK';$('unreadCount').textContent=d.unread_count??d.unread??extractUnread()??'—';$('priorityCount').textContent=d.priority_alerts??d.priority_count??1;$('gmailSync').textContent=g?.last_sync_at?new Date(g.last_sync_at).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):'—';
@@ -626,7 +938,7 @@ $('projectModal').onclick=e=>{if(e.target===$('projectModal'))$('projectModal').
 document.querySelectorAll('.projectTab').forEach(b=>b.onclick=()=>showProjectTab(b.dataset.ptab));
 
 function renderSystems(){
- const rows=[['Database','Synced','Supabase live workspace'],['Gmail',source('Gmail')?.status||'Not connected',source('Gmail')?.last_sync_at?'Recently synced':'No sync time'],['Calendar',source('Calendar')?.status||'Not connected',source('Calendar')?.last_sync_at?'Recently synced':'No sync time'],['Finances',source('Finances')?.status||'Not connected','Private financial connection'],['Command Chat','Ready','Task commands available']];
+ const rows=[['Database','Synced','Supabase live workspace'],['Gmail',source('Gmail')?.status||'Not connected',source('Gmail')?.last_sync_at?'Recently synced':'No sync time'],['Calendar',source('Calendar')?.status||'Not connected',source('Calendar')?.last_sync_at?'Recently synced':'No sync time'],['Finances',state.financeAccounts.length?'CONNECTED':(source('Finances')?.status||'Not connected'),state.financeAccounts.length?'Sequence + Navy Federal + Apple linked':'Private financial connection'],['Command Chat','Ready','Task commands available']];
  const good=rows.filter(r=>sourceGood(r[1])).length;$('systemsBadge').textContent=`${good}/${rows.length} ONLINE`;
  $('systemGrid').innerHTML=rows.map(r=>`<div class="system"><div class="systemTop"><span>${esc(r[0])}</span><span class="systemStatus">${esc(r[1])}</span></div><div class="systemMeta">${esc(r[2])}</div></div>`).join('');
 }
