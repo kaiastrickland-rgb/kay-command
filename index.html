@@ -94,6 +94,46 @@ tr:last-child td{border-bottom:0}
 .chatCompose{display:grid;grid-template-columns:1fr auto auto;gap:8px;padding:10px 20px 18px}
 .chatCompose textarea{min-height:54px;max-height:80px;resize:none;border:1px solid #28586c;border-radius:13px;background:#07131b;color:white;padding:12px}
 
+
+.commandChatCard{
+  height:370px !important;
+  min-height:370px;
+  overflow:hidden;
+}
+.commandChatCard .chatLog{
+  height:125px;
+  min-height:125px;
+  overflow:auto;
+}
+.commandChatCard .chatQuick{
+  flex:0 0 auto;
+}
+.commandChatCard .chatCompose{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:8px;
+  padding:10px 20px 18px;
+}
+.commandChatCard .chatCompose textarea{
+  min-height:58px;
+  max-height:82px;
+}
+.commandChatCard .speakFull{
+  grid-column:1/-1;
+  width:100%;
+  min-height:42px;
+  font-weight:850;
+}
+@media(max-width:700px){
+  .commandChatCard{
+    height:395px !important;
+    min-height:395px;
+  }
+  .commandChatCard .chatLog{
+    height:135px;
+  }
+}
+
 .taskEditGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
 .taskEditGrid label{font-size:11px;color:var(--muted);display:block}
 .taskEditGrid input,.taskEditGrid textarea{width:100%;margin-top:5px;border:1px solid #2a4f61;border-radius:11px;background:#07131b;color:#fff;padding:10px}
@@ -258,7 +298,7 @@ tr:last-child td{border-bottom:0}
       <div id="systemGrid" class="systemGrid"></div>
     </section>
 
-    <section class="card lower">
+    <section class="card lower commandChatCard">
       <div class="cardHeader"><div><div class="cardTitle">💬 Command Chat</div><div class="cardSub">Ask about projects or update a task</div></div><span class="badge">DB-AWARE</span></div>
       <div id="chatLog" class="chatLog"><div class="bubble">KAY // COMMAND is ready.</div></div>
       <div class="chatQuick" style="display:flex;gap:8px;flex-wrap:wrap;padding:8px 20px 0">
@@ -267,7 +307,11 @@ tr:last-child td{border-bottom:0}
         <button class="btn quickBtn" data-q="due this week">Due this week</button>
         <button class="btn quickBtn" data-q="wedding tasks">Wedding tasks</button>
       </div>
-      <div class="chatCompose"><textarea id="chatInput" placeholder="Ask about projects or update a task…"></textarea><button id="speakBtn" class="btn">🎙</button><button id="sendBtn" class="btn primary send">Send</button></div>
+      <div class="chatCompose">
+        <textarea id="chatInput" placeholder="Ask about projects or update a task…"></textarea>
+        <button id="sendBtn" class="btn primary send">Send</button>
+        <button id="speakBtn" class="btn speakFull">🎙 Speak</button>
+      </div>
     </section>
   </main>
 </div>
@@ -278,9 +322,9 @@ tr:last-child td{border-bottom:0}
   <div id="taskMeta" class="modalMeta"></div>
   <div id="taskDetails" class="modalDetails"></div>
   <div class="modalActions">
-    <button id="saveLaterBtn" class="btn">Save for later</button>
-    <button id="completeBtn" class="btn primary">Mark complete</button>
-    <button id="updateTaskBtn" class="btn">Update task</button>
+    <button id="saveLaterBtn" class="btn">🗓 Save for later</button>
+    <button id="completeBtn" class="btn primary">✓ Mark complete</button>
+    <button id="updateTaskBtn" class="btn">✏️ Update task</button>
     <button id="deleteBtn" class="btn danger">Delete / remove from list</button>
   </div>
  </div>
