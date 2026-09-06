@@ -624,11 +624,6 @@ $('deleteBtn').onclick=async()=>{
  await logTaskAction(snap,'delete',`Deleted "${snap.name}" from the Action Center.`);
  closeTask();activeTaskId=null;await loadAll()
 };
- const {error}=await supabase.from('kay_tasks').delete().eq('id',t.id);
- if(error)return alert(error.message);
- await logTaskAction(snapshot,'delete',`Deleted "${snapshot.name}" from the Action Center.`);
- closeTask();await loadAll()
-};
 
 function jobsForLane(lane){
  if(lane==='Applications') return state.jobs.filter(j=>/applied|applying|interview|screen/i.test(String(j.status||'')));
