@@ -28,3 +28,4 @@ Settings → Environment Variables → add `OPENAI_API_KEY`
 Then redeploy.
 
 The public Supabase publishable key in `index.html` is intentionally safe for browser use; authorization is enforced by Supabase RLS.
+    Deployment trigger
