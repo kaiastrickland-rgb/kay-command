@@ -99,6 +99,26 @@ tr:last-child td{border-bottom:0}
 .taskEditGrid input,.taskEditGrid textarea{width:100%;margin-top:5px;border:1px solid #2a4f61;border-radius:11px;background:#07131b;color:#fff;padding:10px}
 .taskEditGrid textarea{min-height:90px;resize:vertical}
 .taskEditGrid .full{grid-column:1/-1}
+
+.projectRowClickable{cursor:pointer}
+.projectRowClickable:hover td{background:rgba(67,216,255,.035)}
+.projectTabs{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}
+.projectTab{border:1px solid #31576a;background:#0b1b24;color:#dfeaf0;border-radius:10px;padding:8px 11px;font-weight:800;cursor:pointer}
+.projectTab.on{border-color:#43d8ff;background:#103747}
+.projectPane{display:none}
+.projectPane.on{display:block}
+.projectStats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
+.projectStat{border:1px solid #284452;border-radius:12px;background:#08151d;padding:10px}
+.projectStat b{display:block;font-size:18px}
+.projectStat span{display:block;font-size:10px;color:#8fa2ad;margin-top:3px}
+.projectList{display:flex;flex-direction:column;gap:8px}
+.projectItem{border:1px solid #263f4d;border-radius:12px;background:#08151d;padding:10px 12px}
+.projectItemTitle{font-weight:850}
+.projectItemMeta{font-size:11px;color:#8fa2ad;margin-top:4px;line-height:1.35}
+.planSource{border:1px solid #284452;border-radius:12px;padding:10px 12px;background:#0a151d;margin-bottom:10px}
+.inlineApply{border:1px solid #2686a5;background:#103747;color:white;border-radius:9px;padding:7px 10px;font-weight:850;cursor:pointer;white-space:nowrap}
+@media(max-width:620px){.projectStats{grid-template-columns:repeat(2,1fr)}}
+
 .jobList{display:flex;flex-direction:column;gap:9px;margin-top:12px}
 .jobItem{border:1px solid #284452;border-radius:13px;padding:12px;background:#08151d;cursor:pointer}
 .jobItem:hover{border-color:var(--cyan)}
@@ -241,6 +261,12 @@ tr:last-child td{border-bottom:0}
     <section class="card lower">
       <div class="cardHeader"><div><div class="cardTitle">💬 Command Chat</div><div class="cardSub">Ask about projects or update a task</div></div><span class="badge">DB-AWARE</span></div>
       <div id="chatLog" class="chatLog"><div class="bubble">KAY // COMMAND is ready.</div></div>
+      <div class="chatQuick" style="display:flex;gap:8px;flex-wrap:wrap;padding:8px 20px 0">
+        <button class="btn quickBtn" data-q="urgent">Urgent</button>
+        <button class="btn quickBtn" data-q="at-risk">At-risk</button>
+        <button class="btn quickBtn" data-q="due this week">Due this week</button>
+        <button class="btn quickBtn" data-q="wedding tasks">Wedding tasks</button>
+      </div>
       <div class="chatCompose"><textarea id="chatInput" placeholder="Ask about projects or update a task…"></textarea><button id="speakBtn" class="btn">🎙</button><button id="sendBtn" class="btn primary send">Send</button></div>
     </section>
   </main>
@@ -250,18 +276,37 @@ tr:last-child td{border-bottom:0}
  <div class="modalBox">
   <div class="modalTop"><div><div class="sectionLabel">TASK DETAILS</div><div id="taskTitle" class="modalTitle"></div></div><button id="taskClose" class="btn">✕</button></div>
   <div id="taskMeta" class="modalMeta"></div>
-  <div class="taskEditGrid">
-    <label class="full">Task name<input id="taskNameEdit"></label>
-    <label>Due date<input id="taskDueEdit" type="date"></label>
-    <label>Owner<input id="taskOwnerEdit"></label>
-    <label class="full">Details<textarea id="taskDetailsEdit"></textarea></label>
-  </div>
+  <div id="taskDetails" class="modalDetails"></div>
   <div class="modalActions">
     <button id="saveLaterBtn" class="btn">Save for later</button>
     <button id="completeBtn" class="btn primary">Mark complete</button>
     <button id="updateTaskBtn" class="btn">Update task</button>
     <button id="deleteBtn" class="btn danger">Delete / remove from list</button>
   </div>
+ </div>
+</div>
+
+<div id="saveLaterModal" class="modal">
+ <div class="modalBox">
+  <div class="modalTop"><div><div class="sectionLabel">SAVE FOR LATER</div><div class="modalTitle">Move this task</div></div><button id="saveLaterClose" class="btn">✕</button></div>
+  <div class="taskEditGrid">
+    <label>New due date<input id="saveLaterDate" type="date"></label>
+    <label class="full">Note / reason<textarea id="saveLaterNote" placeholder="Optional note about why this is being moved"></textarea></label>
+  </div>
+  <div class="jobActions"><button id="saveLaterCancel" class="btn">Cancel</button><button id="saveLaterConfirm" class="btn primary">Save new date</button></div>
+ </div>
+</div>
+
+<div id="updateTaskModal" class="modal">
+ <div class="modalBox">
+  <div class="modalTop"><div><div class="sectionLabel">UPDATE TASK</div><div class="modalTitle">Edit task</div></div><button id="updateTaskClose" class="btn">✕</button></div>
+  <div class="taskEditGrid">
+    <label class="full">Task name<input id="taskNameEdit"></label>
+    <label>Due date<input id="taskDueEdit" type="date"></label>
+    <label>Owner<input id="taskOwnerEdit"></label>
+    <label class="full">Details<textarea id="taskDetailsEdit"></textarea></label>
+  </div>
+  <div class="jobActions"><button id="updateTaskCancel" class="btn">Cancel</button><button id="updateTaskConfirm" class="btn primary">Save updates</button></div>
  </div>
 </div>
 
@@ -283,6 +328,32 @@ tr:last-child td{border-bottom:0}
  </div>
 </div>
 
+
+<div id="projectModal" class="modal">
+ <div class="modalBox" style="width:min(900px,96vw);max-height:88vh;overflow:auto">
+  <div class="modalTop">
+   <div><div class="sectionLabel">PROJECT WORKSPACE</div><div id="projectModalTitle" class="modalTitle">Project</div></div>
+   <button id="projectClose" class="btn">✕</button>
+  </div>
+  <div id="projectModalMeta" class="modalMeta"></div>
+  <div id="projectStats" class="projectStats"></div>
+  <div class="projectTabs">
+    <button class="projectTab on" data-ptab="overview">Overview</button>
+    <button class="projectTab" data-ptab="plan">Project plan</button>
+    <button class="projectTab" data-ptab="live">Live tasks</button>
+    <button class="projectTab" data-ptab="milestones">Milestones</button>
+    <button class="projectTab" data-ptab="risks">Risks</button>
+    <button class="projectTab" data-ptab="decisions">Decisions</button>
+  </div>
+  <div id="projectPaneOverview" class="projectPane on"></div>
+  <div id="projectPanePlan" class="projectPane"></div>
+  <div id="projectPaneLive" class="projectPane"></div>
+  <div id="projectPaneMilestones" class="projectPane"></div>
+  <div id="projectPaneRisks" class="projectPane"></div>
+  <div id="projectPaneDecisions" class="projectPane"></div>
+ </div>
+</div>
+
 <div id="authModal" class="auth">
  <div class="authBox"><div class="sectionLabel">SECURE ACCESS</div><h2>Sign in once</h2><p class="cardSub">Your Supabase session is stored on this device.</p><input id="emailInput" type="email" placeholder="you@example.com"><button id="magicBtn" class="btn primary" style="width:100%">Send magic link</button><p id="authMsg" class="cardSub"></p></div>
 </div>
@@ -292,7 +363,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const SUPABASE_URL='https://najlvczgxwvqjvpvfzji.supabase.co', SUPABASE_KEY='sb_publishable_4S9mvRol3OhFYpADykEGDw_MP-IhaZu';
 const supabase=createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const $=id=>document.getElementById(id);
-let state={tasks:[],projects:[],briefs:[],sources:[],jobs:[],user:null},activeTaskId=null,activeJobId=null,currentJobLane=null;
+let state={tasks:[],projects:[],briefs:[],sources:[],jobs:[],plans:[],planTasks:[],milestones:[],risks:[],decisions:[],user:null},activeTaskId=null,activeJobId=null,currentJobLane=null,activeProjectId=null;
 const esc=(v='')=>String(v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const fmtDate=v=>{if(!v)return '—';const d=new Date(v+'T12:00:00');return d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})};
 const daysUntil=v=>{const a=new Date();a.setHours(0,0,0,0);const b=new Date(v+'T12:00:00');return Math.max(0,Math.ceil((b-a)/86400000))};
@@ -313,15 +384,20 @@ $('signOutBtn').onclick=async()=>{await supabase.auth.signOut();location.reload(
 async function loadAll(){
  if(!await ensureAuth())return;
  $('liveBar').textContent='● Syncing live data…';
- const [p,t,b,s,j]=await Promise.all([
+ const [p,t,b,s,j,pl,pt,ms,rs,ds]=await Promise.all([
   supabase.from('kay_projects').select('*').order('created_at',{ascending:true}),
   supabase.from('kay_tasks').select('*').order('is_done',{ascending:true}).order('due_date',{ascending:true,nullsFirst:false}),
   supabase.from('kay_briefs').select('*').order('created_at',{ascending:false}).limit(8),
   supabase.from('kay_source_status').select('*'),
-  supabase.from('kay_jobs').select('*').order('source_date',{ascending:false})
+  supabase.from('kay_jobs').select('*').order('source_date',{ascending:false}),
+  supabase.from('kay_project_plans').select('*').order('updated_at',{ascending:false}),
+  supabase.from('kay_project_plan_tasks').select('*').order('due_date',{ascending:true}),
+  supabase.from('kay_milestones').select('*').order('milestone_date',{ascending:true}),
+  supabase.from('kay_risks').select('*').order('created_at',{ascending:false}),
+  supabase.from('kay_decisions').select('*').order('created_at',{ascending:false})
  ]);
  if(p.error||t.error||b.error){$('liveBar').textContent='● Data sync error';appendChat('assistant',p.error?.message||t.error?.message||b.error?.message);return}
- state.projects=p.data||[];state.tasks=t.data||[];state.briefs=b.data||[];state.sources=s.error?[]:(s.data||[]);state.jobs=j?.error?[]:(j?.data||[]);
+ state.projects=p.data||[];state.tasks=t.data||[];state.briefs=b.data||[];state.sources=s.error?[]:(s.data||[]);state.jobs=j?.error?[]:(j?.data||[]);state.plans=pl?.error?[]:(pl?.data||[]);state.planTasks=pt?.error?[]:(pt?.data||[]);state.milestones=ms?.error?[]:(ms?.data||[]);state.risks=rs?.error?[]:(rs?.data||[]);state.decisions=ds?.error?[]:(ds?.data||[]);state.jobs=j?.error?[]:(j?.data||[]);
  renderAll();$('liveBar').textContent='● Live data loaded';
 }
 function renderAll(){setGreeting();renderBriefs();renderActions();renderCareer();renderMoney();renderInbox();renderCalendar();renderProjects();renderSystems()}
@@ -335,9 +411,21 @@ function renderActions(){
  document.querySelectorAll('.actionRow').forEach(x=>x.onclick=()=>openTask(x.dataset.id));
 }
 function renderCareer(){
- const open=state.tasks.filter(t=>!t.is_done), strategic=open.filter(t=>/strategic move|director|vp|pmo|transformation|recruiter|job/i.test(`${t.name} ${projectFor(t)?.name||''}`)), immediate=open.filter(t=>/immediate income|contract|hour|recruiter|job/i.test(`${t.name} ${projectFor(t)?.name||''}`));
- $('careerLeads').textContent=strategic.length||'—';
- $('careerRows').innerHTML=`<div class="careerRow"><div><div class="careerName">🚀 Strategic Move</div><div class="careerDesc">Director / VP / PMO / Transformation</div></div><div class="careerCount">${strategic.length} jobs<br><span class="cardSub">Tap Action Center</span></div></div><div class="careerRow"><div><div class="careerName">⚡ Immediate Income</div><div class="careerDesc">High-value contract / near-term income</div></div><div class="careerCount">${immediate.length} jobs<br><span class="cardSub">Tap Action Center</span></div></div>`;
+ const all=state.jobs||[];
+ const open=all.filter(j=>!['closed','rejected','withdrawn'].includes(String(j.status||'').toLowerCase()));
+ const strategic=open.filter(j=>String(j.lane||'').toLowerCase()==='strategic move');
+ const immediate=open.filter(j=>String(j.lane||'').toLowerCase()==='immediate income');
+ const applications=all.filter(j=>/applied|applying|interview|screen/i.test(String(j.status||'')));
+ $('careerLeads').textContent=open.length||'—';
+ const row=(icon,name,desc,count,lane)=>`<div class="careerRow" data-lane="${lane}">
+   <div><div class="careerName">${icon} ${name}</div><div class="careerDesc">${desc}</div></div>
+   <div class="careerCount">${count} jobs<br><span class="cardSub">Tap to open</span></div>
+ </div>`;
+ $('careerRows').innerHTML=
+   row('🚀','Strategic Move','Director / VP / PMO / Transformation',strategic.length,'Strategic Move')+
+   row('⚡','Immediate Income','$70/hr+ / near-term income',immediate.length,'Immediate Income')+
+   row('📨','Applications','Applying / Applied / Interview',applications.length,'Applications');
+ document.querySelectorAll('.careerRow').forEach(x=>x.onclick=()=>openJobLane(x.dataset.lane));
 }
 function renderMoney(){
  const f=source('Finances'),d=(f&&typeof f.details==='object')?f.details:{};const good=sourceGood(f?.status);
@@ -352,82 +440,190 @@ function extractUnread(){const txt=state.briefs.map(b=>b.content||b.brief||b.sum
 function renderCalendar(){
  const c=source('Calendar'),d=(c&&typeof c.details==='object')?c.details:{};$('calendarBadge').textContent=sourceGood(c?.status)?'LIVE':'CHECK';$('calendarText').textContent=d.summary||d.message||'No active events in the current synced window.';
 }
-function renderProjects(){
- const active=state.projects.filter(p=>String(p.status||'active').toLowerCase()!=='complete');$('projectBadge').textContent=`${active.length} PROJECTS`;
- $('projectTable').innerHTML=active.map(p=>{const ts=state.tasks.filter(t=>t.project_id===p.id),done=ts.filter(t=>t.is_done).length,health=p.health||p.project_health||p.status||'Active',date=p.target_date||p.due_date||p.go_live||null,cls=/risk|watch|amber/i.test(health)?'warn':/bad|red|blocked/i.test(health)?'bad':'good';return `<tr><td><div class="projectName">${esc(p.name||p.title||'Untitled')}</div></td><td>${esc(p.workspace||p.type||'Personal')}</td><td><span class="health ${cls}">${esc(health)}</span></td><td>${date?fmtDate(date):'—'}</td><td>${date?daysUntil(date)+' days':'—'}</td><td>${done}/${ts.length}</td><td>${esc(p.next_move||p.details||'—')}</td></tr>`}).join('');
+function projectPlanInfo(projectId){
+ const plans=state.plans.filter(x=>x.project_id===projectId);
+ const ids=new Set(plans.map(x=>x.id));
+ const tasks=state.planTasks.filter(x=>x.project_id===projectId || ids.has(x.plan_id));
+ return {plans,tasks,done:tasks.filter(x=>x.is_done||/complete/i.test(String(x.status||''))).length};
 }
+function renderProjects(){
+ const active=state.projects.filter(p=>String(p.status||'active').toLowerCase()!=='complete');
+ $('projectBadge').textContent=`${active.length} PROJECTS`;
+ $('projectTable').innerHTML=active.map(p=>{
+   const live=state.tasks.filter(t=>t.project_id===p.id),liveDone=live.filter(t=>t.is_done).length;
+   const pi=projectPlanInfo(p.id);
+   const total=pi.tasks.length||live.length,done=pi.tasks.length?pi.done:liveDone;
+   const health=p.health||p.project_health||p.status||'Active',date=p.target_date||p.due_date||p.go_live||null;
+   const cls=/risk|watch|amber/i.test(health)?'warn':/bad|red|blocked/i.test(health)?'bad':'good';
+   return `<tr class="projectRowClickable" data-project="${p.id}">
+    <td><div class="projectName">${esc(p.name||p.title||'Untitled')}</div></td>
+    <td>${esc(p.workspace||p.type||'Personal')}</td>
+    <td><span class="health ${cls}">${esc(health)}</span></td>
+    <td>${date?fmtDate(date):'—'}</td>
+    <td>${date?daysUntil(date)+' days':'—'}</td>
+    <td>${done}/${total}${pi.tasks.length?'<div class="cardSub">plan</div>':''}</td>
+    <td>${esc(p.next_move||p.details||'—')}</td>
+   </tr>`}).join('');
+ document.querySelectorAll('.projectRowClickable').forEach(r=>r.onclick=()=>openProject(r.dataset.project));
+}
+
+function renderProjectItems(items,kind){
+ if(!items.length)return '<div class="cardSub">Nothing recorded here yet.</div>';
+ if(kind==='plan'||kind==='live')return `<div class="projectList">${items.map(x=>`<div class="projectItem">
+   <div class="projectItemTitle">${esc(x.name||'Task')}</div>
+   <div class="projectItemMeta">${[x.phase||x.category,x.owner,x.due_date?fmtDate(x.due_date):null,x.status||(x.is_done?'Complete':'Open'),x.priority].filter(Boolean).map(esc).join(' · ')}</div>
+   ${x.notes||x.details?`<div class="projectItemMeta">${esc(x.notes||x.details)}</div>`:''}
+ </div>`).join('')}</div>`;
+ if(kind==='milestones')return `<div class="projectList">${items.map(x=>`<div class="projectItem"><div class="projectItemTitle">${esc(x.name)}</div><div class="projectItemMeta">${[x.milestone_date?fmtDate(x.milestone_date):null,x.status].filter(Boolean).map(esc).join(' · ')}</div></div>`).join('')}</div>`;
+ if(kind==='risks')return `<div class="projectList">${items.map(x=>`<div class="projectItem"><div class="projectItemTitle">${esc(x.risk)}</div><div class="projectItemMeta">${[x.level,x.is_open===false?'Closed':'Open'].filter(Boolean).map(esc).join(' · ')}</div>${x.mitigation?`<div class="projectItemMeta">Mitigation: ${esc(x.mitigation)}</div>`:''}</div>`).join('')}</div>`;
+ if(kind==='decisions')return `<div class="projectList">${items.map(x=>`<div class="projectItem"><div class="projectItemTitle">${esc(x.decision)}</div><div class="projectItemMeta">${esc(x.status||'Open')}</div></div>`).join('')}</div>`;
+ return '';
+}
+function showProjectTab(name){
+ document.querySelectorAll('.projectTab').forEach(b=>b.classList.toggle('on',b.dataset.ptab===name));
+ document.querySelectorAll('.projectPane').forEach(p=>p.classList.remove('on'));
+ const map={overview:'projectPaneOverview',plan:'projectPanePlan',live:'projectPaneLive',milestones:'projectPaneMilestones',risks:'projectPaneRisks',decisions:'projectPaneDecisions'};
+ $(map[name]).classList.add('on');
+}
+function openProject(id){
+ const p=state.projects.find(x=>String(x.id)===String(id));if(!p)return;
+ activeProjectId=p.id;
+ const live=state.tasks.filter(t=>t.project_id===p.id);
+ const liveDone=live.filter(t=>t.is_done).length;
+ const pi=projectPlanInfo(p.id);
+ const ms=state.milestones.filter(x=>x.project_id===p.id);
+ const rs=state.risks.filter(x=>x.project_id===p.id);
+ const ds=state.decisions.filter(x=>x.project_id===p.id);
+ const date=p.target_date||null;
+ $('projectModalTitle').textContent=p.name||'Project';
+ $('projectModalMeta').textContent=[p.workspace||p.type,date?fmtDate(date):null].filter(Boolean).join(' · ');
+ $('projectStats').innerHTML=[
+   ['Project-plan tasks',pi.tasks.length||'—'],
+   ['Live tasks',live.length],
+   ['Open risks',rs.filter(x=>x.is_open!==false).length],
+   ['Milestones',ms.length]
+ ].map(([a,b])=>`<div class="projectStat"><b>${b}</b><span>${a}</span></div>`).join('');
+ $('projectPaneOverview').innerHTML=`<div class="projectList">
+   <div class="projectItem"><div class="projectItemTitle">Next move</div><div class="projectItemMeta">${esc(p.next_move||'No next move recorded.')}</div></div>
+   <div class="projectItem"><div class="projectItemTitle">Target / go-live</div><div class="projectItemMeta">${date?fmtDate(date):'No target date recorded.'}</div></div>
+   <div class="projectItem"><div class="projectItemTitle">Delivery</div><div class="projectItemMeta">${pi.tasks.length?`${pi.done} of ${pi.tasks.length} project-plan tasks complete`:`${liveDone} of ${live.length} live tasks complete`}</div></div>
+ </div>`;
+ $('projectPanePlan').innerHTML=pi.plans.length
+   ? pi.plans.map(pl=>{
+      const pts=state.planTasks.filter(x=>x.plan_id===pl.id);
+      return `<div class="planSource"><b>${esc(pl.name)}</b><div class="projectItemMeta">${esc(pl.source_name||'Logged plan')}${pl.summary?` · ${esc(pl.summary)}`:''}</div></div>${renderProjectItems(pts,'plan')}`;
+     }).join('<hr style="border-color:#263f4d;margin:16px 0">')
+   : '<div class="cardSub">No formal project plan has been logged in the plan registry yet. Live task data is still shown in the Live tasks tab.</div>';
+ $('projectPaneLive').innerHTML=renderProjectItems(live,'live');
+ $('projectPaneMilestones').innerHTML=renderProjectItems(ms,'milestones');
+ $('projectPaneRisks').innerHTML=renderProjectItems(rs,'risks');
+ $('projectPaneDecisions').innerHTML=renderProjectItems(ds,'decisions');
+ showProjectTab('overview');
+ $('projectModal').classList.add('show');
+}
+$('projectClose').onclick=()=>{$('projectModal').classList.remove('show');activeProjectId=null};
+$('projectModal').onclick=e=>{if(e.target===$('projectModal'))$('projectModal').classList.remove('show')};
+document.querySelectorAll('.projectTab').forEach(b=>b.onclick=()=>showProjectTab(b.dataset.ptab));
+
 function renderSystems(){
  const rows=[['Database','Synced','Supabase live workspace'],['Gmail',source('Gmail')?.status||'Not connected',source('Gmail')?.last_sync_at?'Recently synced':'No sync time'],['Calendar',source('Calendar')?.status||'Not connected',source('Calendar')?.last_sync_at?'Recently synced':'No sync time'],['Finances',source('Finances')?.status||'Not connected','Private financial connection'],['Command Chat','Ready','Task commands available']];
  const good=rows.filter(r=>sourceGood(r[1])).length;$('systemsBadge').textContent=`${good}/${rows.length} ONLINE`;
  $('systemGrid').innerHTML=rows.map(r=>`<div class="system"><div class="systemTop"><span>${esc(r[0])}</span><span class="systemStatus">${esc(r[1])}</span></div><div class="systemMeta">${esc(r[2])}</div></div>`).join('');
 }
+function normalizeDateForInput(v){
+ if(!v)return '';
+ const s=String(v).trim();
+ if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;
+ const d=new Date(s);
+ if(Number.isNaN(d.getTime()))return '';
+ return d.toISOString().slice(0,10);
+}
 function openTask(id){
- const t=state.tasks.find(x=>String(x.id)===String(id));if(!t)return;activeTaskId=t.id;const p=projectFor(t);
+ const t=state.tasks.find(x=>String(x.id)===String(id));if(!t)return;
+ activeTaskId=t.id;const p=projectFor(t);
  $('taskTitle').textContent=t.name;
  $('taskMeta').textContent=[p?.name||p?.title||'Kay',t.due_date?fmtDate(t.due_date):'No due date',t.owner||'Kay'].join(' · ');
- $('taskNameEdit').value=t.name||'';
- $('taskDueEdit').value=t.due_date||'';
- $('taskOwnerEdit').value=t.owner||'Kay';
- $('taskDetailsEdit').value=t.details||'';
+ $('taskDetails').textContent=t.details||'No additional details for this task.';
  $('completeBtn').textContent=t.is_done?'Reopen task':'Mark complete';
  $('taskModal').classList.add('show')
 }
-function closeTask(){$('taskModal').classList.remove('show');activeTaskId=null}
-$('taskClose').onclick=closeTask;$('taskModal').onclick=e=>{if(e.target===$('taskModal'))closeTask()};
+function closeTask(){$('taskModal').classList.remove('show')}
+$('taskClose').onclick=closeTask;
+$('taskModal').onclick=e=>{if(e.target===$('taskModal'))closeTask()};
 
 async function logTaskAction(t,action,message,requestedDate=null){
  try{
   await supabase.from('kay_task_updates').insert({
-    user_id:state.user?.id||null,
-    task_id:action==='delete'?null:t.id,
-    project_id:t.project_id||null,
-    action_type:action,
-    message,
-    requested_date:requestedDate||null,
-    status:'processed',
-    processed_at:new Date().toISOString()
+   user_id:state.user?.id||null,task_id:action==='delete'?null:t.id,project_id:t.project_id||null,
+   action_type:action,message,requested_date:requestedDate||null,status:'applied',processed_at:new Date().toISOString()
   });
-  await supabase.from('kay_chat_messages').insert({
-    user_id:state.user?.id||null,
-    role:'system',
-    message:`Dashboard task action: ${message}`
-  });
+  await supabase.from('kay_chat_messages').insert({user_id:state.user?.id||null,role:'system',message:`Dashboard task action: ${message}`});
  }catch(e){}
 }
-$('saveLaterBtn').onclick=async()=>{
+
+$('saveLaterBtn').onclick=()=>{
  const t=state.tasks.find(x=>x.id===activeTaskId);if(!t)return;
- const d=prompt('Save for later until what date? Enter YYYY-MM-DD.',t.due_date||'');
- if(!d)return;
+ $('saveLaterDate').value=normalizeDateForInput(t.due_date);
+ $('saveLaterNote').value='';
+ $('taskModal').classList.remove('show');
+ $('saveLaterModal').classList.add('show');
+};
+function closeSaveLater(){$('saveLaterModal').classList.remove('show');$('taskModal').classList.add('show')}
+$('saveLaterClose').onclick=closeSaveLater;$('saveLaterCancel').onclick=closeSaveLater;
+$('saveLaterConfirm').onclick=async()=>{
+ const t=state.tasks.find(x=>x.id===activeTaskId);if(!t)return;
+ const d=$('saveLaterDate').value;
+ const note=$('saveLaterNote').value.trim();
+ if(!d)return alert('Please choose a date from the calendar.');
  const {error}=await supabase.from('kay_tasks').update({due_date:d,updated_at:new Date().toISOString()}).eq('id',t.id);
  if(error)return alert(error.message);
- await logTaskAction(t,'save_for_later',`Saved "${t.name}" for later until ${d}.`,d);
- closeTask();await loadAll()
+ await logTaskAction(t,'reschedule',`Saved "${t.name}" for later until ${d}${note?`. Note: ${note}`:''}.`,d);
+ $('saveLaterModal').classList.remove('show');activeTaskId=null;await loadAll()
 };
+
 $('completeBtn').onclick=async()=>{
  const t=state.tasks.find(x=>x.id===activeTaskId);if(!t)return;
  const next=!t.is_done;
  const {error}=await supabase.from('kay_tasks').update({is_done:next,updated_at:new Date().toISOString()}).eq('id',t.id);
  if(error)return alert(error.message);
  await logTaskAction(t,next?'complete':'reopen',`${next?'Completed':'Reopened'} "${t.name}".`);
- closeTask();await loadAll()
+ closeTask();activeTaskId=null;await loadAll()
 };
-$('updateTaskBtn').onclick=async()=>{
+
+$('updateTaskBtn').onclick=()=>{
+ const t=state.tasks.find(x=>x.id===activeTaskId);if(!t)return;
+ $('taskNameEdit').value=t.name||'';
+ $('taskDueEdit').value=normalizeDateForInput(t.due_date);
+ $('taskOwnerEdit').value=t.owner||'Kay';
+ $('taskDetailsEdit').value=t.details||'';
+ $('taskModal').classList.remove('show');
+ $('updateTaskModal').classList.add('show');
+};
+function closeUpdateTask(){$('updateTaskModal').classList.remove('show');$('taskModal').classList.add('show')}
+$('updateTaskClose').onclick=closeUpdateTask;$('updateTaskCancel').onclick=closeUpdateTask;
+$('updateTaskConfirm').onclick=async()=>{
  const t=state.tasks.find(x=>x.id===activeTaskId);if(!t)return;
  const patch={
-   name:$('taskNameEdit').value.trim()||t.name,
-   due_date:$('taskDueEdit').value||null,
-   owner:$('taskOwnerEdit').value.trim()||'Kay',
-   details:$('taskDetailsEdit').value.trim()||null,
-   updated_at:new Date().toISOString()
+  name:$('taskNameEdit').value.trim()||t.name,
+  due_date:$('taskDueEdit').value||null,
+  owner:$('taskOwnerEdit').value.trim()||'Kay',
+  details:$('taskDetailsEdit').value.trim()||null,
+  updated_at:new Date().toISOString()
  };
  const {error}=await supabase.from('kay_tasks').update(patch).eq('id',t.id);
  if(error)return alert(error.message);
  await logTaskAction(t,'update',`Updated "${patch.name}"${patch.due_date?` due ${patch.due_date}`:''}.`,patch.due_date);
- closeTask();await loadAll()
+ $('updateTaskModal').classList.remove('show');activeTaskId=null;await loadAll()
 };
+
 $('deleteBtn').onclick=async()=>{
  const t=state.tasks.find(x=>x.id===activeTaskId);if(!t||!confirm(`Delete "${t.name}" from the list?`))return;
- const snapshot={...t};
+ const snap={...t};
+ const {error}=await supabase.from('kay_tasks').delete().eq('id',t.id);
+ if(error)return alert(error.message);
+ await logTaskAction(snap,'delete',`Deleted "${snap.name}" from the Action Center.`);
+ closeTask();activeTaskId=null;await loadAll()
+};
  const {error}=await supabase.from('kay_tasks').delete().eq('id',t.id);
  if(error)return alert(error.message);
  await logTaskAction(snapshot,'delete',`Deleted "${snapshot.name}" from the Action Center.`);
@@ -448,10 +644,23 @@ function openJobLane(lane){
 function renderJobList(lane){
  const jobs=jobsForLane(lane);
  $('jobList').innerHTML=jobs.length?jobs.map(j=>`<div class="jobItem" data-job="${j.id}">
-  <div class="jobTop"><div><div class="jobTitle">${esc(j.title||'Untitled role')}</div><div class="jobMeta">${esc(j.employer||'')} · ${esc(j.location||'')} · ${esc(j.work_arrangement||'')}</div></div><div class="jobStatus">${esc(j.status||'Open')}</div></div>
-  <div class="jobMeta">${esc(j.compensation||'Comp not listed')}</div>
+  <div class="jobTop">
+   <div style="min-width:0"><div class="jobTitle">${esc(j.title||'Untitled role')}</div><div class="jobMeta">${esc(j.employer||'')} · ${esc(j.location||'')} · ${esc(j.work_arrangement||'')}</div></div>
+   <div style="display:flex;gap:8px;align-items:flex-start"><div class="jobStatus">${esc(j.status||'Open')}</div><button class="inlineApply" data-apply="${j.id}" ${j.apply_url?'':'disabled'}>Apply ↗</button></div>
+  </div>
+  <div class="jobMeta">${esc(j.compensation||'Comp not listed')} · Tap card for details</div>
  </div>`).join(''):'<div class="cardSub">No jobs in this category yet.</div>';
- document.querySelectorAll('.jobItem').forEach(x=>x.onclick=()=>openJob(x.dataset.job));
+ document.querySelectorAll('.jobItem').forEach(x=>x.onclick=e=>{if(e.target.closest('[data-apply]'))return;openJob(x.dataset.job)});
+ document.querySelectorAll('[data-apply]').forEach(b=>b.onclick=async e=>{
+   e.stopPropagation();
+   const j=state.jobs.find(x=>String(x.id)===String(b.dataset.apply));if(!j)return;
+   if(j.apply_url)window.open(j.apply_url,'_blank','noopener');
+   const {error}=await supabase.from('kay_jobs').update({status:'Applying',updated_at:new Date().toISOString()}).eq('id',j.id);
+   if(!error){
+     try{await supabase.from('kay_chat_messages').insert({user_id:state.user?.id||null,role:'system',message:`Career Command action: Opened application for ${j.title} at ${j.employer}; status set to Applying.`})}catch(e){}
+     await loadAll();openJobLane(lane);
+   }
+ });
 }
 function openJob(id){
  const j=state.jobs.find(x=>String(x.id)===String(id));if(!j)return;activeJobId=j.id;
@@ -485,6 +694,24 @@ $('jobMarkApplied').onclick=async()=>{
 
 function appendChat(role,text){const d=document.createElement('div');d.className='bubble '+role;d.textContent=text;$('chatLog').appendChild(d);$('chatLog').scrollTop=$('chatLog').scrollHeight}
 async function sendChat(){const q=$('chatInput').value.trim();if(!q)return;appendChat('user',q);$('chatInput').value='';try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:q,context:{tasks:state.tasks,projects:state.projects}})}),j=await r.json();appendChat('assistant',j.reply||j.message||'Command received.')}catch(e){appendChat('assistant','Command chat is unavailable right now.')}}
+
+document.querySelectorAll('.quickBtn').forEach(btn=>btn.onclick=()=>{
+ const q=btn.dataset.q;
+ if(q==='urgent'){
+  const urgent=state.tasks.filter(t=>!t.is_done&&(atRisk(t)||dueWeek(t))).slice(0,10);
+  appendChat('assistant',urgent.length?urgent.map(t=>`• ${t.name}${t.due_date?` — ${fmtDate(t.due_date)}`:''}`).join('\n'):'No urgent tasks found.');
+ } else if(q==='at-risk'){
+  const rows=state.tasks.filter(t=>atRisk(t)).slice(0,10);
+  appendChat('assistant',rows.length?rows.map(t=>`• ${t.name}`).join('\n'):'No at-risk tasks found.');
+ } else if(q==='due this week'){
+  const rows=state.tasks.filter(t=>!t.is_done&&dueWeek(t)).slice(0,10);
+  appendChat('assistant',rows.length?rows.map(t=>`• ${t.name} — ${fmtDate(t.due_date)}`).join('\n'):'Nothing due this week.');
+ } else if(q==='wedding tasks'){
+  const rows=state.tasks.filter(t=>!t.is_done&&/wedding|kiyomi|rasheen|k\/r/i.test(`${t.name} ${projectFor(t)?.name||''}`)).slice(0,12);
+  appendChat('assistant',rows.length?rows.map(t=>`• ${t.name}`).join('\n'):'No open wedding tasks found.');
+ }
+});
+
 $('sendBtn').onclick=sendChat;$('chatInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat()}});
 $('speakBtn').onclick=()=>{const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)return $('chatInput').focus();const r=new SR();r.onresult=e=>$('chatInput').value=e.results[0][0].transcript;r.start()};
 $('refreshBtn').onclick=loadAll;
