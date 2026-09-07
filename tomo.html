@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>KAY // COMMAND — Tomo Accountability</title>
+<style>
+:root{--bg:#061018;--panel:#0b1720;--line:#284654;--text:#f7f8fa;--muted:#94a8b5;--cyan:#45d9ff;--green:#47eca1;--red:#ff7a84}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.shell{max-width:980px;margin:0 auto;padding:20px}h1{font-size:28px;margin:0 0 6px}.sub{color:var(--muted);margin-bottom:20px}
+.bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}.pill{border:1px solid var(--line);border-radius:999px;padding:9px 12px;font-size:13px}.pill b{color:var(--green)}
+.card{border:1px solid var(--line);background:var(--panel);border-radius:18px;padding:16px;margin-bottom:12px}
+.taskHead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.taskName{font-weight:850;font-size:18px}.meta{color:var(--muted);font-size:13px;margin-top:5px}
+.overdue{color:var(--red);font-weight:800}.done{opacity:.58}.done .taskName{text-decoration:line-through}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}button,input,textarea,select{font:inherit}
+button{border:1px solid var(--line);background:#0c202a;color:var(--text);border-radius:11px;padding:10px 12px;cursor:pointer}
+button.primary{background:#125972;border-color:#1b92b6;font-weight:800}
+input,textarea,select{width:100%;background:#08151d;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:11px;font-size:16px}
+textarea{min-height:90px;resize:vertical}.auth{max-width:520px;margin:60px auto;border:1px solid var(--line);background:var(--panel);padding:22px;border-radius:18px}
+.auth button{width:100%;margin-top:10px}.hidden{display:none}.editor{margin-top:12px;display:grid;gap:8px}.status{min-height:24px;color:var(--muted);font-size:13px;margin:8px 0 16px}
+.createGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.createGrid .wide{grid-column:1/-1}
+@media(max-width:600px){.shell{padding:12px}.taskHead{display:block}.taskHead button{margin-top:10px}.createGrid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div id="authBox" class="auth">
+    <h1>Tomo Accountability Access</h1>
+    <p class="sub">Enter the private Tomo access code for Kay Command.</p>
+    <input id="token" type="password" autocomplete="off" placeholder="Access code">
+    <button id="connect" class="primary">Connect to Kay Command</button>
+    <div id="authStatus" class="status"></div>
+  </div>
+
+  <main id="app" class="hidden">
+    <h1>KAY // COMMAND — Tomo View</h1>
+    <div class="sub">Interactive accountability access. Changes write directly to Kay Command.</div>
+    <div id="summary" class="bar"></div>
+
+    <section class="card">
+      <div class="taskName">➕ Create a task</div>
+      <div class="meta">Use an existing Kay Command project. Duplicate open tasks are blocked.</div>
+      <div class="createGrid" style="margin-top:12px">
+        <div class="wide"><label class="meta">Task name</label><input id="newName" placeholder="What needs to be done?"></div>
+        <div><label class="meta">Project</label><select id="newProject"></select></div>
+        <div><label class="meta">Due date</label><input id="newDate" type="date"></div>
+        <div class="wide"><label class="meta">Details</label><textarea id="newDetails" placeholder="Optional details"></textarea></div>
+      </div>
+      <div class="actions"><button id="createTask" class="primary">Create task</button></div>
+    </section>
+
+    <div class="bar">
+      <button id="refresh">↻ Refresh tasks</button>
+      <button id="forget">Forget access code</button>
+    </div>
+    <div id="status" class="status"></div>
+    <div id="tasks"></div>
+  </main>
+</div>
+
+<script>
+const API='/api/tomo-tasks'; const $=id=>document.getElementById(id); let TOKEN=''; let FEED=null;
+function escapeHtml(v=''){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function fmtDate(d){if(!d)return'No due date';const[y,m,day]=d.split('-').map(Number);return new Date(y,m-1,day).toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'})}
+async function callApi(method='GET',body){const r=await fetch(API,{method,headers:{Authorization:`Bearer ${TOKEN}`,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});const data=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(data.error||`Request failed (${r.status})`);e.data=data;throw e}return data}
+function setStatus(msg){$('status').textContent=msg}
+function renderProjects(){ $('newProject').innerHTML=FEED.projects.map(p=>`<option value="${p.id}">${escapeHtml(p.name)}${p.workspace?' · '+escapeHtml(p.workspace):''}</option>`).join('') }
+function render(){
+ const s=FEED.summary;
+ $('summary').innerHTML=[['Open',s.open_tasks],['Overdue',s.overdue],['Due today',s.due_today],['Completed',s.completed_visible]].map(([a,b])=>`<span class="pill">${a}: <b>${b}</b></span>`).join('');
+ renderProjects();
+ $('tasks').innerHTML=FEED.tasks.map(t=>`
+ <section class="card ${t.is_done?'done':''}">
+  <div class="taskHead"><div><div class="taskName">${escapeHtml(t.task)}</div><div class="meta">${escapeHtml(t.project)}${t.workspace?' · '+escapeHtml(t.workspace):''} · ${fmtDate(t.due_date)}${t.overdue?'<span class="overdue"> · OVERDUE</span>':''}</div></div>
+  <button class="${t.is_done?'':'primary'}" data-action="${t.is_done?'reopen':'complete'}" data-id="${t.id}">${t.is_done?'Reopen':'✓ Complete'}</button></div>
+  ${t.details?`<div class="meta" style="margin-top:10px">${escapeHtml(t.details)}</div>`:''}
+  <div class="actions"><button data-edit="${t.id}">Update / reschedule</button></div>
+  <div id="edit-${t.id}" class="editor hidden"><label class="meta">Due date</label><input id="date-${t.id}" type="date" value="${t.due_date||''}"><label class="meta">Details</label><textarea id="details-${t.id}">${escapeHtml(t.details||'')}</textarea><div class="actions"><button class="primary" data-save-date="${t.id}">Save due date</button><button data-save-details="${t.id}">Save details</button></div></div>
+ </section>`).join('');
+ document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click',()=>runAction(b.dataset.id,b.dataset.action)));
+ document.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click',()=> $(`edit-${b.dataset.edit}`).classList.toggle('hidden')));
+ document.querySelectorAll('[data-save-date]').forEach(b=>b.addEventListener('click',()=>{const id=b.dataset.saveDate,due=$(`date-${id}`).value;if(!due)return setStatus('Choose a due date first.');runAction(id,'reschedule',{due_date:due})}));
+ document.querySelectorAll('[data-save-details]').forEach(b=>b.addEventListener('click',()=>{const id=b.dataset.saveDetails;runAction(id,'update_details',{details:$(`details-${id}`).value})}));
+}
+async function load(){setStatus('Loading live tasks…');FEED=await callApi();render();setStatus(`Live as of ${new Date(FEED.generated_at).toLocaleTimeString()}`)}
+async function runAction(id,action,extra={}){try{setStatus('Saving change…');await callApi('PATCH',{task_id:id,action,...extra});await load();setStatus('Saved to Kay Command ✓')}catch(e){setStatus(e.message)}}
+async function createTask(){
+ const task_name=$('newName').value.trim(),project_id=$('newProject').value,due_date=$('newDate').value||null,details=$('newDetails').value.trim()||null;
+ if(!task_name)return setStatus('Enter a task name.');
+ try{
+  setStatus('Creating task…');
+  await callApi('POST',{task_name,project_id,due_date,details});
+  $('newName').value='';$('newDate').value='';$('newDetails').value='';
+  await load();setStatus('Task created in Kay Command ✓');
+ }catch(e){
+  if(e.data?.duplicate) setStatus(`Duplicate blocked: "${e.data.duplicate.name}" already exists.`);
+  else setStatus(e.message);
+ }
+}
+async function connect(){const token=$('token').value.trim();if(!token)return;TOKEN=token;$('authStatus').textContent='Connecting…';try{FEED=await callApi();localStorage.setItem('kay-tomo-token',TOKEN);$('authBox').classList.add('hidden');$('app').classList.remove('hidden');render();setStatus('Connected to live Kay Command tasks.')}catch(e){$('authStatus').textContent=e.message;TOKEN=''}}
+$('connect').addEventListener('click',connect);$('refresh').addEventListener('click',()=>load().catch(e=>setStatus(e.message)));$('createTask').addEventListener('click',createTask);
+$('forget').addEventListener('click',()=>{localStorage.removeItem('kay-tomo-token');TOKEN='';location.reload()});
+const saved=localStorage.getItem('kay-tomo-token');if(saved){TOKEN=saved;callApi().then(data=>{FEED=data;$('authBox').classList.add('hidden');$('app').classList.remove('hidden');render();setStatus('Connected to live Kay Command tasks.')}).catch(()=>localStorage.removeItem('kay-tomo-token'))}
+</script>
+</body>
+</html>
