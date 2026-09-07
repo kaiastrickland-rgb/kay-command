@@ -58,7 +58,7 @@ async function getTask(taskId) {
 
 async function getProject(projectId) {
   const url = new URL(`${process.env.SUPABASE_URL}/rest/v1/kay_projects`);
-  url.searchParams.set('select','id,name,workspace,type');
+  url.searchParams.set('select','id,name,workspace,type,target_date,next_move,sort_order');
   url.searchParams.set('id',`eq.${projectId}`);
   url.searchParams.set('user_id',`eq.${process.env.KAY_USER_ID}`);
   url.searchParams.set('limit','1');
@@ -78,6 +78,30 @@ async function updateTask(taskId, patch) {
   });
   if (!resp.ok) throw new Error(`Task update failed: ${resp.status} ${await resp.text()}`);
   return (await resp.json())[0] || null;
+}
+
+async function updatePlanTask(taskId, patch) {
+  const url = new URL(`${process.env.SUPABASE_URL}/rest/v1/kay_project_plan_tasks`);
+  url.searchParams.set('id',`eq.${taskId}`);
+  url.searchParams.set('user_id',`eq.${process.env.KAY_USER_ID}`);
+  const resp = await supabaseRequest(url, {
+    method: 'PATCH',
+    body: JSON.stringify({ ...patch, updated_at: new Date().toISOString() })
+  });
+  if (!resp.ok) throw new Error(`Project-plan task update failed: ${resp.status} ${await resp.text()}`);
+  return (await resp.json())[0] || null;
+}
+
+async function getPlanTask(taskId) {
+  const url = new URL(`${process.env.SUPABASE_URL}/rest/v1/kay_project_plan_tasks`);
+  url.searchParams.set('select','id,name,notes,due_date,owner,is_done,project_id,plan_id,phase,category,status,priority');
+  url.searchParams.set('id',`eq.${taskId}`);
+  url.searchParams.set('user_id',`eq.${process.env.KAY_USER_ID}`);
+  url.searchParams.set('limit','1');
+  const resp = await supabaseRequest(url);
+  if (!resp.ok) throw new Error(`Project-plan task lookup failed: ${resp.status}`);
+  const rows = await resp.json();
+  return rows[0] || null;
 }
 
 async function findDuplicateOpenTask({ projectId, name }) {
@@ -137,74 +161,133 @@ async function createTask({ projectId, name, dueDate=null, details=null, owner='
   return created;
 }
 
+function taskTiming(dueDate, isDone) {
+  if (!dueDate || isDone) return { overdue:false, due_today:false, days_until_due:null };
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const due = new Date(`${dueDate}T00:00:00`);
+  const days = Math.round((due - today)/86400000);
+  return { overdue:days < 0, due_today:days === 0, days_until_due:days };
+}
+
 async function listFeed() {
-  const taskUrl = new URL(`${process.env.SUPABASE_URL}/rest/v1/kay_tasks`);
-  taskUrl.searchParams.set('select','id,name,details,due_date,owner,is_done,project_id,created_at,updated_at');
-  taskUrl.searchParams.set('user_id',`eq.${process.env.KAY_USER_ID}`);
+  const makeUrl = (table, select) => {
+    const u = new URL(`${process.env.SUPABASE_URL}/rest/v1/${table}`);
+    u.searchParams.set('select',select);
+    u.searchParams.set('user_id',`eq.${process.env.KAY_USER_ID}`);
+    return u;
+  };
+
+  const taskUrl = makeUrl('kay_tasks','id,name,details,due_date,owner,is_done,project_id,created_at,updated_at');
   taskUrl.searchParams.set('order','is_done.asc,due_date.asc.nullslast,created_at.asc');
 
-  const projectUrl = new URL(`${process.env.SUPABASE_URL}/rest/v1/kay_projects`);
-  projectUrl.searchParams.set('select','id,name,workspace,type');
-  projectUrl.searchParams.set('user_id',`eq.${process.env.KAY_USER_ID}`);
+  const projectUrl = makeUrl('kay_projects','id,name,workspace,type,target_date,next_move,sort_order,created_at,updated_at');
   projectUrl.searchParams.set('order','sort_order.asc,name.asc');
 
-  const [taskResp, projectResp] = await Promise.all([
+  const planUrl = makeUrl('kay_project_plans','id,project_id,name,source_name,source_type,summary,created_at,updated_at');
+  planUrl.searchParams.set('order','updated_at.desc');
+
+  const planTaskUrl = makeUrl('kay_project_plan_tasks','id,plan_id,project_id,name,phase,category,owner,due_date,status,priority,notes,is_done,created_at,updated_at');
+  planTaskUrl.searchParams.set('order','is_done.asc,due_date.asc.nullslast,created_at.asc');
+
+  const [taskResp, projectResp, planResp, planTaskResp] = await Promise.all([
     supabaseRequest(taskUrl),
-    supabaseRequest(projectUrl)
+    supabaseRequest(projectUrl),
+    supabaseRequest(planUrl),
+    supabaseRequest(planTaskUrl)
   ]);
 
-  if (!taskResp.ok) throw new Error(`Task query failed: ${taskResp.status}`);
-  if (!projectResp.ok) throw new Error(`Project query failed: ${projectResp.status}`);
+  for (const [label,resp] of [['Task',taskResp],['Project',projectResp],['Plan',planResp],['Plan task',planTaskResp]]) {
+    if (!resp.ok) throw new Error(`${label} query failed: ${resp.status}`);
+  }
 
   const tasks = await taskResp.json();
   const projects = await projectResp.json();
+  const plans = await planResp.json();
+  const planTasks = await planTaskResp.json();
 
-  const projectMap = new Map(projects.map(p => [String(p.id), {
-    name: p.name || 'Unassigned',
-    workspace: p.workspace || p.type || null
-  }]));
+  const liveTasks = tasks.map(t => ({
+    id:t.id,
+    task_type:'live',
+    task:t.name,
+    project_id:t.project_id,
+    due_date:t.due_date,
+    is_done:t.is_done,
+    owner:t.owner || 'Kay',
+    details:t.details || null,
+    updated_at:t.updated_at,
+    ...taskTiming(t.due_date,t.is_done)
+  }));
 
-  const today = new Date();
-  const todayLocal = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const formalTasks = planTasks.map(t => ({
+    id:t.id,
+    task_type:'plan',
+    task:t.name,
+    project_id:t.project_id,
+    plan_id:t.plan_id,
+    due_date:t.due_date,
+    is_done:t.is_done,
+    owner:t.owner || 'Kay',
+    details:t.notes || null,
+    phase:t.phase || null,
+    category:t.category || null,
+    status:t.status || null,
+    priority:t.priority || null,
+    updated_at:t.updated_at,
+    ...taskTiming(t.due_date,t.is_done)
+  }));
 
-  const normalized = tasks.map(t => {
-    const p = projectMap.get(String(t.project_id)) || { name:'Unassigned', workspace:null };
-    let overdue=false, dueToday=false, daysUntilDue=null;
-    if (t.due_date) {
-      const due = new Date(`${t.due_date}T00:00:00`);
-      daysUntilDue = Math.round((due - todayLocal)/86400000);
-      overdue = !t.is_done && daysUntilDue < 0;
-      dueToday = !t.is_done && daysUntilDue === 0;
-    }
+  const projectDetails = projects.map(p => {
+    const pLive = liveTasks.filter(t => String(t.project_id)===String(p.id));
+    const pFormal = formalTasks.filter(t => String(t.project_id)===String(p.id));
+    const pPlans = plans.filter(pl => String(pl.project_id)===String(p.id));
+    const openLive = pLive.filter(t=>!t.is_done);
+    const openFormal = pFormal.filter(t=>!t.is_done);
+
     return {
-      id:t.id, task:t.name, project_id:t.project_id, project:p.name, workspace:p.workspace,
-      due_date:t.due_date, is_done:t.is_done, overdue, due_today:dueToday,
-      days_until_due:daysUntilDue, owner:t.owner||'Kay', details:t.details||null, updated_at:t.updated_at
+      id:p.id,
+      name:p.name,
+      workspace:p.workspace || p.type || null,
+      target_date:p.target_date || null,
+      next_move:p.next_move || null,
+      plans:pPlans.map(pl => ({
+        id:pl.id,
+        name:pl.name,
+        source_name:pl.source_name || null,
+        source_type:pl.source_type || null,
+        summary:pl.summary || null
+      })),
+      counts:{
+        live_open:openLive.length,
+        live_total:pLive.length,
+        plan_open:openFormal.length,
+        plan_total:pFormal.length
+      },
+      open_live_tasks:openLive,
+      open_plan_tasks:openFormal
     };
   });
 
-  const open = normalized.filter(t=>!t.is_done);
-  const overdue = open.filter(t=>t.overdue);
-  const dueToday = open.filter(t=>t.due_today);
-  const upcoming = open.filter(t=>t.due_date && !t.overdue && !t.due_today);
-  const unscheduled = open.filter(t=>!t.due_date);
+  const openAll = [...liveTasks.filter(t=>!t.is_done), ...formalTasks.filter(t=>!t.is_done)];
+  const overdue = openAll.filter(t=>t.overdue);
+  const dueToday = openAll.filter(t=>t.due_today);
+  const upcoming = openAll.filter(t=>t.due_date && !t.overdue && !t.due_today);
+  const unscheduled = openAll.filter(t=>!t.due_date);
 
   return {
     generated_at:new Date().toISOString(),
     source:'KAY // COMMAND',
-    access:'Tomo accountability task view',
-    permissions:['read','create','complete','reopen','reschedule','update_details'],
+    access:'Tomo project + accountability view',
+    permissions:['read_projects','read_project_plans','read','create_live_task','complete','reopen','reschedule','update_details'],
     summary:{
-      open_tasks:open.length,
-      completed_visible:normalized.filter(t=>t.is_done).length,
+      projects:projectDetails.length,
+      open_live_tasks:liveTasks.filter(t=>!t.is_done).length,
+      open_plan_tasks:formalTasks.filter(t=>!t.is_done).length,
       overdue:overdue.length,
-      due_today:dueToday.length,
-      upcoming_scheduled:upcoming.length,
-      unscheduled:unscheduled.length
+      due_today:dueToday.length
     },
-    projects:projects.map(p=>({id:p.id,name:p.name,workspace:p.workspace||p.type||null})),
-    priority_stack:[...overdue,...dueToday,...upcoming,...unscheduled].slice(0,10),
-    tasks:normalized
+    projects:projectDetails,
+    priority_stack:[...overdue,...dueToday,...upcoming,...unscheduled].slice(0,15)
   };
 }
 
@@ -225,13 +308,7 @@ export default async function handler(req,res){
         return res.status(400).json({error:'due_date must be YYYY-MM-DD'});
       }
       try{
-        const task = await createTask({
-          projectId:project_id,
-          name:String(task_name),
-          dueDate:due_date,
-          details,
-          owner
-        });
+        const task = await createTask({projectId:project_id,name:String(task_name),dueDate:due_date,details,owner});
         return res.status(201).json({ok:true,action:'create',task});
       }catch(e){
         if(e.code===409) return res.status(409).json({error:e.message,duplicate:e.duplicate});
@@ -245,32 +322,60 @@ export default async function handler(req,res){
       return res.status(405).json({error:'Method not allowed'});
     }
 
-    const { task_id, action, due_date, details } = req.body || {};
+    const { task_id, task_type='live', action, due_date, details } = req.body || {};
     if(!task_id || !action) return res.status(400).json({error:'task_id and action are required'});
 
-    const task = await getTask(task_id);
+    const isPlan = task_type==='plan';
+    const task = isPlan ? await getPlanTask(task_id) : await getTask(task_id);
     if(!task) return res.status(404).json({error:'Task not found'});
 
     let updated;
     if(action==='complete'){
-      updated = await updateTask(task_id,{is_done:true});
-      await logUpdate({taskId:task.id,projectId:task.project_id,actionType:'complete',message:`Tomo marked task complete: ${task.name}`});
+      updated = isPlan
+        ? await updatePlanTask(task_id,{is_done:true,status:'Complete'})
+        : await updateTask(task_id,{is_done:true});
+      await logUpdate({
+        taskId:isPlan?null:task.id,
+        projectId:task.project_id,
+        actionType:'complete',
+        message:`Tomo marked ${isPlan?'project-plan ':' '}task complete: ${task.name}`
+      });
     }else if(action==='reopen'){
-      updated = await updateTask(task_id,{is_done:false});
-      await logUpdate({taskId:task.id,projectId:task.project_id,actionType:'update',message:`Tomo reopened task: ${task.name}`});
+      updated = isPlan
+        ? await updatePlanTask(task_id,{is_done:false,status:'Open'})
+        : await updateTask(task_id,{is_done:false});
+      await logUpdate({
+        taskId:isPlan?null:task.id,
+        projectId:task.project_id,
+        actionType:'update',
+        message:`Tomo reopened ${isPlan?'project-plan ':' '}task: ${task.name}`
+      });
     }else if(action==='reschedule'){
       if(!due_date || !/^\d{4}-\d{2}-\d{2}$/.test(due_date)) return res.status(400).json({error:'A YYYY-MM-DD due_date is required'});
-      updated = await updateTask(task_id,{due_date});
-      await logUpdate({taskId:task.id,projectId:task.project_id,actionType:'reschedule',requestedDate:due_date,message:`Tomo rescheduled "${task.name}" to ${due_date}`});
+      updated = isPlan ? await updatePlanTask(task_id,{due_date}) : await updateTask(task_id,{due_date});
+      await logUpdate({
+        taskId:isPlan?null:task.id,
+        projectId:task.project_id,
+        actionType:'reschedule',
+        requestedDate:due_date,
+        message:`Tomo rescheduled ${isPlan?'project-plan ':' '}task "${task.name}" to ${due_date}`
+      });
     }else if(action==='update_details'){
       if(typeof details!=='string') return res.status(400).json({error:'details must be text'});
-      updated = await updateTask(task_id,{details:details.slice(0,5000)});
-      await logUpdate({taskId:task.id,projectId:task.project_id,actionType:'update',message:`Tomo updated task details: ${task.name}`});
+      updated = isPlan
+        ? await updatePlanTask(task_id,{notes:details.slice(0,5000)})
+        : await updateTask(task_id,{details:details.slice(0,5000)});
+      await logUpdate({
+        taskId:isPlan?null:task.id,
+        projectId:task.project_id,
+        actionType:'update',
+        message:`Tomo updated ${isPlan?'project-plan ':' '}task details: ${task.name}`
+      });
     }else{
       return res.status(400).json({error:'Unsupported action',allowed:['complete','reopen','reschedule','update_details']});
     }
 
-    return res.status(200).json({ok:true,action,task:updated});
+    return res.status(200).json({ok:true,action,task_type,task:updated});
   }catch(error){
     console.error('Tomo task API error',error);
     return res.status(500).json({error:'Unable to process Tomo task request'});
