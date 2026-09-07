@@ -287,6 +287,42 @@ tr:last-child td{border-bottom:0}
   min-width:105px;
 }
 
+
+.summaryCountBadge{
+  cursor:pointer;
+  user-select:none;
+  transition:border-color .15s ease,background .15s ease,transform .15s ease;
+}
+.summaryCountBadge:active{transform:scale(.98)}
+@media (hover:hover) and (pointer:fine){
+  .summaryCountBadge:hover{
+    border-color:var(--cyan);
+    background:rgba(69,217,255,.08);
+  }
+}
+.fullListBox{width:min(900px,95vw);max-height:88vh;overflow:auto}
+.fullListRows{display:flex;flex-direction:column;gap:9px;margin-top:12px}
+.fullListRow{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:12px;
+  align-items:center;
+  border:1px solid #284452;
+  border-radius:13px;
+  background:#08151d;
+  padding:12px 14px;
+  cursor:pointer;
+  min-width:0;
+}
+.fullListRow:active{background:#0c202a}
+@media (hover:hover) and (pointer:fine){
+  .fullListRow:hover{border-color:#3a6d84;background:#0a1d27}
+}
+.fullListTitle{font-weight:900;line-height:1.25;min-width:0;overflow-wrap:anywhere}
+.fullListMeta{font-size:11px;color:#94a8b5;margin-top:4px;line-height:1.35}
+.fullListRight{font-size:11px;color:#66dfff;font-weight:850;white-space:nowrap}
+.fullListEmpty{color:#94a8b5;padding:16px 2px}
+
 </style>
 </head>
 <body>
@@ -327,7 +363,7 @@ tr:last-child td{border-bottom:0}
         <div><div class="cardTitle">🎯 Action Center</div><div class="cardSub">Scroll all open actions</div></div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <button id="newTaskBtn" class="btn primary">＋ New task</button>
-          <span id="openCount" class="badge">— OPEN</span>
+          <span id="openCount" class="badge summaryCountBadge" role="button" tabindex="0" aria-label="Open all Action Center tasks">— OPEN</span>
         </div>
       </div>
       <div id="actionList" class="actionBody scroll"><div class="cardSub">Loading actions…</div></div>
@@ -376,7 +412,7 @@ tr:last-child td{border-bottom:0}
     <section class="card projects">
       <div class="cardHeader">
         <div><div class="cardTitle">📁 Project Command Center</div><div class="cardSub">Project portfolio · scroll to see all</div></div>
-        <span id="projectBadge" class="badge">— PROJECTS</span>
+        <span id="projectBadge" class="badge summaryCountBadge" role="button" tabindex="0" aria-label="Open all projects">— PROJECTS</span>
       </div>
       <div class="tableWrap">
         <table class="projectTable">
@@ -572,6 +608,21 @@ tr:last-child td{border-bottom:0}
  </div>
 </div>
 
+
+<div id="fullListModal" class="modal">
+ <div class="modalBox fullListBox">
+  <div class="modalTop">
+   <div>
+    <div id="fullListLabel" class="sectionLabel">FULL LIST</div>
+    <div id="fullListTitle" class="modalTitle">Items</div>
+    <div id="fullListMeta" class="modalMeta"></div>
+   </div>
+   <button id="fullListClose" class="btn">✕</button>
+  </div>
+  <div id="fullListRows" class="fullListRows"></div>
+ </div>
+</div>
+
 <div id="projectModal" class="modal">
  <div class="modalBox" style="width:min(900px,96vw);max-height:88vh;overflow:auto">
   <div class="modalTop">
@@ -651,6 +702,67 @@ function renderBriefs(){
  const items=state.briefs.flatMap(b=>String(b.content||b.brief||b.summary||b.message||b.title||'').split(/\n+/).filter(Boolean).map(x=>x.replace(/^[-•]\s*/,''))).slice(0,10);
  $('briefs').innerHTML=items.length?`<ul class="briefList">${items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:'<div class="cardSub">Nothing urgent right now.</div>';
 }
+
+function closeFullList(){
+ $('fullListModal').classList.remove('show');
+}
+
+function openAllActions(){
+ const rows=state.tasks.filter(t=>!t.is_done);
+ $('fullListLabel').textContent='ACTION CENTER';
+ $('fullListTitle').textContent=`All ${rows.length} open actions`;
+ $('fullListMeta').textContent='Tap any task to open its full details and actions.';
+ $('fullListRows').innerHTML=rows.length?rows.map(t=>{
+   const p=projectFor(t);
+   return `<div class="fullListRow" data-fulltask="${t.id}">
+     <div>
+       <div class="fullListTitle">📌 ${esc(t.name)}</div>
+       <div class="fullListMeta">${esc(p?.name||p?.title||'Kay')}${t.owner?` · ${esc(t.owner)}`:''}${t.due_date?` · due ${fmtDate(t.due_date)}`:' · no due date'}</div>
+     </div>
+     <div class="fullListRight">Open →</div>
+   </div>`;
+ }).join(''):'<div class="fullListEmpty">No open actions.</div>';
+ document.querySelectorAll('[data-fulltask]').forEach(r=>r.onclick=()=>{
+   closeFullList();
+   openTask(r.dataset.fulltask);
+ });
+ $('fullListModal').classList.add('show');
+}
+
+function openAllProjects(){
+ const rows=state.projects.filter(p=>String(p.status||'active').toLowerCase()!=='complete');
+ $('fullListLabel').textContent='PROJECT COMMAND CENTER';
+ $('fullListTitle').textContent=`All ${rows.length} projects`;
+ $('fullListMeta').textContent='Tap any project to open Overview, Project Plan, Live Tasks, Milestones, Risks, and Decisions.';
+ $('fullListRows').innerHTML=rows.length?rows.map(p=>{
+   const live=state.tasks.filter(t=>t.project_id===p.id);
+   const liveDone=live.filter(t=>t.is_done).length;
+   const pi=projectPlanInfo(p.id);
+   const total=pi.tasks.length||live.length;
+   const done=pi.tasks.length?pi.done:liveDone;
+   const date=p.target_date||p.due_date||p.go_live||null;
+   return `<div class="fullListRow" data-fullproject="${p.id}">
+     <div>
+       <div class="fullListTitle">📁 ${esc(p.name||p.title||'Untitled project')}</div>
+       <div class="fullListMeta">${esc(p.workspace||p.type||'Personal')} · ${done}/${total} complete${date?` · ${fmtDate(date)}`:''}${p.next_move?` · ${esc(p.next_move)}`:''}</div>
+     </div>
+     <div class="fullListRight">Open →</div>
+   </div>`;
+ }).join(''):'<div class="fullListEmpty">No active projects.</div>';
+ document.querySelectorAll('[data-fullproject]').forEach(r=>r.onclick=()=>{
+   closeFullList();
+   openProject(r.dataset.fullproject);
+ });
+ $('fullListModal').classList.add('show');
+}
+
+$('openCount').onclick=openAllActions;
+$('projectBadge').onclick=openAllProjects;
+$('openCount').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openAllActions()}};
+$('projectBadge').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openAllProjects()}};
+$('fullListClose').onclick=closeFullList;
+$('fullListModal').onclick=e=>{if(e.target===$('fullListModal'))closeFullList()};
+
 function renderActions(){
  const rows=state.tasks.filter(t=>!t.is_done);$('openCount').textContent=`${rows.length} OPEN`;
  $('actionList').innerHTML=rows.length?rows.map(t=>{const p=projectFor(t);return `<div class="actionRow" data-id="${t.id}"><div class="pin">📌</div><div><div class="actionName">${esc(t.name)}</div><div class="actionMeta">${esc(p?.name||p?.title||'Kay')}${t.due_date?` · due ${fmtDate(t.due_date)}`:''}</div></div></div>`}).join(''):'<div class="cardSub">No open actions.</div>';
