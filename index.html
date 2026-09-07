@@ -333,7 +333,7 @@ tr:last-child td{border-bottom:0}
       <div><div class="brandTitle">KAY // COMMAND</div><div class="tagline">LIFE · WORK · MONEY · MOVES</div></div>
     </div>
     <div class="topActions">
-      <span id="emailChip" class="chip">signed in</span>
+      <span id="emailChip" class="chip">Restoring trusted device session…</span>
       <button id="refreshBtn" class="btn">↻ Refresh</button>
       <button id="signOutBtn" class="btn">Sign out</button>
     </div>
@@ -649,13 +649,21 @@ tr:last-child td{border-bottom:0}
 </div>
 
 <div id="authModal" class="auth">
- <div class="authBox"><div class="sectionLabel">SECURE ACCESS</div><h2>Sign in once</h2><p class="cardSub">Your Supabase session is stored on this device.</p><input id="emailInput" type="email" placeholder="you@example.com"><button id="magicBtn" class="btn primary" style="width:100%">Send magic link</button><p id="authMsg" class="cardSub"></p></div>
+ <div class="authBox"><div class="sectionLabel">TRUSTED DEVICE ACCESS</div><h2>Authorize this device once</h2><p class="cardSub">After authorization, Kay Command will keep this device signed in and refresh the session automatically.</p><input id="emailInput" type="email" placeholder="you@example.com"><button id="magicBtn" class="btn primary" style="width:100%">Send magic link</button><p id="authMsg" class="cardSub"></p></div>
 </div>
 
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 const SUPABASE_URL='https://najlvczgxwvqjvpvfzji.supabase.co', SUPABASE_KEY='sb_publishable_4S9mvRol3OhFYpADykEGDw_MP-IhaZu';
-const supabase=createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+const supabase=createClient(SUPABASE_URL,SUPABASE_KEY,{
+ auth:{
+  persistSession:true,
+  autoRefreshToken:true,
+  detectSessionInUrl:true,
+  storage:window.localStorage,
+  storageKey:'kay-command-auth-v1'
+ }
+});
 const $=id=>document.getElementById(id);
 let state={tasks:[],projects:[],briefs:[],sources:[],jobs:[],plans:[],planTasks:[],milestones:[],risks:[],decisions:[],financePayments:[],financeAccounts:[],financeAlerts:[],user:null},activeTaskId=null,activeJobId=null,currentJobLane=null,activeProjectId=null,activeFinancePaymentId=null;
 const esc=(v='')=>String(v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
@@ -668,13 +676,75 @@ function dueWeek(t){if(!t.due_date)return false;const d=new Date(t.due_date+'T12
 function atRisk(t){if(t.is_done)return false;const txt=`${t.name} ${t.details||''}`;if(/risk|blocked|overdue|dependency|late/i.test(txt))return true;if(t.due_date)return new Date(t.due_date+'T12:00:00')<today();return false}
 function projectFor(t){return state.projects.find(p=>p.id===t.project_id)}
 function setGreeting(){const h=new Date().getHours();$('greeting').textContent=`Good ${h<12?'morning':h<18?'afternoon':'evening'}, Kay.`;$('turn50Days').textContent=daysUntil('2026-10-03');$('weddingDays').textContent=daysUntil('2026-11-07')}
-async function ensureAuth(){
- const {data:{session}}=await supabase.auth.getSession();state.user=session?.user||null;
- if(!state.user){$('authModal').classList.add('show');return false}
- $('authModal').classList.remove('show');$('emailChip').textContent=state.user.email||'signed in';return true
+let authBooting=true;
+
+function applySignedInSession(session){
+ state.user=session?.user||null;
+ if(!state.user)return false;
+ $('authModal').classList.remove('show');
+ $('emailChip').textContent=state.user.email||'signed in';
+ try{localStorage.setItem('kay-command-trusted-device','1')}catch(e){}
+ return true;
 }
-$('magicBtn').onclick=async()=>{const email=$('emailInput').value.trim();if(!email)return;$('authMsg').textContent='Sending…';const {error}=await supabase.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin}});$('authMsg').textContent=error?error.message:'Magic link sent.'};
-$('signOutBtn').onclick=async()=>{await supabase.auth.signOut();location.reload()};
+
+async function recoverStoredSession(){
+ // Supabase persists the refresh token in localStorage. getSession restores it
+ // and autoRefreshToken keeps the access token current while the app is open.
+ let result=await supabase.auth.getSession();
+ let session=result?.data?.session||null;
+ if(session && applySignedInSession(session))return true;
+
+ // If a stored session exists but the access token needs refreshing, try once.
+ try{
+   const refreshed=await supabase.auth.refreshSession();
+   session=refreshed?.data?.session||null;
+   if(session && applySignedInSession(session))return true;
+ }catch(e){}
+
+ // A magic-link callback may still be resolving when the Home Screen app opens.
+ // Give the auth-state listener a short chance to receive SIGNED_IN before
+ // showing another magic-link prompt.
+ await new Promise(resolve=>setTimeout(resolve,900));
+ result=await supabase.auth.getSession();
+ session=result?.data?.session||null;
+ if(session && applySignedInSession(session))return true;
+
+ return false;
+}
+
+async function ensureAuth(){
+ if(state.user)return true;
+ const ok=await recoverStoredSession();
+ if(ok)return true;
+ if(!authBooting)$('authModal').classList.add('show');
+ return false;
+}
+
+async function initializeApp(){
+ $('authModal').classList.remove('show');
+ const ok=await recoverStoredSession();
+ authBooting=false;
+ if(ok){
+   await loadAll();
+ }else{
+   $('authModal').classList.add('show');
+ }
+}
+
+$('magicBtn').onclick=async()=>{
+ const email=$('emailInput').value.trim();
+ if(!email)return;
+ $('authMsg').textContent='Sending secure device authorization…';
+ const redirectTo=location.origin+location.pathname;
+ const {error}=await supabase.auth.signInWithOtp({email,options:{emailRedirectTo:redirectTo}});
+ $('authMsg').textContent=error?error.message:'Authorization link sent. After you use it once on this device, Kay Command should stay signed in.';
+};
+
+$('signOutBtn').onclick=async()=>{
+ try{localStorage.removeItem('kay-command-trusted-device')}catch(e){}
+ await supabase.auth.signOut();
+ location.reload();
+};
 async function loadAll(){
  if(!await ensureAuth())return;
  $('liveBar').textContent='● Syncing live data…';
@@ -1412,8 +1482,18 @@ $('speakBtn').onclick=()=>{
 };
 
 $('refreshBtn').onclick=loadAll;
-supabase.auth.onAuthStateChange(()=>setTimeout(loadAll,0));
-setGreeting();loadAll();
+supabase.auth.onAuthStateChange((event,session)=>{
+ if(session && ['SIGNED_IN','TOKEN_REFRESHED','INITIAL_SESSION','USER_UPDATED'].includes(event)){
+   const first=!state.user;
+   applySignedInSession(session);
+   if(!authBooting && first)setTimeout(loadAll,0);
+ }else if(event==='SIGNED_OUT'){
+   state.user=null;
+   if(!authBooting)$('authModal').classList.add('show');
+ }
+});
+setGreeting();
+initializeApp();
 </script>
 </body>
 </html>
