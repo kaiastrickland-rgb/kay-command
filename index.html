@@ -820,139 +820,103 @@ async function loadAll(){
 }
 function renderAll(){setGreeting();renderBriefs();renderActions();renderCareer();renderMoney();renderInbox();renderCalendar();renderProjects();renderSystems()}
 function renderBriefs(){
- // Executive brief should reflect ONLY the newest command brief.
- // Older briefs remain in Supabase history but are not blended into today's summary.
+ // Executive Command Brief = attention summary, not a duplicate of every dashboard section.
+ // Build it from live tasks + the newest brief, with ONE finance status line only.
  const latest=state.briefs[0];
  const raw=String(latest?.content||latest?.brief||latest?.summary||latest?.message||latest?.title||'').trim();
 
- if(!raw){
-   $('briefs').innerHTML='<div class="cardSub">Nothing urgent right now.</div>';
-   return;
- }
+ const projectName=(task)=>{
+   const p=state.projects.find(x=>String(x.id)===String(task.project_id));
+   return p?.name||p?.title||'';
+ };
 
- // Break long "1) ... 2) ..." command-focus paragraphs into readable executive bullets.
- let pieces=raw
-   .split(/\n+/)
-   .flatMap(line=>{
-     const clean=String(line||'').replace(/^[-•]\s*/,'').trim();
-     if(!clean)return [];
-     const numbered=clean
-       .replace(/^(today'?s\s+command\s+focus|today'?s\s+focus|command\s+focus)\s*:\s*/i,'')
-       .split(/(?=\b\d+\)\s*)/)
-       .map(x=>x.replace(/^\d+\)\s*/,'').trim())
-       .filter(Boolean);
-     return numbered.length?numbered:[clean];
-   });
+ const todayStr=(()=>{
+   const d=new Date();
+   const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');
+   return `${y}-${m}-${day}`;
+ })();
 
+ const openTasks=(state.tasks||[]).filter(t=>!t.is_done);
+ const overdue=openTasks.filter(t=>t.due_date && t.due_date<todayStr);
+ const dueToday=openTasks.filter(t=>t.due_date===todayStr);
+ const upcoming=openTasks.filter(t=>t.due_date && t.due_date>todayStr)
+   .sort((a,b)=>String(a.due_date).localeCompare(String(b.due_date)));
+
+ const briefPieces=raw
+   ? raw.split(/\n+/).flatMap(line=>{
+       const clean=String(line||'').replace(/^[-•]\s*/,'').trim();
+       if(!clean)return [];
+       return clean
+         .replace(/^(today'?s\s+command\s+focus|today'?s\s+focus|command\s+focus)\s*:\s*/i,'')
+         .split(/(?=\b\d+\)\s*)/)
+         .map(x=>x.replace(/^\d+\)\s*/,'').trim())
+         .filter(Boolean);
+     })
+   : [];
+
+ // Filter only true financial-detail lines. Do NOT throw away other notable content
+ // just because the original brief happened to mention finance somewhere else.
  const detailedFinance=/(\$[\d,.]+|\b(balance|payoff|past due|available|spending cash|bills bucket|sequence|navy federal|ally|santander|westlake|zip|sezzle|four\/walmart|four\b|perpay|usaa|credit one)\b)/i;
  const financeTheme=/\b(finance|financial|catch[- ]?up|recovery plan|recovery wave|allocation|payment|obligation)\b/i;
- const duplicateMilestone=/\b(days until|major dated milestones?|october 3,? 2026|november 7,? 2026|11\.7\.26)\b/i;
- const calendarDuplicate=/\b(no active calendar|calendar events? (?:are )?scheduled)\b/i;
+ const pureMilestone=/\b(days until|october 3,? 2026|november 7,? 2026|11\.7\.26)\b/i;
+ const emptyCalendar=/\b(no active calendar|no calendar events?|calendar events? (?:are )?scheduled)\b/i;
 
- let sawFinance=false;
- const kept=[];
+ const bullets=[];
  const seen=new Set();
-
- for(const p0 of pieces){
-   let p=p0.replace(/\s+/g,' ').replace(/^[;,:-]+\s*/,'').trim();
-   if(!p)continue;
-
-   if(financeTheme.test(p)||detailedFinance.test(p)){
-     sawFinance=true;
-     // Never expose balance/payment-detail lines in the executive brief.
-     continue;
-   }
-
-   // Major milestone dates already have their own dashboard card.
-   if(duplicateMilestone.test(p))continue;
-
-   // "No active calendar..." is already represented in the calendar section and adds clutter.
-   if(calendarDuplicate.test(p))continue;
-
-   const key=p.toLowerCase()
-     .replace(/[^\w\s]/g,'')
-     .replace(/\s+/g,' ')
-     .trim();
-   if(!key||seen.has(key))continue;
+ const add=(text)=>{
+   const clean=String(text||'').replace(/\s+/g,' ').replace(/^[;,:-]+\s*/,'').trim();
+   if(!clean)return;
+   const key=clean.toLowerCase().replace(/[^\w\s]/g,'').replace(/\s+/g,' ').trim();
+   if(!key||seen.has(key))return;
    seen.add(key);
+   bullets.push(clean);
+ };
 
-   // Clean trailing numbered-list punctuation left over from source brief.
-   p=p.replace(/[;:]\s*$/,'').trim();
-   kept.push(p);
+ // 1) Time-critical live work.
+ if(overdue.length){
+   const shown=overdue.slice(0,3).map(t=>`${t.name}${projectName(t)?` (${projectName(t)})`:''}`);
+   add(`Overdue attention: ${shown.join('; ')}${overdue.length>3?`; +${overdue.length-3} more`:''}.`);
+ }
+ if(dueToday.length){
+   const shown=dueToday.slice(0,4).map(t=>`${t.name}${projectName(t)?` (${projectName(t)})`:''}`);
+   add(`Due today: ${shown.join('; ')}${dueToday.length>4?`; +${dueToday.length-4} more`:''}.`);
  }
 
- // One concise finance line only — no balances, payoff quotes, or individual payment amounts.
- if(sawFinance){
-   kept.push('Finance catch-up plan: Active and moving through the scheduled recovery plan; protect planned allocations and confirm payments as they post.');
+ // 2) Keep notable non-financial items from the newest command brief.
+ for(const p of briefPieces){
+   if(detailedFinance.test(p)||financeTheme.test(p))continue;
+   if(pureMilestone.test(p))continue;      // already shown in Next Major Milestones
+   if(emptyCalendar.test(p))continue;      // don't waste executive-summary space on "nothing scheduled"
+   add(p.replace(/[;:]\s*$/,''));
  }
 
- // Keep the Executive Command Brief executive: maximum six bullets.
- const finalItems=kept.slice(0,6);
+ // 3) If today's brief did not surface enough, use the next closest live work.
+ if(bullets.length<4 && upcoming.length){
+   const nextDate=upcoming[0]?.due_date;
+   const sameDate=upcoming.filter(t=>t.due_date===nextDate).slice(0,3);
+   if(sameDate.length){
+     add(`Next up (${fmtDate(nextDate)}): ${sameDate.map(t=>`${t.name}${projectName(t)?` (${projectName(t)})`:''}`).join('; ')}.`);
+   }
+ }
+
+ // 4) Career attention summary if there is active pipeline.
+ const jobs=state.jobs||[];
+ const activeJobs=jobs.filter(j=>!['closed','rejected','withdrawn'].includes(String(j.status||'').toLowerCase()));
+ const activeApps=jobs.filter(j=>/applied|applying|interview|screen/i.test(String(j.status||'')));
+ if((activeApps.length||activeJobs.length) && !bullets.some(x=>/\bcareer|application|interview|job\b/i.test(x))){
+   add(`Career: ${activeApps.length} active application${activeApps.length===1?'':'s'} and ${activeJobs.length} open opportunity${activeJobs.length===1?'':'ies'} in the current pipeline.`);
+ }
+
+ // 5) One and only one finance bullet.
+ add('Finance catch-up plan: Active and moving through the scheduled recovery plan; protect planned allocations and confirm payments as they post.');
+
+ // Keep it executive but useful: show up to 8 attention bullets.
+ const finalItems=bullets.slice(0,8);
 
  $('briefs').innerHTML=finalItems.length
    ?`<ul class="briefList">${finalItems.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`
    :'<div class="cardSub">Nothing urgent right now.</div>';
 }
-
-function closeFullList(){
- $('fullListModal').classList.remove('show');
-}
-
-function openAllActions(){
- const rows=state.tasks.filter(t=>!t.is_done);
- $('fullListLabel').textContent='ACTION CENTER';
- $('fullListTitle').textContent=`All ${rows.length} open actions`;
- $('fullListMeta').textContent='Tap any task to open its full details and actions.';
- $('fullListRows').innerHTML=rows.length?rows.map(t=>{
-   const p=projectFor(t);
-   return `<div class="fullListRow" data-fulltask="${t.id}">
-     <div>
-       <div class="fullListTitle">📌 ${esc(t.name)}</div>
-       <div class="fullListMeta">${esc(p?.name||p?.title||'Kay')}${t.owner?` · ${esc(t.owner)}`:''}${t.due_date?` · due ${fmtDate(t.due_date)}`:' · no due date'}</div>
-     </div>
-     <div class="fullListRight">Open →</div>
-   </div>`;
- }).join(''):'<div class="fullListEmpty">No open actions.</div>';
- document.querySelectorAll('[data-fulltask]').forEach(r=>r.onclick=()=>{
-   closeFullList();
-   openTask(r.dataset.fulltask);
- });
- $('fullListModal').classList.add('show');
-}
-
-function openAllProjects(){
- const rows=state.projects.filter(p=>String(p.status||'active').toLowerCase()!=='complete');
- $('fullListLabel').textContent='PROJECT COMMAND CENTER';
- $('fullListTitle').textContent=`All ${rows.length} projects`;
- $('fullListMeta').textContent='Tap any project to open Overview, Project Plan, Live Tasks, Milestones, Risks, and Decisions.';
- $('fullListRows').innerHTML=rows.length?rows.map(p=>{
-   const live=state.tasks.filter(t=>t.project_id===p.id);
-   const liveDone=live.filter(t=>t.is_done).length;
-   const pi=projectPlanInfo(p.id);
-   const total=pi.tasks.length||live.length;
-   const done=pi.tasks.length?pi.done:liveDone;
-   const date=p.target_date||p.due_date||p.go_live||null;
-   return `<div class="fullListRow" data-fullproject="${p.id}">
-     <div>
-       <div class="fullListTitle">📁 ${esc(p.name||p.title||'Untitled project')}</div>
-       <div class="fullListMeta">${esc(p.workspace||p.type||'Personal')} · ${done}/${total} complete${date?` · ${fmtDate(date)}`:''}${p.next_move?` · ${esc(p.next_move)}`:''}</div>
-     </div>
-     <div class="fullListRight">Open →</div>
-   </div>`;
- }).join(''):'<div class="fullListEmpty">No active projects.</div>';
- document.querySelectorAll('[data-fullproject]').forEach(r=>r.onclick=()=>{
-   closeFullList();
-   openProject(r.dataset.fullproject);
- });
- $('fullListModal').classList.add('show');
-}
-
-$('openCount').onclick=openAllActions;
-$('projectBadge').onclick=openAllProjects;
-$('openCount').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openAllActions()}};
-$('projectBadge').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openAllProjects()}};
-$('fullListClose').onclick=closeFullList;
-$('fullListModal').onclick=e=>{if(e.target===$('fullListModal'))closeFullList()};
 
 function renderActions(){
  const rows=state.tasks.filter(t=>!t.is_done);$('openCount').textContent=`${rows.length} OPEN`;
