@@ -323,6 +323,26 @@ tr:last-child td{border-bottom:0}
 .fullListRight{font-size:11px;color:#66dfff;font-weight:850;white-space:nowrap}
 .fullListEmpty{color:#94a8b5;padding:16px 2px}
 
+
+/* Executive Command Brief — compact mobile executive-summary treatment */
+.briefList{
+  margin:4px 0 0;
+  padding-left:22px;
+  display:grid;
+  gap:12px;
+}
+.briefList li{
+  margin:0;
+  padding-left:4px;
+  line-height:1.45;
+  overflow-wrap:anywhere;
+}
+.briefList li strong{font-weight:900}
+@media(max-width:650px){
+  .briefList{padding-left:20px;gap:10px}
+  .briefList li{line-height:1.4}
+}
+
 </style>
 </head>
 <body>
@@ -800,8 +820,78 @@ async function loadAll(){
 }
 function renderAll(){setGreeting();renderBriefs();renderActions();renderCareer();renderMoney();renderInbox();renderCalendar();renderProjects();renderSystems()}
 function renderBriefs(){
- const items=state.briefs.flatMap(b=>String(b.content||b.brief||b.summary||b.message||b.title||'').split(/\n+/).filter(Boolean).map(x=>x.replace(/^[-•]\s*/,''))).slice(0,10);
- $('briefs').innerHTML=items.length?`<ul class="briefList">${items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:'<div class="cardSub">Nothing urgent right now.</div>';
+ // Executive brief should reflect ONLY the newest command brief.
+ // Older briefs remain in Supabase history but are not blended into today's summary.
+ const latest=state.briefs[0];
+ const raw=String(latest?.content||latest?.brief||latest?.summary||latest?.message||latest?.title||'').trim();
+
+ if(!raw){
+   $('briefs').innerHTML='<div class="cardSub">Nothing urgent right now.</div>';
+   return;
+ }
+
+ // Break long "1) ... 2) ..." command-focus paragraphs into readable executive bullets.
+ let pieces=raw
+   .split(/\n+/)
+   .flatMap(line=>{
+     const clean=String(line||'').replace(/^[-•]\s*/,'').trim();
+     if(!clean)return [];
+     const numbered=clean
+       .replace(/^(today'?s\s+command\s+focus|today'?s\s+focus|command\s+focus)\s*:\s*/i,'')
+       .split(/(?=\b\d+\)\s*)/)
+       .map(x=>x.replace(/^\d+\)\s*/,'').trim())
+       .filter(Boolean);
+     return numbered.length?numbered:[clean];
+   });
+
+ const detailedFinance=/(\$[\d,.]+|\b(balance|payoff|past due|available|spending cash|bills bucket|sequence|navy federal|ally|santander|westlake|zip|sezzle|four\/walmart|four\b|perpay|usaa|credit one)\b)/i;
+ const financeTheme=/\b(finance|financial|catch[- ]?up|recovery plan|recovery wave|allocation|payment|obligation)\b/i;
+ const duplicateMilestone=/\b(days until|major dated milestones?|october 3,? 2026|november 7,? 2026|11\.7\.26)\b/i;
+ const calendarDuplicate=/\b(no active calendar|calendar events? (?:are )?scheduled)\b/i;
+
+ let sawFinance=false;
+ const kept=[];
+ const seen=new Set();
+
+ for(const p0 of pieces){
+   let p=p0.replace(/\s+/g,' ').replace(/^[;,:-]+\s*/,'').trim();
+   if(!p)continue;
+
+   if(financeTheme.test(p)||detailedFinance.test(p)){
+     sawFinance=true;
+     // Never expose balance/payment-detail lines in the executive brief.
+     continue;
+   }
+
+   // Major milestone dates already have their own dashboard card.
+   if(duplicateMilestone.test(p))continue;
+
+   // "No active calendar..." is already represented in the calendar section and adds clutter.
+   if(calendarDuplicate.test(p))continue;
+
+   const key=p.toLowerCase()
+     .replace(/[^\w\s]/g,'')
+     .replace(/\s+/g,' ')
+     .trim();
+   if(!key||seen.has(key))continue;
+   seen.add(key);
+
+   // Clean trailing numbered-list punctuation left over from source brief.
+   p=p.replace(/[;:]\s*$/,'').trim();
+   kept.push(p);
+ }
+
+ // One concise finance line only — no balances, payoff quotes, or individual payment amounts.
+ if(sawFinance){
+   kept.push('Finance catch-up plan: Active and moving through the scheduled recovery plan; protect planned allocations and confirm payments as they post.');
+ }
+
+ // Keep the Executive Command Brief executive: maximum six bullets.
+ const finalItems=kept.slice(0,6);
+
+ $('briefs').innerHTML=finalItems.length
+   ?`<ul class="briefList">${finalItems.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`
+   :'<div class="cardSub">Nothing urgent right now.</div>';
 }
 
 function closeFullList(){
