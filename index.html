@@ -649,7 +649,7 @@ tr:last-child td{border-bottom:0}
 </div>
 
 <div id="authModal" class="auth">
- <div class="authBox"><div class="sectionLabel">TRUSTED DEVICE ACCESS</div><h2>Authorize this device once</h2><p class="cardSub">After authorization, Kay Command will keep this device signed in and refresh the session automatically.</p><input id="emailInput" type="email" placeholder="you@example.com"><button id="magicBtn" class="btn primary" style="width:100%">Send magic link</button><p id="authMsg" class="cardSub"></p></div>
+ <div class="authBox"><div class="sectionLabel">TRUSTED DEVICE ACCESS</div><h2>Trust this device once</h2><p class="cardSub">Enter your private Kay Command device access code one time. After that, this Home Screen app will silently restore its Supabase session without emailing you a magic link.</p><input id="deviceCodeInput" type="password" autocomplete="off" placeholder="Private device access code"><button id="trustDeviceBtn" class="btn primary" style="width:100%">Trust this device</button><p id="authMsg" class="cardSub"></p><p class="cardSub" style="margin-top:8px">This code stays on this device. Use Sign Out if you want Kay Command to forget the device.</p></div>
 </div>
 
 <script type="module">
@@ -660,8 +660,7 @@ const supabase=createClient(SUPABASE_URL,SUPABASE_KEY,{
   persistSession:true,
   autoRefreshToken:true,
   detectSessionInUrl:true,
-  storage:window.localStorage,
-  storageKey:'kay-command-auth-v1'
+  storage:window.localStorage
  }
 });
 const $=id=>document.getElementById(id);
@@ -677,37 +676,68 @@ function atRisk(t){if(t.is_done)return false;const txt=`${t.name} ${t.details||'
 function projectFor(t){return state.projects.find(p=>p.id===t.project_id)}
 function setGreeting(){const h=new Date().getHours();$('greeting').textContent=`Good ${h<12?'morning':h<18?'afternoon':'evening'}, Kay.`;$('turn50Days').textContent=daysUntil('2026-10-03');$('weddingDays').textContent=daysUntil('2026-11-07')}
 let authBooting=true;
+const TRUSTED_DEVICE_CODE_KEY='kay-command-device-code-v1';
 
 function applySignedInSession(session){
  state.user=session?.user||null;
  if(!state.user)return false;
  $('authModal').classList.remove('show');
  $('emailChip').textContent=state.user.email||'signed in';
- try{localStorage.setItem('kay-command-trusted-device','1')}catch(e){}
  return true;
 }
 
+async function establishSessionFromDeviceCode(code,{silent=false}={}){
+ if(!code)return false;
+ try{
+   if(!silent)$('authMsg').textContent='Authorizing this device…';
+   const resp=await fetch('/api/trusted-device',{
+     method:'POST',
+     headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({code})
+   });
+   const data=await resp.json().catch(()=>({}));
+   if(!resp.ok)throw new Error(data.error||`Device authorization failed (${resp.status})`);
+   if(!data.token_hash)throw new Error('Device authorization did not return a session token.');
+
+   const {data:verified,error}=await supabase.auth.verifyOtp({
+     token_hash:data.token_hash,
+     type:'magiclink'
+   });
+   if(error)throw error;
+   const session=verified?.session||(await supabase.auth.getSession())?.data?.session||null;
+   if(!session)throw new Error('Supabase session could not be established.');
+
+   localStorage.setItem(TRUSTED_DEVICE_CODE_KEY,code);
+   applySignedInSession(session);
+   if(!silent)$('authMsg').textContent='Trusted device authorized ✓';
+   return true;
+ }catch(error){
+   if(!silent)$('authMsg').textContent=error?.message||'Unable to authorize this device.';
+   return false;
+ }
+}
+
 async function recoverStoredSession(){
- // Supabase persists the refresh token in localStorage. getSession restores it
- // and autoRefreshToken keeps the access token current while the app is open.
  let result=await supabase.auth.getSession();
  let session=result?.data?.session||null;
  if(session && applySignedInSession(session))return true;
 
- // If a stored session exists but the access token needs refreshing, try once.
+ // If a refresh token exists but the access token is stale, refresh once.
  try{
    const refreshed=await supabase.auth.refreshSession();
    session=refreshed?.data?.session||null;
    if(session && applySignedInSession(session))return true;
  }catch(e){}
 
- // A magic-link callback may still be resolving when the Home Screen app opens.
- // Give the auth-state listener a short chance to receive SIGNED_IN before
- // showing another magic-link prompt.
- await new Promise(resolve=>setTimeout(resolve,900));
- result=await supabase.auth.getSession();
- session=result?.data?.session||null;
- if(session && applySignedInSession(session))return true;
+ // Home Screen/Safari can have separate storage. If this Home Screen app was
+ // trusted before, silently mint a fresh Supabase session directly in THIS
+ // storage container instead of sending Kay back through email.
+ let savedCode='';
+ try{savedCode=localStorage.getItem(TRUSTED_DEVICE_CODE_KEY)||''}catch(e){}
+ if(savedCode){
+   const restored=await establishSessionFromDeviceCode(savedCode,{silent:true});
+   if(restored)return true;
+ }
 
  return false;
 }
@@ -731,17 +761,18 @@ async function initializeApp(){
  }
 }
 
-$('magicBtn').onclick=async()=>{
- const email=$('emailInput').value.trim();
- if(!email)return;
- $('authMsg').textContent='Sending secure device authorization…';
- const redirectTo=location.origin+location.pathname;
- const {error}=await supabase.auth.signInWithOtp({email,options:{emailRedirectTo:redirectTo}});
- $('authMsg').textContent=error?error.message:'Authorization link sent. After you use it once on this device, Kay Command should stay signed in.';
+$('trustDeviceBtn').onclick=async()=>{
+ const code=$('deviceCodeInput').value.trim();
+ if(!code)return;
+ const ok=await establishSessionFromDeviceCode(code);
+ if(ok){
+   $('deviceCodeInput').value='';
+   await loadAll();
+ }
 };
 
 $('signOutBtn').onclick=async()=>{
- try{localStorage.removeItem('kay-command-trusted-device')}catch(e){}
+ try{localStorage.removeItem(TRUSTED_DEVICE_CODE_KEY)}catch(e){}
  await supabase.auth.signOut();
  location.reload();
 };
