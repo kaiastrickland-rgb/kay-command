@@ -23,6 +23,8 @@ button,input,textarea{font:inherit} button{cursor:pointer}
 .brandTitle{font-weight:900;letter-spacing:.12em;font-size:20px}
 .tagline{font-size:12px;color:var(--muted);letter-spacing:.28em;margin-top:4px}
 .topActions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.topButtonPair{display:flex;flex-direction:row;align-items:center;gap:8px;flex-wrap:nowrap;flex:0 0 auto}
+.topButtonPair .btn{width:auto;flex:0 0 auto;white-space:nowrap}
 .chip,.btn{border:1px solid var(--line2);background:#0b1821;color:var(--text);border-radius:14px;padding:10px 14px;font-weight:750}
 .chip{border-radius:999px;color:var(--green);font-size:12px}
 .btn:hover,.btn:focus{border-color:var(--cyan)}
@@ -256,11 +258,21 @@ tr:last-child td{border-bottom:0}
 .jobList{display:flex;flex-direction:column;gap:9px;margin-top:12px}
 .jobItem{border:1px solid #284452;border-radius:13px;padding:12px;background:#08151d;cursor:pointer}
 .jobItem:hover{border-color:var(--cyan)}
-.jobTop{display:flex;justify-content:space-between;gap:12px}
+.jobTop{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.jobIdentity{min-width:0;flex:1 1 300px}
+.jobActionCluster{display:flex;flex-direction:row;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:nowrap;flex:0 0 auto}
+.jobActionCluster button{flex:0 0 auto;width:auto;white-space:nowrap}
+.jobStateBadge{display:inline-flex;align-items:center;border:1px solid #2c5364;border-radius:999px;padding:6px 9px;font-size:10px;font-weight:950;line-height:1;white-space:nowrap;text-transform:uppercase;letter-spacing:.04em}
+.jobStateBadge.open{color:#72e4ff;background:rgba(69,217,255,.08);border-color:rgba(69,217,255,.42)}
+.jobStateBadge.applying{color:#ffd77d;background:rgba(255,202,98,.08);border-color:rgba(255,202,98,.42)}
+.jobStateBadge.applied{color:#8ff8c3;background:rgba(71,236,161,.10);border-color:rgba(71,236,161,.48)}
+.jobAppliedDate{font-weight:900;color:#8ff8c3}
+@media(max-width:720px){.jobActionCluster{width:100%;justify-content:flex-end}}
 .jobTitle{font-weight:900}
 .jobMeta{font-size:11px;color:var(--muted);margin-top:4px}
 .jobStatus{font-size:10px;color:var(--green);font-weight:900;white-space:nowrap}
-.jobActions{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}
+.jobActions{display:flex;flex-direction:row;gap:9px;flex-wrap:nowrap;margin-top:14px;align-items:center}
+.jobActions .btn{flex:0 0 auto;width:auto;white-space:nowrap}
 @media(max-width:560px){.taskEditGrid{grid-template-columns:1fr}.taskEditGrid .full{grid-column:1}.modalActions{grid-template-columns:1fr}.modalActions .danger{grid-column:1}}
 
 .modal{display:none;position:fixed;inset:0;background:rgba(2,7,11,.82);backdrop-filter:blur(8px);z-index:50;align-items:center;justify-content:center;padding:18px}
@@ -385,8 +397,10 @@ tr:last-child td{border-bottom:0}
     </div>
     <div class="topActions">
       <span id="emailChip" class="chip">Restoring trusted device session…</span>
-      <button id="refreshBtn" class="btn">↻ Refresh</button>
-      <button id="signOutBtn" class="btn">Sign out</button>
+      <div class="topButtonPair">
+        <button id="refreshBtn" class="btn">↻ Refresh</button>
+        <button id="signOutBtn" class="btn">Sign out</button>
+      </div>
     </div>
   <div id="topCurrentDate" class="topDate"></div>
 </header>
@@ -997,8 +1011,7 @@ function renderActions(){
 function renderCareer(){
  const all=state.jobs||[];
  const open=all.filter(j=>!['closed','rejected','withdrawn'].includes(String(j.status||'').toLowerCase()));
- const strategic=open.filter(j=>String(j.lane||'').toLowerCase()==='strategic move');
- const immediate=open.filter(j=>String(j.lane||'').toLowerCase()==='immediate income');
+ const strategic=open.filter(j=>String(j.lane||'').toLowerCase()==='strategic move');const immediate=open.filter(j=>String(j.lane||'').toLowerCase()==='immediate income');
  const applications=all.filter(j=>/applied|applying|interview|screen/i.test(String(j.status||'')));
  $('careerLeads').textContent=open.length||'—';
  const row=(icon,name,desc,count,lane)=>`<div class="careerRow" data-lane="${lane}">
@@ -1521,17 +1534,22 @@ function openJobLane(lane){
 function renderJobList(lane){
  const jobs=jobsForLane(lane);
  $('jobList').innerHTML=jobs.length?jobs.map(j=>{
-  const applied=/^applied$/i.test(String(j.status||''));
+  const status=String(j.status||'Open');
+  const applied=/^applied$/i.test(status);
+  const applying=/^applying$/i.test(status);
+  const stateClass=applied?'applied':applying?'applying':'open';
+  const stateLabel=applied?'Applied':applying?'Applying':'Open';
+  const appliedDate=applied&&j.applied_at?new Date(j.applied_at).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}):'';
   return `<div class="jobItem" data-job="${j.id}">
    <div class="jobTop">
-    <div style="min-width:0"><div class="jobTitle">${esc(j.title||'Untitled role')}</div><div class="jobMeta">${esc(j.employer||'')} · ${esc(j.location||'')} · ${esc(j.work_arrangement||'')}</div></div>
-    <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;justify-content:flex-end">
-      <div class="jobStatus">${esc(j.status||'Open')}</div>
-      <button class="inlineApply" data-apply="${j.id}" ${j.apply_url?'':'disabled'}>Apply ↗</button>
+    <div class="jobIdentity"><div class="jobTitle">${esc(j.title||'Untitled role')}</div><div class="jobMeta">${esc(j.employer||'')} · ${esc(j.location||'')} · ${esc(j.work_arrangement||'')}</div></div>
+    <div class="jobActionCluster">
+      <span class="jobStateBadge ${stateClass}">${stateLabel}${appliedDate?` · ${esc(appliedDate)}`:''}</span>
+      <button class="inlineApply" data-apply="${j.id}" ${j.apply_url?'':'disabled'}>${applied?'View Posting ↗':'Apply ↗'}</button>
       <button class="inlineApplied" data-applied="${j.id}" ${applied?'disabled':''}>${applied?'Applied ✓':'I Applied ✓'}</button>
     </div>
    </div>
-   <div class="jobMeta">${esc(j.compensation||'Comp not listed')} · ${applied && j.applied_at?`Applied ${new Date(j.applied_at).toLocaleDateString()}`:'Tap card for details'}</div>
+   <div class="jobMeta">${esc(j.compensation||'Comp not listed')} · ${applied?`<span class="jobAppliedDate">${appliedDate?`Applied ${esc(appliedDate)}`:'Applied · date not recorded'}</span>`:'Tap card for details'}</div>
   </div>`;
  }).join(''):'<div class="cardSub">No jobs in this category yet.</div>';
 
@@ -1544,6 +1562,7 @@ function renderJobList(lane){
    e.stopPropagation();
    const j=state.jobs.find(x=>String(x.id)===String(b.dataset.apply));if(!j)return;
    if(j.apply_url)window.open(j.apply_url,'_blank','noopener');
+   if(/^applied$/i.test(String(j.status||'')))return;
    const {error}=await supabase.from('kay_jobs').update({status:'Applying',updated_at:new Date().toISOString()}).eq('id',j.id);
    if(!error){
      try{await supabase.from('kay_chat_messages').insert({user_id:state.user?.id||null,role:'system',message:`Career Command action: Opened application for ${j.title} at ${j.employer}; status set to Applying.`})}catch(e){}
