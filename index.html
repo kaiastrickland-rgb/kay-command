@@ -176,6 +176,18 @@ tr:last-child td{border-bottom:0}
 
 .financeEntry{cursor:pointer}
 .financeEntry:hover{border-color:#2d6a82}
+
+.financeReconcileNote{
+  margin-top:10px;
+  padding:10px 12px;
+  border:1px solid rgba(255,202,98,.45);
+  border-radius:12px;
+  background:rgba(255,202,98,.08);
+  color:#f6d889;
+  font-size:12px;
+  line-height:1.4;
+}
+.financeReconcileNote b{color:#ffe39a}
 .financeEntryHint{font-size:10px;color:#66dfff;margin-top:8px;font-weight:800}
 .financeModalBox{width:min(1120px,96vw);max-height:90vh;overflow:auto}
 .financeKpiGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}
@@ -424,8 +436,9 @@ tr:last-child td{border-bottom:0}
       <div class="trioBody">
         <div class="moneyBoxes">
           <div class="moneyBox"><div id="availableCash" class="moneyVal">—</div><div class="moneyLabel">Navy spending cash</div></div>
-          <div class="moneyBox"><div id="upcomingBills" class="moneyVal">—</div><div class="moneyLabel">Sequence allocated</div></div>
+          <div class="moneyBox"><div id="upcomingBills" class="moneyVal">—</div><div id="sequenceSnapshotLabel" class="moneyLabel">Sequence connected snapshot</div></div>
         </div>
+        <div id="financeReconcileNote" class="financeReconcileNote hidden"></div>
         <div class="financeEntryHint">Tap to open Financial Command Center →</div>
       </div>
     </section>
@@ -1008,12 +1021,42 @@ function financeStatus(row){
  return 'Planned';
 }
 function money2(v){return new Intl.NumberFormat(undefined,{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(v||0))}
+
+function financeSourceDetails(){
+ const src=state.sources.find(s=>String(s.source||'').toLowerCase()==='finances');
+ if(!src)return {};
+ if(src.details && typeof src.details==='object')return src.details;
+ if(typeof src.details==='string'){
+   try{return JSON.parse(src.details)}catch(e){return {}}
+ }
+ return {};
+}
+
 function renderMoney(){
  const navy=financeAccount('Navy Federal','EveryDay Checking');
  const seq=state.financeAccounts.filter(x=>x.source==='Sequence').reduce((a,x)=>a+Number(x.current_balance||0),0);
- $('financeBadge').textContent=state.financeAccounts.length?'LIVE':'LINKING';
+ const fd=financeSourceDetails();
+ const snapshotNote=String(fd.sequence_snapshot_note||'').trim();
+ const payroll=Number(fd.email_confirmed_payroll||0);
+ const insuranceTransfer=Number(fd.email_confirmed_insurance_transfer||0);
+ const isReconciling=!!snapshotNote;
+
+ $('financeBadge').textContent=isReconciling?'RECONCILING':(state.financeAccounts.length?'LIVE':'LINKING');
  $('availableCash').textContent=navy?money2(navy.available_balance??navy.current_balance):'—';
  $('upcomingBills').textContent=state.financeAccounts.length?money2(seq):'—';
+ $('sequenceSnapshotLabel').textContent=isReconciling?'Sequence connected snapshot':'Sequence allocated';
+
+ const note=$('financeReconcileNote');
+ if(isReconciling){
+   const confirmed=[];
+   if(payroll)confirmed.push(`${money2(payroll)} payroll deposit`);
+   if(insuranceTransfer)confirmed.push(`${money2(insuranceTransfer)} insurance transfer`);
+   note.innerHTML=`<b>Reconciliation pending:</b> the connected Sequence balance has not caught up to confirmed activity${confirmed.length?` (${confirmed.join(' + ')})`:''}. The number above is the bank-connected snapshot, not the fully reconciled position.`;
+   note.classList.remove('hidden');
+ }else{
+   note.textContent='';
+   note.classList.add('hidden');
+ }
  renderFinanceCenter();
 }
 function formatMoney(v){return typeof v==='number'?new Intl.NumberFormat(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}).format(v):String(v??'—')}
@@ -1037,7 +1080,7 @@ function renderFinanceCenter(){
 
  $('financeKpis').innerHTML=[
   [navy?money2(navy.available_balance??navy.current_balance):'—','Navy spending cash'],
-  [money2(seqCurrent),'Sequence current balance'],
+  [money2(seqCurrent),'Sequence connected snapshot'],
   [money2(upcomingAmt),'Planned next 7 days'],
   [`${paid.length}/${rows.length}`,'Plan tasks completed']
  ].map(([v,l])=>`<div class="financeKpi"><b>${v}</b><span>${l}</span></div>`).join('');
@@ -1056,10 +1099,19 @@ function renderFinanceCenter(){
  }).join(''):'<tr><td colspan="6">No payment plan loaded.</td></tr>';
  document.querySelectorAll('.financePayRow').forEach(x=>x.onclick=()=>openFinancePayment(x.dataset.finpay));
 
- $('sequenceBuckets').innerHTML=seq.length?seq.map(a=>`<div class="financeListItem">
-  <div class="financeListTop"><div><div class="financeListTitle">${esc(a.account_name)}</div><div class="financeListMeta">${esc(a.account_group||'Sequence bucket')} · as of ${new Date(a.as_of).toLocaleString()}</div></div><div class="financeAmount">${money2(a.current_balance)}</div></div>
+ const fd=financeSourceDetails();
+ const seqNote=String(fd.sequence_snapshot_note||'').trim();
+ const seqConfirmed=[];
+ if(Number(fd.email_confirmed_payroll||0))seqConfirmed.push(`${money2(Number(fd.email_confirmed_payroll))} payroll deposit`);
+ if(Number(fd.email_confirmed_insurance_transfer||0))seqConfirmed.push(`${money2(Number(fd.email_confirmed_insurance_transfer))} insurance transfer`);
+ const seqWarning=seqNote?`<div class="financeListItem" style="border-color:rgba(255,202,98,.45);background:rgba(255,202,98,.06)">
+   <div class="financeListTitle">⚠️ Sequence reconciliation pending</div>
+   <div class="financeListMeta">${esc(seqNote)}${seqConfirmed.length?`<br><b>Confirmed outside connected feed:</b> ${esc(seqConfirmed.join(' + '))}`:''}</div>
+ </div>`:'';
+ $('sequenceBuckets').innerHTML=seqWarning+(seq.length?seq.map(a=>`<div class="financeListItem">
+  <div class="financeListTop"><div><div class="financeListTitle">${esc(a.account_name)}</div><div class="financeListMeta">${esc(a.account_group||'Sequence bucket')} · connected snapshot as of ${new Date(a.as_of).toLocaleString()}</div></div><div class="financeAmount">${money2(a.current_balance)}</div></div>
   <div class="financeListMeta">Available: ${money2(a.available_balance)}</div>
- </div>`).join(''):'<div class="cardSub">No Sequence balances loaded.</div>';
+ </div>`).join(''):'<div class="cardSub">No Sequence balances loaded.</div>');
 
  const west=rows.filter(r=>/westlake/i.test(r.creditor||''));
  const westPaid=west.filter(r=>financeStatus(r)==='Paid').sort((a,b)=>String(a.payment_date).localeCompare(String(b.payment_date)));
