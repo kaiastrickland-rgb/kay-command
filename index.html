@@ -248,6 +248,9 @@ tr:last-child td{border-bottom:0}
 .projectItemMeta{font-size:11px;color:#8fa2ad;margin-top:4px;line-height:1.35}
 .planSource{border:1px solid #284452;border-radius:12px;padding:10px 12px;background:#0a151d;margin-bottom:10px}
 .inlineApply{border:1px solid #2686a5;background:#103747;color:white;border-radius:9px;padding:7px 10px;font-weight:850;cursor:pointer;white-space:nowrap}
+
+.inlineApplied{border:1px solid rgba(71,236,161,.65);background:rgba(71,236,161,.10);color:#8ff8c3;border-radius:9px;padding:7px 10px;font-weight:900;cursor:pointer;white-space:nowrap}
+.inlineApplied[disabled]{opacity:.65;cursor:default}
 @media(max-width:620px){.projectStats{grid-template-columns:repeat(2,1fr)}}
 
 .jobList{display:flex;flex-direction:column;gap:9px;margin-top:12px}
@@ -1517,14 +1520,26 @@ function openJobLane(lane){
 }
 function renderJobList(lane){
  const jobs=jobsForLane(lane);
- $('jobList').innerHTML=jobs.length?jobs.map(j=>`<div class="jobItem" data-job="${j.id}">
-  <div class="jobTop">
-   <div style="min-width:0"><div class="jobTitle">${esc(j.title||'Untitled role')}</div><div class="jobMeta">${esc(j.employer||'')} · ${esc(j.location||'')} · ${esc(j.work_arrangement||'')}</div></div>
-   <div style="display:flex;gap:8px;align-items:flex-start"><div class="jobStatus">${esc(j.status||'Open')}</div><button class="inlineApply" data-apply="${j.id}" ${j.apply_url?'':'disabled'}>Apply ↗</button></div>
-  </div>
-  <div class="jobMeta">${esc(j.compensation||'Comp not listed')} · Tap card for details</div>
- </div>`).join(''):'<div class="cardSub">No jobs in this category yet.</div>';
- document.querySelectorAll('.jobItem').forEach(x=>x.onclick=e=>{if(e.target.closest('[data-apply]'))return;openJob(x.dataset.job)});
+ $('jobList').innerHTML=jobs.length?jobs.map(j=>{
+  const applied=/^applied$/i.test(String(j.status||''));
+  return `<div class="jobItem" data-job="${j.id}">
+   <div class="jobTop">
+    <div style="min-width:0"><div class="jobTitle">${esc(j.title||'Untitled role')}</div><div class="jobMeta">${esc(j.employer||'')} · ${esc(j.location||'')} · ${esc(j.work_arrangement||'')}</div></div>
+    <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;justify-content:flex-end">
+      <div class="jobStatus">${esc(j.status||'Open')}</div>
+      <button class="inlineApply" data-apply="${j.id}" ${j.apply_url?'':'disabled'}>Apply ↗</button>
+      <button class="inlineApplied" data-applied="${j.id}" ${applied?'disabled':''}>${applied?'Applied ✓':'I Applied ✓'}</button>
+    </div>
+   </div>
+   <div class="jobMeta">${esc(j.compensation||'Comp not listed')} · ${applied && j.applied_at?`Applied ${new Date(j.applied_at).toLocaleDateString()}`:'Tap card for details'}</div>
+  </div>`;
+ }).join(''):'<div class="cardSub">No jobs in this category yet.</div>';
+
+ document.querySelectorAll('.jobItem').forEach(x=>x.onclick=e=>{
+   if(e.target.closest('[data-apply]')||e.target.closest('[data-applied]'))return;
+   openJob(x.dataset.job)
+ });
+
  document.querySelectorAll('[data-apply]').forEach(b=>b.onclick=async e=>{
    e.stopPropagation();
    const j=state.jobs.find(x=>String(x.id)===String(b.dataset.apply));if(!j)return;
@@ -1534,6 +1549,18 @@ function renderJobList(lane){
      try{await supabase.from('kay_chat_messages').insert({user_id:state.user?.id||null,role:'system',message:`Career Command action: Opened application for ${j.title} at ${j.employer}; status set to Applying.`})}catch(e){}
      await loadAll();openJobLane(lane);
    }
+ });
+
+ document.querySelectorAll('[data-applied]').forEach(b=>b.onclick=async e=>{
+   e.stopPropagation();
+   const j=state.jobs.find(x=>String(x.id)===String(b.dataset.applied));if(!j)return;
+   if(/^applied$/i.test(String(j.status||'')))return;
+   const now=new Date().toISOString();
+   const {error}=await supabase.from('kay_jobs').update({status:'Applied',applied_at:now,updated_at:now}).eq('id',j.id);
+   if(error)return alert(error.message);
+   await logJobAction(j,`Marked ${j.title} at ${j.employer} as Applied from the dashboard.`);
+   await loadAll();
+   openJobLane(lane);
  });
 }
 function openJob(id){
@@ -1560,9 +1587,10 @@ $('jobApply').onclick=async()=>{
 };
 $('jobMarkApplied').onclick=async()=>{
  const j=state.jobs.find(x=>x.id===activeJobId);if(!j)return;
- const {error}=await supabase.from('kay_jobs').update({status:'Applied',updated_at:new Date().toISOString()}).eq('id',j.id);
+ const now=new Date().toISOString();
+ const {error}=await supabase.from('kay_jobs').update({status:'Applied',applied_at:now,updated_at:now}).eq('id',j.id);
  if(error)return alert(error.message);
- await logJobAction(j,`Marked ${j.title} at ${j.employer} as Applied.`);
+ await logJobAction(j,`Marked ${j.title} at ${j.employer} as Applied from the dashboard.`);
  await loadAll();openJob(j.id)
 };
 
