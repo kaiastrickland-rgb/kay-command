@@ -3,8 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>KAY // COMMAND CENTER</title>
- <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<title>KAY // COMMAND</title>
 <style>
 :root{
  --bg:#061018;--panel:#0b1720;--panel2:#0a141c;--line:#213a48;--line2:#294957;
@@ -344,6 +343,19 @@ tr:last-child td{border-bottom:0}
   .briefList li{line-height:1.4}
 }
 
+
+.topDate{
+  margin-top:6px;
+  font-size:13px;
+  font-weight:800;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  color:var(--muted,#94a8b5);
+}
+@media(max-width:650px){
+  .topDate{font-size:12px;letter-spacing:.04em}
+}
+
 </style>
 </head>
 <body>
@@ -358,7 +370,8 @@ tr:last-child td{border-bottom:0}
       <button id="refreshBtn" class="btn">↻ Refresh</button>
       <button id="signOutBtn" class="btn">Sign out</button>
     </div>
-  </header>
+  <div id="topCurrentDate" class="topDate"></div>
+</header>
 
   <main class="grid">
     <section class="card hero">
@@ -771,7 +784,20 @@ async function ensureAuth(){
  return false;
 }
 
+
+function renderTopDate(){
+ const el=$('topCurrentDate');
+ if(!el)return;
+ el.textContent=new Date().toLocaleDateString(undefined,{
+   weekday:'long',
+   month:'long',
+   day:'numeric',
+   year:'numeric'
+ });
+}
+
 async function initializeApp(){
+ renderTopDate();
  $('authModal').classList.remove('show');
  const ok=await recoverStoredSession();
  authBooting=false;
@@ -821,8 +847,6 @@ async function loadAll(){
 }
 function renderAll(){setGreeting();renderBriefs();renderActions();renderCareer();renderMoney();renderInbox();renderCalendar();renderProjects();renderSystems()}
 function renderBriefs(){
- // Executive Command Brief = attention summary, not a duplicate of every dashboard section.
- // Build it from live tasks + the newest brief, with ONE finance status line only.
  const latest=state.briefs[0];
  const raw=String(latest?.content||latest?.brief||latest?.summary||latest?.message||latest?.title||'').trim();
 
@@ -843,20 +867,35 @@ function renderBriefs(){
  const upcoming=openTasks.filter(t=>t.due_date && t.due_date>todayStr)
    .sort((a,b)=>String(a.due_date).localeCompare(String(b.due_date)));
 
+ const isMetadataLine=(line)=>{
+   const s=String(line||'').trim();
+   if(!s)return true;
+   const bare=s.replace(/^[#*\s]+|[#*\s]+$/g,'').trim();
+   if(/^kay'?s\s+(morning|midday|evening)?\s*command center/i.test(bare))return true;
+   if(/^(monday|tuesday|wednesday|thursday|friday|saturday|sunday),?\s+[a-z]+\s+\d{1,2},\s+\d{4}$/i.test(bare))return true;
+   if(/^updates received by email$/i.test(bare))return true;
+   if(/^executive snapshot$/i.test(bare))return true;
+   if(/^today'?s priority stack$/i.test(bare))return true;
+   return false;
+ };
+
  const briefPieces=raw
    ? raw.split(/\n+/).flatMap(line=>{
-       const clean=String(line||'').replace(/^[-•]\s*/,'').trim();
-       if(!clean)return [];
+       if(isMetadataLine(line))return [];
+       const clean=String(line||'')
+         .replace(/^[-•]\s*/,'')
+         .replace(/^#{1,6}\s*/,'')
+         .replace(/^\*{1,2}|\*{1,2}$/g,'')
+         .trim();
+       if(!clean || isMetadataLine(clean))return [];
        return clean
          .replace(/^(today'?s\s+command\s+focus|today'?s\s+focus|command\s+focus)\s*:\s*/i,'')
          .split(/(?=\b\d+\)\s*)/)
          .map(x=>x.replace(/^\d+\)\s*/,'').trim())
-         .filter(Boolean);
+         .filter(x=>x && !isMetadataLine(x));
      })
    : [];
 
- // Filter only true financial-detail lines. Do NOT throw away other notable content
- // just because the original brief happened to mention finance somewhere else.
  const detailedFinance=/(\$[\d,.]+|\b(balance|payoff|past due|available|spending cash|bills bucket|sequence|navy federal|ally|santander|westlake|zip|sezzle|four\/walmart|four\b|perpay|usaa|credit one)\b)/i;
  const financeTheme=/\b(finance|financial|catch[- ]?up|recovery plan|recovery wave|allocation|payment|obligation)\b/i;
  const pureMilestone=/\b(days until|october 3,? 2026|november 7,? 2026|11\.7\.26)\b/i;
@@ -866,32 +905,30 @@ function renderBriefs(){
  const seen=new Set();
  const add=(text)=>{
    const clean=String(text||'').replace(/\s+/g,' ').replace(/^[;,:-]+\s*/,'').trim();
-   if(!clean)return;
+   if(!clean || isMetadataLine(clean))return;
    const key=clean.toLowerCase().replace(/[^\w\s]/g,'').replace(/\s+/g,' ').trim();
    if(!key||seen.has(key))return;
    seen.add(key);
    bullets.push(clean);
  };
 
- // 1) Time-critical live work.
  if(overdue.length){
    const shown=overdue.slice(0,3).map(t=>`${t.name}${projectName(t)?` (${projectName(t)})`:''}`);
    add(`Overdue attention: ${shown.join('; ')}${overdue.length>3?`; +${overdue.length-3} more`:''}.`);
  }
+
  if(dueToday.length){
    const shown=dueToday.slice(0,4).map(t=>`${t.name}${projectName(t)?` (${projectName(t)})`:''}`);
    add(`Due today: ${shown.join('; ')}${dueToday.length>4?`; +${dueToday.length-4} more`:''}.`);
  }
 
- // 2) Keep notable non-financial items from the newest command brief.
  for(const p of briefPieces){
    if(detailedFinance.test(p)||financeTheme.test(p))continue;
-   if(pureMilestone.test(p))continue;      // already shown in Next Major Milestones
-   if(emptyCalendar.test(p))continue;      // don't waste executive-summary space on "nothing scheduled"
+   if(pureMilestone.test(p))continue;
+   if(emptyCalendar.test(p))continue;
    add(p.replace(/[;:]\s*$/,''));
  }
 
- // 3) If today's brief did not surface enough, use the next closest live work.
  if(bullets.length<4 && upcoming.length){
    const nextDate=upcoming[0]?.due_date;
    const sameDate=upcoming.filter(t=>t.due_date===nextDate).slice(0,3);
@@ -900,20 +937,16 @@ function renderBriefs(){
    }
  }
 
- // 4) Career attention summary if there is active pipeline.
  const jobs=state.jobs||[];
  const activeJobs=jobs.filter(j=>!['closed','rejected','withdrawn'].includes(String(j.status||'').toLowerCase()));
  const activeApps=jobs.filter(j=>/applied|applying|interview|screen/i.test(String(j.status||'')));
  if((activeApps.length||activeJobs.length) && !bullets.some(x=>/\bcareer|application|interview|job\b/i.test(x))){
-   add(`Career: ${activeApps.length} active application${activeApps.length===1?'':'s'} and ${activeJobs.length} open opportunity${activeJobs.length===1?'':'ies'} in the current pipeline.`);
+   add(`Career: ${activeApps.length} active application${activeApps.length===1?'':'s'} and ${activeJobs.length} open opportunit${activeJobs.length===1?'y':'ies'} in the current pipeline.`);
  }
 
- // 5) One and only one finance bullet.
  add('Finance catch-up plan: Active and moving through the scheduled recovery plan; protect planned allocations and confirm payments as they post.');
 
- // Keep it executive but useful: show up to 8 attention bullets.
  const finalItems=bullets.slice(0,8);
-
  $('briefs').innerHTML=finalItems.length
    ?`<ul class="briefList">${finalItems.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`
    :'<div class="cardSub">Nothing urgent right now.</div>';
