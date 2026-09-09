@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>KAY // COMMAND</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg?v=4">
+<link rel="shortcut icon" href="/favicon.svg?v=4">
+<link rel="apple-touch-icon" href="/favicon.svg?v=4">
 <style>
 :root{
  --bg:#061018;--panel:#0b1720;--panel2:#0a141c;--line:#213a48;--line2:#294957;
@@ -867,15 +870,32 @@ function renderBriefs(){
  const upcoming=openTasks.filter(t=>t.due_date && t.due_date>todayStr)
    .sort((a,b)=>String(a.due_date).localeCompare(String(b.due_date)));
 
+ const normalizeMeta=(line)=>{
+   return String(line||'')
+     .replace(/^[\s#>*_\-•]+/,'')
+     .replace(/[\s#>*_\-•]+$/,'')
+     .replace(/^[\p{Extended_Pictographic}\uFE0F\u200D\s]+/gu,'')
+     .replace(/[\p{Extended_Pictographic}\uFE0F\u200D\s]+$/gu,'')
+     .replace(/\*{1,2}/g,'')
+     .trim();
+ };
+
  const isMetadataLine=(line)=>{
-   const s=String(line||'').trim();
-   if(!s)return true;
-   const bare=s.replace(/^[#*\s]+|[#*\s]+$/g,'').trim();
-   if(/^kay'?s\s+(morning|midday|evening)?\s*command center/i.test(bare))return true;
+   const bare=normalizeMeta(line);
+   if(!bare)return true;
+   if(/kay[’']?s\s+(morning|midday|evening)?\s*command center/i.test(bare))return true;
+   if(/updates received by email/i.test(bare))return true;
    if(/^(monday|tuesday|wednesday|thursday|friday|saturday|sunday),?\s+[a-z]+\s+\d{1,2},\s+\d{4}$/i.test(bare))return true;
-   if(/^updates received by email$/i.test(bare))return true;
    if(/^executive snapshot$/i.test(bare))return true;
-   if(/^today'?s priority stack$/i.test(bare))return true;
+   if(/^today[’']?s priority stack$/i.test(bare))return true;
+   if(/^overdue items$/i.test(bare))return true;
+   if(/^upcoming deadlines$/i.test(bare))return true;
+   if(/^project rollups$/i.test(bare))return true;
+   if(/^recently completed work$/i.test(bare))return true;
+   if(/^missing dates or decisions$/i.test(bare))return true;
+   if(/^career\s*\/\s*job opportunities summary$/i.test(bare))return true;
+   if(/^email summary$/i.test(bare))return true;
+   if(/^recommended next three actions$/i.test(bare))return true;
    return false;
  };
 
@@ -889,7 +909,7 @@ function renderBriefs(){
          .trim();
        if(!clean || isMetadataLine(clean))return [];
        return clean
-         .replace(/^(today'?s\s+command\s+focus|today'?s\s+focus|command\s+focus)\s*:\s*/i,'')
+         .replace(/^(today[’']?s\s+command\s+focus|today[’']?s\s+focus|command\s+focus)\s*:\s*/i,'')
          .split(/(?=\b\d+\)\s*)/)
          .map(x=>x.replace(/^\d+\)\s*/,'').trim())
          .filter(x=>x && !isMetadataLine(x));
@@ -923,6 +943,7 @@ function renderBriefs(){
  }
 
  for(const p of briefPieces){
+   if(isMetadataLine(p))continue;
    if(detailedFinance.test(p)||financeTheme.test(p))continue;
    if(pureMilestone.test(p))continue;
    if(emptyCalendar.test(p))continue;

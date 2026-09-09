@@ -1,11 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="KAY Command K slash slash favicon">
-  <circle cx="32" cy="32" r="34" fill="#071821"/>
-  <text x="32" y="43.5"
-        text-anchor="middle"
-        font-family="Arial Black, Arial, Helvetica, sans-serif"
-        font-size="35"
-        font-style="italic"
-        font-weight="900"
-        letter-spacing="-2.2"
-        fill="#45D9FF">K//</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-label="KAY Command favicon">
+  <circle cx="32" cy="32" r="32" fill="#071821"/>
+  <g fill="#45D9FF">
+    <path d="M10 17h8v12l10-12h10L25 32l13 15H27L18 36v11h-8z"/>
+    <path d="M39 16h6L35 48h-6z"/>
+    <path d="M51 16h6L47 48h-6z"/>
+  </g>
 </svg>
