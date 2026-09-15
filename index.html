@@ -1514,12 +1514,35 @@ $('deleteBtn').onclick=async()=>{
  closeTask();activeTaskId=null;await loadAll()
 };
 
+function jobFirstSeenDate(j){return j?.created_at?new Date(j.created_at):null}
+function jobLastVerifiedDate(j){
+ if(j?.source_date)return new Date(String(j.source_date)+'T12:00:00');
+ if(j?.updated_at)return new Date(j.updated_at);
+ return null;
+}
+function isSameLocalDay(a,b){
+ if(!a||!b)return false;
+ return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();
+}
+function jobFreshnessLabel(j){
+ const first=jobFirstSeenDate(j), verified=jobLastVerifiedDate(j), now=new Date();
+ if(first && isSameLocalDay(first,now)) return 'NEW TODAY';
+ if(verified) return `Verified ${verified.toLocaleDateString(undefined,{month:'short',day:'numeric'})}`;
+ return '';
+}
 function jobsForLane(lane){
  const isApplicationStatus=j=>/applied|applying|interview|screen|assessment|offer/i.test(String(j.status||''));
  const isClosedStatus=j=>/closed|rejected|withdrawn/i.test(String(j.status||''));
- if(lane==='Applications') return state.jobs.filter(j=>isApplicationStatus(j));
- if(lane==='Active Leads') return state.jobs.filter(j=>!isClosedStatus(j) && !isApplicationStatus(j));
- return state.jobs.filter(j=>String(j.lane||'')===lane && !isClosedStatus(j) && !isApplicationStatus(j));
+ let jobs;
+ if(lane==='Applications') jobs=state.jobs.filter(j=>isApplicationStatus(j));
+ else if(lane==='Active Leads') jobs=state.jobs.filter(j=>!isClosedStatus(j) && !isApplicationStatus(j));
+ else jobs=state.jobs.filter(j=>String(j.lane||'')===lane && !isClosedStatus(j) && !isApplicationStatus(j));
+ return jobs.sort((a,b)=>{
+   const an=jobFirstSeenDate(a), bn=jobFirstSeenDate(b), now=new Date();
+   const aNew=an&&isSameLocalDay(an,now)?1:0, bNew=bn&&isSameLocalDay(bn,now)?1:0;
+   if(aNew!==bNew)return bNew-aNew;
+   return (bn?.getTime()||0)-(an?.getTime()||0);
+ });
 }
 function openJobLane(lane){
  currentJobLane=lane;activeJobId=null;
@@ -1541,7 +1564,7 @@ function renderJobList(lane){
       <button class="inlineApplied" data-applied="${j.id}" ${applied?'disabled':''}>${applied?'Applied ✓':'I Applied ✓'}</button>
     </div>
    </div>
-   <div class="jobMeta">${esc(j.compensation||'Comp not listed')} · ${applied && j.applied_at?`Applied ${new Date(j.applied_at).toLocaleDateString()}`:'Tap card for details'}</div>
+   <div class="jobMeta">${esc(j.compensation||'Comp not listed')} · ${applied && j.applied_at?`Applied ${new Date(j.applied_at).toLocaleDateString()}`:`${jobFreshnessLabel(j)}${jobFreshnessLabel(j)?' · ':''}First seen ${jobFirstSeenDate(j)?jobFirstSeenDate(j).toLocaleDateString(undefined,{month:'short',day:'numeric'}):'—'}`}</div>
   </div>`;
  }).join(''):'<div class="cardSub">No jobs in this category yet.</div>';
 
