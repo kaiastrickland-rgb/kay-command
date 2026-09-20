@@ -77,6 +77,35 @@ button,input,textarea{font:inherit} button{cursor:pointer}
 .inboxKpi strong{display:block;font-size:27px}
 .inboxKpi span{font-size:10px;color:var(--muted);line-height:1.25;display:block}
 .calendarText{font-size:15px;color:var(--muted);line-height:1.45}
+
+.dailyPleasures{grid-column:span 12;min-height:285px}
+.dailyPleasuresBody{padding:0 20px 20px}
+.pleasureGrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.pleasureCard{position:relative;border:1px solid #263f4d;border-radius:18px;padding:18px;background:
+ radial-gradient(circle at top right,rgba(69,217,255,.08),transparent 34%),
+ linear-gradient(180deg,#0c1a23,#09151d);overflow:hidden;min-height:180px}
+.pleasureEyebrow{font-size:10px;letter-spacing:.16em;font-weight:900;color:var(--cyan);text-transform:uppercase}
+.pleasureName{font-size:24px;line-height:1.08;font-weight:950;margin:8px 0 5px;max-width:80%}
+.pleasureMeta{font-size:12px;color:var(--muted);line-height:1.45}
+.pleasureNotes{font-size:13px;line-height:1.5;margin-top:11px}
+.pleasureTags{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
+.pleasureTag{font-size:10px;font-weight:900;padding:6px 8px;border:1px solid #2a4b59;border-radius:999px;color:#b9d0dc;background:rgba(255,255,255,.02)}
+.pleasurePairing{margin-top:13px;padding:10px 12px;border-radius:12px;background:rgba(255,193,94,.07);border:1px solid rgba(255,193,94,.24);font-size:12px;line-height:1.4;color:#e8d3aa}
+.pleasureIcon{position:absolute;right:16px;top:14px;font-size:34px;opacity:.95}
+.cigarArt{position:absolute;right:18px;top:22px;width:74px;height:18px;transform:rotate(-8deg)}
+.cigarBody{position:absolute;left:0;top:4px;width:56px;height:10px;border-radius:7px;background:linear-gradient(90deg,#6b3a1f,#a85d2d 55%,#5a301c)}
+.cigarBand{position:absolute;left:34px;top:2px;width:10px;height:14px;border-radius:3px;background:#d6b05a;border:1px solid #f1d891}
+.cigarAsh{position:absolute;right:0;top:4px;width:17px;height:10px;border-radius:0 6px 6px 0;background:linear-gradient(90deg,#9d9d9d,#d2d2d2)}
+.cigarEmber{position:absolute;right:-3px;top:5px;width:5px;height:8px;border-radius:50%;background:#ff765e;box-shadow:0 0 8px rgba(255,118,94,.8)}
+.pleasureFooter{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:14px}
+.dailyMoodBtn{border:1px solid #28586c;background:#0b2835;color:#dff7ff;border-radius:10px;padding:9px 12px;font-weight:900;cursor:pointer}
+.dailyMoodDate{font-size:11px;color:var(--muted)}
+@media(max-width:760px){
+ .pleasureGrid{grid-template-columns:1fr}
+ .dailyPleasures{min-height:auto}
+ .pleasureName{max-width:76%;font-size:21px}
+}
+
 .projects{grid-column:span 12;height:385px}
 .tableWrap{height:303px;overflow:auto;padding:0 20px 18px}
 table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid #263f4d;border-radius:14px;overflow:hidden;min-width:980px;background:#09151d}
@@ -462,6 +491,43 @@ tr:last-child td{border-bottom:0}
       <div class="trioBody"><div id="calendarText" class="calendarText">Loading calendar snapshot…</div></div>
     </section>
 
+
+    <section class="card dailyPleasures">
+      <div class="cardHeader">
+        <div>
+          <div class="cardTitle">🥂 Smoke & Sip</div>
+          <div class="cardSub">Your Cigar of the Day + Wine of the Day</div>
+        </div>
+        <span class="badge">JUST FOR KAY</span>
+      </div>
+      <div class="dailyPleasuresBody">
+        <div class="pleasureGrid">
+          <div class="pleasureCard">
+            <div class="cigarArt" aria-hidden="true">
+              <span class="cigarBody"></span><span class="cigarBand"></span><span class="cigarAsh"></span><span class="cigarEmber"></span>
+            </div>
+            <div class="pleasureEyebrow">COTD · Cigar of the Day</div>
+            <div id="cotdName" class="pleasureName">Loading today’s cigar…</div>
+            <div id="cotdMeta" class="pleasureMeta"></div>
+            <div id="cotdNotes" class="pleasureNotes"></div>
+            <div id="cotdTags" class="pleasureTags"></div>
+          </div>
+          <div class="pleasureCard">
+            <div class="pleasureIcon" aria-hidden="true">🍷</div>
+            <div class="pleasureEyebrow">WOTD · Wine of the Day</div>
+            <div id="wotdName" class="pleasureName">Loading today’s pour…</div>
+            <div id="wotdMeta" class="pleasureMeta"></div>
+            <div id="wotdNotes" class="pleasureNotes"></div>
+            <div id="pairingNote" class="pleasurePairing"></div>
+          </div>
+        </div>
+        <div class="pleasureFooter">
+          <div id="dailyPleasureDate" class="dailyMoodDate"></div>
+          <button id="anotherVibeBtn" class="dailyMoodBtn">🎲 Another vibe</button>
+        </div>
+      </div>
+    </section>
+
     <section class="card projects">
       <div class="cardHeader">
         <div><div class="cardTitle">📁 Project Command Center</div><div class="cardSub">Project portfolio · scroll to see all</div></div>
@@ -817,6 +883,7 @@ function renderTopDate(){
 
 async function initializeApp(){
  renderTopDate();
+renderDailyPleasures();
  $('authModal').classList.remove('show');
  const ok=await recoverStoredSession();
  authBooting=false;
@@ -864,7 +931,51 @@ async function loadAll(){
  state.projects=p.data||[];state.tasks=t.data||[];state.briefs=b.data||[];state.sources=s.error?[]:(s.data||[]);state.jobs=j?.error?[]:(j?.data||[]);state.plans=pl?.error?[]:(pl?.data||[]);state.planTasks=pt?.error?[]:(pt?.data||[]);state.milestones=ms?.error?[]:(ms?.data||[]);state.risks=rs?.error?[]:(rs?.data||[]);state.decisions=ds?.error?[]:(ds?.data||[]);state.financePayments=fp?.error?[]:(fp?.data||[]);state.financeAccounts=fa?.error?[]:(fa?.data||[]);state.financeAlerts=fal?.error?[]:(fal?.data||[]);
  renderAll();$('liveBar').textContent='● Live data loaded';
 }
-function renderAll(){setGreeting();renderBriefs();renderActions();renderCareer();renderMoney();renderInbox();renderCalendar();renderProjects();renderSystems()}
+
+const dailyPleasures=[
+ {cigar:"Plasencia Alma Fuerte",strength:"Full",spice:"Warm spice: High",profile:"Cocoa, espresso, dark caramel, cinnamon, roasted nuts",wine:"Amarone della Valpolicella",wineMeta:"Rich Italian red · dried cherry · cocoa · baking spice",wineNotes:"A plush, concentrated red that can stand up to Alma Fuerte without turning the pairing peppery.",pairing:"Tonight’s vibe: deep, luxurious and slow. Let the Amarone’s dried-fruit sweetness soften the cigar’s darker cocoa and espresso."},
+ {cigar:"Arturo Fuente Don Carlos",strength:"Medium–Full",spice:"Warm spice: Medium",profile:"Cream, sweet cedar, cinnamon, toasted nuts, gentle earth",wine:"Rioja Reserva",wineMeta:"Tempranillo · red fruit · vanilla · soft oak",wineNotes:"Silky tannin and mellow vanilla-oak fit the Fuente sweetness without overpowering it.",pairing:"Tonight’s vibe: elegant and smooth. Cedar + vanilla + red fruit is a very Kay-friendly lane."},
+ {cigar:"Plasencia Alma del Campo",strength:"Medium",spice:"Warm spice: Medium",profile:"Cream, coffee, nuts, cedar, light baking spice",wine:"Merlot",wineMeta:"Plush red · plum · cocoa · soft tannin",wineNotes:"A round Merlot keeps the experience creamy and easy while picking up the cigar’s cocoa and nut notes.",pairing:"Tonight’s vibe: soft-luxe. Smooth, creamy, no sharp pepper edges."},
+ {cigar:"Arturo Fuente Hemingway",strength:"Medium",spice:"Warm spice: Low–Medium",profile:"Sweet cedar, cream, nutmeg, toasted almond, gentle fruit",wine:"Pinot Noir",wineMeta:"Silky red · cherry · spice · light earth",wineNotes:"Pinot’s lighter body keeps the cigar in the spotlight and echoes its sweet cedar and subtle fruit.",pairing:"Tonight’s vibe: refined and easy. Great when you want flavor without heaviness."},
+ {cigar:"The Tabernacle Havana Seed CT #142",strength:"Full",spice:"Warm spice: High",profile:"Molasses, cocoa, dark fruit, cinnamon, espresso",wine:"Tawny Port",wineMeta:"Fortified red · caramel · fig · toasted nuts",wineNotes:"The Port leans into molasses, dried fruit and cocoa while rounding the cigar’s strength.",pairing:"Tonight’s vibe: dessert without dessert. Rich, sweet, warm and grown."},
+ {cigar:"Sobremesa Brûlée",strength:"Mild–Medium",spice:"Warm spice: Low",profile:"Cream, honey, toast, vanilla, soft nuts",wine:"Oaked Chardonnay",wineMeta:"Full-bodied white · vanilla · toast · ripe pear",wineNotes:"The creamy oak and vanilla echo the cigar’s brûlée character beautifully.",pairing:"Tonight’s vibe: creamy on creamy. This is the mellow, pretty pairing."},
+ {cigar:"Oliva Serie G Cameroon",strength:"Medium",spice:"Warm spice: Medium",profile:"Cedar, coffee, cinnamon, nuts, natural sweetness",wine:"Grenache",wineMeta:"Juicy red · raspberry · warm spice · soft tannin",wineNotes:"Grenache brings fruit and warm spice without the hard tannin that can make a cigar feel peppery.",pairing:"Tonight’s vibe: lively but still smooth. Sweet spice is the star."},
+ {cigar:"Perdomo 10th Anniversary Champagne",strength:"Mild–Medium",spice:"Warm spice: Low",profile:"Cream, honey, almond, vanilla, light cedar",wine:"Viognier",wineMeta:"Aromatic white · peach · honeysuckle · soft spice",wineNotes:"Viognier’s floral stone-fruit richness makes the cigar feel sweeter and rounder.",pairing:"Tonight’s vibe: bright, creamy and a little fancy."},
+ {cigar:"My Father Connecticut",strength:"Medium",spice:"Warm spice: Medium",profile:"Cream, cedar, nuts, baking spice, light cocoa",wine:"California Zinfandel",wineMeta:"Jammy red · blackberry · cinnamon · vanilla",wineNotes:"A fruit-forward Zin can handle the cigar’s richer filler while keeping the pairing sweet-spiced.",pairing:"Tonight’s vibe: bold enough to be interesting, sweet enough to stay in your lane."},
+ {cigar:"Romeo y Julieta Reserva Real",strength:"Mild–Medium",spice:"Warm spice: Low",profile:"Cream, cedar, toast, almond, subtle sweetness",wine:"Chenin Blanc",wineMeta:"Textured white · apple · honey · gentle acidity",wineNotes:"Chenin’s honeyed fruit lifts the cigar without overwhelming its creamy profile.",pairing:"Tonight’s vibe: easy patio energy. Smooth from start to finish."},
+ {cigar:"Plasencia Reserva Original",strength:"Medium",spice:"Warm spice: Medium",profile:"Cocoa, sweet earth, cedar, nuts, soft cinnamon",wine:"Malbec",wineMeta:"Plush red · blackberry · cocoa · soft spice",wineNotes:"Malbec gives you dark fruit and cocoa with softer tannin than many Cabernets.",pairing:"Tonight’s vibe: dark fruit + cocoa + warm spice. Dependable and delicious."},
+ {cigar:"Arturo Fuente Gran Reserva",strength:"Medium",spice:"Warm spice: Low–Medium",profile:"Cream, cedar, toasted nuts, caramel, baking spice",wine:"Garnacha Blanca",wineMeta:"Rounded white · pear · almond · subtle spice",wineNotes:"A fuller white keeps the cigar creamy while adding enough texture to feel substantial.",pairing:"Tonight’s vibe: understated luxury."}
+];
+
+let dailyPleasureOffset=0;
+function dailyPleasureIndex(){
+ const d=new Date();
+ const key=Math.floor(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/86400000);
+ return ((key+dailyPleasureOffset)%dailyPleasures.length+dailyPleasures.length)%dailyPleasures.length;
+}
+function renderDailyPleasures(){
+ const p=dailyPleasures[dailyPleasureIndex()];
+ if(!p)return;
+ const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val||''};
+ set('cotdName',p.cigar);
+ set('cotdMeta',`${p.strength} · ${p.spice}`);
+ set('cotdNotes',p.profile);
+ const tags=document.getElementById('cotdTags');
+ if(tags)tags.innerHTML=['Creamy','Naturally sweet','Low pepper'].map(x=>`<span class="pleasureTag">${x}</span>`).join('');
+ set('wotdName',p.wine);
+ set('wotdMeta',p.wineMeta);
+ set('wotdNotes',p.wineNotes);
+ set('pairingNote',p.pairing);
+ const d=new Date();
+ set('dailyPleasureDate',`Today’s picks · ${d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})}`);
+ const b=document.getElementById('anotherVibeBtn');
+ if(b && !b.dataset.bound){
+   b.dataset.bound='1';
+   b.onclick=()=>{dailyPleasureOffset++;renderDailyPleasures()};
+ }
+}
+
+function renderAll(){setGreeting();renderBriefs();renderActions();renderCareer();renderMoney();renderInbox();renderCalendar();renderProjects();renderSystems();bindSummaryCountBadges();renderDailyPleasures()}
 function renderBriefs(){
  const latest=state.briefs[0];
  const raw=String(latest?.content||latest?.brief||latest?.summary||latest?.message||latest?.title||'').trim();
@@ -1258,6 +1369,64 @@ function projectPlanInfo(projectId){
  const tasks=state.planTasks.filter(x=>x.project_id===projectId || ids.has(x.plan_id));
  return {plans,tasks,done:tasks.filter(x=>x.is_done||/complete/i.test(String(x.status||''))).length};
 }
+
+function openAllActionTasks(){
+ const rows=(state.tasks||[]).filter(t=>!t.is_done);
+ $('fullListLabel').textContent='ACTION CENTER';
+ $('fullListTitle').textContent='All open tasks';
+ $('fullListMeta').textContent=`${rows.length} open task${rows.length===1?'':'s'}`;
+ $('fullListRows').innerHTML=rows.length?rows.map(t=>{
+   const p=projectFor(t);
+   return `<div class="fullListRow" data-full-task="${t.id}">
+     <div>
+       <div class="fullListTitle">${esc(t.name||'Untitled task')}</div>
+       <div class="fullListMeta">${esc(p?.name||p?.title||'Kay')}${t.due_date?` · due ${fmtDate(t.due_date)}`:''}${t.owner?` · ${esc(t.owner)}`:''}</div>
+     </div>
+     <div class="badge">OPEN</div>
+   </div>`;
+ }).join(''):'<div class="cardSub">No open tasks.</div>';
+ document.querySelectorAll('[data-full-task]').forEach(r=>r.onclick=()=>{
+   $('fullListModal').classList.remove('show');
+   openTask(r.dataset.fullTask);
+ });
+ $('fullListModal').classList.add('show');
+}
+
+function openAllProjects(){
+ const rows=(state.projects||[]).filter(p=>String(p.status||'active').toLowerCase()!=='complete');
+ $('fullListLabel').textContent='PROJECT COMMAND CENTER';
+ $('fullListTitle').textContent='All active projects';
+ $('fullListMeta').textContent=`${rows.length} active project${rows.length===1?'':'s'}`;
+ $('fullListRows').innerHTML=rows.length?rows.map(p=>{
+   const live=(state.tasks||[]).filter(t=>String(t.project_id)===String(p.id));
+   const open=live.filter(t=>!t.is_done).length;
+   return `<div class="fullListRow" data-full-project="${p.id}">
+     <div>
+       <div class="fullListTitle">${esc(p.name||p.title||'Untitled project')}</div>
+       <div class="fullListMeta">${esc(p.workspace||p.type||'Personal')}${p.target_date?` · ${fmtDate(p.target_date)}`:''} · ${open} open task${open===1?'':'s'}</div>
+     </div>
+     <div class="badge">OPEN</div>
+   </div>`;
+ }).join(''):'<div class="cardSub">No active projects.</div>';
+ document.querySelectorAll('[data-full-project]').forEach(r=>r.onclick=()=>{
+   $('fullListModal').classList.remove('show');
+   openProject(r.dataset.fullProject);
+ });
+ $('fullListModal').classList.add('show');
+}
+
+function bindSummaryCountBadges(){
+ const oc=$('openCount'), pc=$('projectBadge');
+ if(oc){
+   oc.onclick=openAllActionTasks;
+   oc.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openAllActionTasks()}};
+ }
+ if(pc){
+   pc.onclick=openAllProjects;
+   pc.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openAllProjects()}};
+ }
+}
+
 function renderProjects(){
  const active=state.projects.filter(p=>String(p.status||'active').toLowerCase()!=='complete');
  $('projectBadge').textContent=`${active.length} PROJECTS`;
@@ -1627,8 +1796,28 @@ $('jobMarkApplied').onclick=async()=>{
  await loadAll();openJob(j.id)
 };
 
+
+function closeFullList(){ $('fullListModal').classList.remove('show'); }
+$('fullListClose').onclick=closeFullList;
+$('fullListModal').onclick=e=>{if(e.target===$('fullListModal'))closeFullList()};
+
 function appendChat(role,text){const d=document.createElement('div');d.className='bubble '+role;d.textContent=text;$('chatLog').appendChild(d);$('chatLog').scrollTop=$('chatLog').scrollHeight}
-async function sendChat(){const q=$('chatInput').value.trim();if(!q)return;appendChat('user',q);$('chatInput').value='';try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:q,context:{tasks:state.tasks,projects:state.projects}})}),j=await r.json();appendChat('assistant',j.reply||j.message||'Command received.')}catch(e){appendChat('assistant','Command chat is unavailable right now.')}}
+async function sendChat(){
+ const q=$('chatInput').value.trim();if(!q)return;
+ appendChat('user',q);$('chatInput').value='';
+ try{
+   const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:q,context:{tasks:state.tasks,projects:state.projects}})});
+   let j={};try{j=await r.json()}catch(_){}
+   if(!r.ok){
+     appendChat('assistant',`Command Chat could not complete that request here. ${j.message||j.error||'Open the production Kay Command URL and try again.'}`);
+     return;
+   }
+   appendChat('assistant',j.reply||j.message||'Command received.');
+   if(j.changed||j.updated||j.success){await loadAll();}
+ }catch(e){
+   appendChat('assistant','Command Chat cannot reach its server from this deployment. Open kay-command.vercel.app and try again.');
+ }
+}
 
 document.querySelectorAll('.quickBtn').forEach(btn=>btn.onclick=()=>{
  const q=btn.dataset.q;
