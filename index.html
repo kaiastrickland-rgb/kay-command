@@ -421,6 +421,45 @@ tr:last-child td{border-bottom:0}
 </header>
 
   <main class="grid">
+
+
+    <section class="card dailyPleasures">
+      <div class="cardHeader">
+        <div>
+          <div class="cardTitle">🥂 Smoke & Sip</div>
+          <div class="cardSub">Your Cigar of the Day + Wine of the Day</div>
+        </div>
+        <span class="badge">JUST FOR KAY</span>
+      </div>
+      <div class="dailyPleasuresBody">
+        <div class="pleasureGrid">
+          <div class="pleasureCard">
+            <div class="cigarArt" aria-hidden="true">
+              <span class="cigarBody"></span><span class="cigarBand"></span><span class="cigarAsh"></span><span class="cigarEmber"></span>
+            </div>
+            <div class="pleasureEyebrow">COTD · Cigar of the Day</div>
+            <div id="cotdName" class="pleasureName">Loading today’s cigar…</div>
+            <div id="cotdMeta" class="pleasureMeta"></div>
+            <div id="cotdNotes" class="pleasureNotes"></div>
+            <div id="cotdTags" class="pleasureTags"></div>
+          </div>
+          <div class="pleasureCard">
+            <div class="pleasureIcon" aria-hidden="true">🍷</div>
+            <div class="pleasureEyebrow">WOTD · Wine of the Day</div>
+            <div id="wotdName" class="pleasureName">Loading today’s pour…</div>
+            <div id="wotdMeta" class="pleasureMeta"></div>
+            <div id="wotdNotes" class="pleasureNotes"></div>
+            <div id="pairingNote" class="pleasurePairing"></div>
+          </div>
+        </div>
+        <div class="pleasureFooter">
+          <div id="dailyPleasureDate" class="dailyMoodDate"></div>
+          <button id="anotherVibeBtn" class="dailyMoodBtn">🎲 Another vibe</button>
+        </div>
+      </div>
+    </section>
+
+
     <section class="card hero">
       <div class="cardHeader">
         <div><div class="sectionLabel">EXECUTIVE COMMAND BRIEF</div><div id="greeting" class="heroGreeting">Good morning, Kay.</div></div>
@@ -490,44 +529,6 @@ tr:last-child td{border-bottom:0}
       <div class="cardHeader"><div><div class="cardTitle">📅 Today / This Week</div><div class="cardSub">Google Calendar</div></div><span id="calendarBadge" class="badge">LIVE</span></div>
       <div class="trioBody"><div id="calendarText" class="calendarText">Loading calendar snapshot…</div></div>
     </section>
-
-
-    <section class="card dailyPleasures">
-      <div class="cardHeader">
-        <div>
-          <div class="cardTitle">🥂 Smoke & Sip</div>
-          <div class="cardSub">Your Cigar of the Day + Wine of the Day</div>
-        </div>
-        <span class="badge">JUST FOR KAY</span>
-      </div>
-      <div class="dailyPleasuresBody">
-        <div class="pleasureGrid">
-          <div class="pleasureCard">
-            <div class="cigarArt" aria-hidden="true">
-              <span class="cigarBody"></span><span class="cigarBand"></span><span class="cigarAsh"></span><span class="cigarEmber"></span>
-            </div>
-            <div class="pleasureEyebrow">COTD · Cigar of the Day</div>
-            <div id="cotdName" class="pleasureName">Loading today’s cigar…</div>
-            <div id="cotdMeta" class="pleasureMeta"></div>
-            <div id="cotdNotes" class="pleasureNotes"></div>
-            <div id="cotdTags" class="pleasureTags"></div>
-          </div>
-          <div class="pleasureCard">
-            <div class="pleasureIcon" aria-hidden="true">🍷</div>
-            <div class="pleasureEyebrow">WOTD · Wine of the Day</div>
-            <div id="wotdName" class="pleasureName">Loading today’s pour…</div>
-            <div id="wotdMeta" class="pleasureMeta"></div>
-            <div id="wotdNotes" class="pleasureNotes"></div>
-            <div id="pairingNote" class="pleasurePairing"></div>
-          </div>
-        </div>
-        <div class="pleasureFooter">
-          <div id="dailyPleasureDate" class="dailyMoodDate"></div>
-          <button id="anotherVibeBtn" class="dailyMoodBtn">🎲 Another vibe</button>
-        </div>
-      </div>
-    </section>
-
     <section class="card projects">
       <div class="cardHeader">
         <div><div class="cardTitle">📁 Project Command Center</div><div class="cardSub">Project portfolio · scroll to see all</div></div>
