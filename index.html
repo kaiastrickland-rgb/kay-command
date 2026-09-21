@@ -76,6 +76,25 @@ button,input,textarea{font:inherit} button{cursor:pointer}
 .inboxKpi{border:1px solid #263f4d;border-radius:13px;padding:14px 12px;background:#0a151d}
 .inboxKpi strong{display:block;font-size:27px}
 .inboxKpi span{font-size:10px;color:var(--muted);line-height:1.25;display:block}
+
+.emailActionCard .trioBody{height:214px;overflow:hidden;display:flex;flex-direction:column}
+.emailSummaryRow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.emailMiniStats{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.emailMiniStat{font-size:10px;color:var(--muted);border:1px solid #263f4d;background:#0a151d;border-radius:999px;padding:5px 8px;white-space:nowrap}
+.emailMiniStat b{color:#f5fbff;font-size:11px}
+.emailRefresh{font-size:10px;color:var(--muted);white-space:nowrap}
+.emailList{overflow:auto;flex:1;padding-right:3px}
+.emailRow{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:start;border:1px solid #263f4d;border-radius:12px;padding:9px 10px;margin:7px 0;background:#0a151d}
+.emailDot{width:8px;height:8px;border-radius:50%;margin-top:6px;background:#45d9ff;box-shadow:0 0 9px rgba(69,217,255,.35)}
+.emailDot.urgent{background:#ff7c72;box-shadow:0 0 9px rgba(255,124,114,.35)}
+.emailDot.important{background:#ffc962;box-shadow:0 0 9px rgba(255,201,98,.35)}
+.emailSender{font-size:10px;color:#9fb3bf;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.emailSubject{font-size:12px;font-weight:900;line-height:1.25;color:#f7fbfd;text-decoration:none;display:block}
+.emailSubject:hover{text-decoration:underline;color:var(--cyan)}
+.emailSnippet{font-size:10px;color:var(--muted);line-height:1.3;margin-top:3px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.emailTag{font-size:8px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;padding:4px 6px;border:1px solid #315060;border-radius:999px;color:#bdd4df;white-space:nowrap}
+.emailEmpty{font-size:12px;color:var(--muted);padding:12px 2px}
+
 .calendarText{font-size:15px;color:var(--muted);line-height:1.45}
 
 .dailyPleasures{grid-column:span 12;min-height:285px}
@@ -514,13 +533,24 @@ tr:last-child td{border-bottom:0}
       </div>
     </section>
 
-    <section class="card trio">
-      <div class="cardHeader"><div><div class="cardTitle">📨 Inbox Intelligence</div><div class="cardSub">Connected Gmail snapshot</div></div><span id="gmailBadge" class="badge">LIVE</span></div>
+    <section class="card trio emailActionCard">
+      <div class="cardHeader">
+        <div>
+          <div class="cardTitle">📨 Email Action Center</div>
+          <div class="cardSub">Top unread emails that need your attention</div>
+        </div>
+        <span id="gmailBadge" class="badge">LIVE</span>
+      </div>
       <div class="trioBody">
-        <div class="inboxKpis">
-          <div class="inboxKpi"><strong id="unreadCount">—</strong><span>Unread</span></div>
-          <div class="inboxKpi"><strong id="priorityCount">—</strong><span>Priority alerts</span></div>
-          <div class="inboxKpi"><strong id="gmailSync">—</strong><span>Last sync</span></div>
+        <div class="emailSummaryRow">
+          <div class="emailMiniStats">
+            <span class="emailMiniStat"><b id="unreadCount">—</b> unread</span>
+            <span class="emailMiniStat"><b id="priorityCount">—</b> priority</span>
+          </div>
+          <div id="gmailSync" class="emailRefresh">Last pull —</div>
+        </div>
+        <div id="emailActionList" class="emailList">
+          <div class="emailEmpty">Loading important unread email…</div>
         </div>
       </div>
     </section>
@@ -784,7 +814,7 @@ const supabase=createClient(SUPABASE_URL,SUPABASE_KEY,{
  }
 });
 const $=id=>document.getElementById(id);
-let state={tasks:[],projects:[],briefs:[],sources:[],jobs:[],plans:[],planTasks:[],milestones:[],risks:[],decisions:[],financePayments:[],financeAccounts:[],financeAlerts:[],user:null},activeTaskId=null,activeJobId=null,currentJobLane=null,activeProjectId=null,activeFinancePaymentId=null;
+let state={tasks:[],projects:[],briefs:[],sources:[],jobs:[],plans:[],planTasks:[],milestones:[],risks:[],decisions:[],financePayments:[],financeAccounts:[],financeAlerts:[],emailActions:[],user:null},activeTaskId=null,activeJobId=null,currentJobLane=null,activeProjectId=null,activeFinancePaymentId=null;
 const esc=(v='')=>String(v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const fmtDate=v=>{if(!v)return '—';const d=new Date(v+'T12:00:00');return d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})};
 const daysUntil=v=>{const a=new Date();a.setHours(0,0,0,0);const b=new Date(v+'T12:00:00');return Math.max(0,Math.ceil((b-a)/86400000))};
@@ -913,7 +943,7 @@ $('signOutBtn').onclick=async()=>{
 async function loadAll(){
  if(!await ensureAuth())return;
  $('liveBar').textContent='● Syncing live data…';
- const [p,t,b,s,j,pl,pt,ms,rs,ds,fp,fa,fal]=await Promise.all([
+ const [p,t,b,s,j,pl,pt,ms,rs,ds,fp,fa,fal,ea]=await Promise.all([
   supabase.from('kay_projects').select('*').order('created_at',{ascending:true}),
   supabase.from('kay_tasks').select('*').order('is_done',{ascending:true}).order('due_date',{ascending:true,nullsFirst:false}),
   supabase.from('kay_briefs').select('*').order('created_at',{ascending:false}).limit(8),
@@ -926,10 +956,11 @@ async function loadAll(){
   supabase.from('kay_decisions').select('*').order('created_at',{ascending:false}),
   supabase.from('kay_finance_plan_payments').select('*').order('payment_date',{ascending:true}).order('sequence_no',{ascending:true}),
   supabase.from('kay_finance_account_snapshot').select('*').order('source',{ascending:true}).order('account_name',{ascending:true}),
-  supabase.from('kay_finance_alerts').select('*').eq('is_open',true).order('due_date',{ascending:true,nullsFirst:false}).order('created_at',{ascending:false})
+  supabase.from('kay_finance_alerts').select('*').eq('is_open',true).order('due_date',{ascending:true,nullsFirst:false}).order('created_at',{ascending:false}),
+  supabase.from('kay_email_actions').select('*').eq('is_unread',true).order('priority_rank',{ascending:true}).order('email_ts',{ascending:false})
  ]);
  if(p.error||t.error||b.error){$('liveBar').textContent='● Data sync error';appendChat('assistant',p.error?.message||t.error?.message||b.error?.message);return}
- state.projects=p.data||[];state.tasks=t.data||[];state.briefs=b.data||[];state.sources=s.error?[]:(s.data||[]);state.jobs=j?.error?[]:(j?.data||[]);state.plans=pl?.error?[]:(pl?.data||[]);state.planTasks=pt?.error?[]:(pt?.data||[]);state.milestones=ms?.error?[]:(ms?.data||[]);state.risks=rs?.error?[]:(rs?.data||[]);state.decisions=ds?.error?[]:(ds?.data||[]);state.financePayments=fp?.error?[]:(fp?.data||[]);state.financeAccounts=fa?.error?[]:(fa?.data||[]);state.financeAlerts=fal?.error?[]:(fal?.data||[]);
+ state.projects=p.data||[];state.tasks=t.data||[];state.briefs=b.data||[];state.sources=s.error?[]:(s.data||[]);state.jobs=j?.error?[]:(j?.data||[]);state.plans=pl?.error?[]:(pl?.data||[]);state.planTasks=pt?.error?[]:(pt?.data||[]);state.milestones=ms?.error?[]:(ms?.data||[]);state.risks=rs?.error?[]:(rs?.data||[]);state.decisions=ds?.error?[]:(ds?.data||[]);state.financePayments=fp?.error?[]:(fp?.data||[]);state.financeAccounts=fa?.error?[]:(fa?.data||[]);state.financeAlerts=fal?.error?[]:(fal?.data||[]);state.emailActions=ea?.error?[]:(ea?.data||[]);
  renderAll();$('liveBar').textContent='● Live data loaded';
 }
 
@@ -1366,10 +1397,32 @@ $('financePaymentSave').onclick=async()=>{
 function renderInbox(){
  const g=source('Gmail'),d=(g&&typeof g.details==='object')?g.details:{};
  const unread=d.unread_count??d.inbox_unread??d.unread;
+ const rows=(state.emailActions||[]).filter(x=>x.is_unread!==false).sort((a,b)=>(Number(a.priority_rank||999)-Number(b.priority_rank||999)) || (new Date(b.email_ts||0)-new Date(a.email_ts||0)));
  $('gmailBadge').textContent=sourceGood(g?.status)?'LIVE':'CHECK';
  $('unreadCount').textContent=(unread!==null&&unread!==undefined)?Number(unread).toLocaleString():'—';
- $('priorityCount').textContent=d.priority_alerts??d.priority_count??'—';
- $('gmailSync').textContent=g?.last_sync_at?new Date(g.last_sync_at).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):'—';
+ $('priorityCount').textContent=rows.length || d.priority_alerts || d.priority_count || '0';
+ $('gmailSync').textContent=g?.last_sync_at?`Last pull ${new Date(g.last_sync_at).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}`:'Last pull —';
+
+ const list=$('emailActionList');
+ if(!list)return;
+ if(!rows.length){
+   list.innerHTML='<div class="emailEmpty">No important unread emails right now. ✨</div>';
+   return;
+ }
+ list.innerHTML=rows.map(e=>{
+   const urgency=String(e.urgency||'Important');
+   const dotClass=/urgent/i.test(urgency)?'urgent':(/important/i.test(urgency)?'important':'');
+   const when=e.email_ts?new Date(e.email_ts).toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'';
+   return `<div class="emailRow">
+     <span class="emailDot ${dotClass}"></span>
+     <div style="min-width:0">
+       <div class="emailSender">${esc(e.sender||'Email')}${when?` · ${esc(when)}`:''}</div>
+       <a class="emailSubject" href="${esc(e.display_url||'#')}" target="_blank" rel="noopener noreferrer">${esc(e.subject||'Open email')}</a>
+       <div class="emailSnippet">${esc(e.snippet||'')}</div>
+     </div>
+     <span class="emailTag">${esc(e.category||urgency)}</span>
+   </div>`;
+ }).join('');
 }
 function renderCalendar(){
  const c=source('Calendar'),d=(c&&typeof c.details==='object')?c.details:{};$('calendarBadge').textContent=sourceGood(c?.status)?'LIVE':'CHECK';$('calendarText').textContent=d.summary||d.message||'No active events in the current synced window.';
