@@ -1131,7 +1131,23 @@ function renderCareer(){
  document.querySelectorAll('.careerRow').forEach(x=>x.onclick=()=>openJobLane(x.dataset.lane));
 }
 function financeAccount(sourceName,accountName){
- return state.financeAccounts.find(x=>String(x.source||'').toLowerCase()===sourceName.toLowerCase()&&String(x.account_name||'').toLowerCase()===accountName.toLowerCase());
+ const src=String(sourceName||'').trim().toLowerCase();
+ const target=String(accountName||'').trim().toLowerCase();
+ return state.financeAccounts.find(x=>{
+   const xs=String(x.source||'').trim().toLowerCase();
+   const xn=String(x.account_name||'').trim().toLowerCase();
+   return xs===src && (xn===target || xn.startsWith(target) || target.startsWith(xn));
+ });
+}
+function currentSequenceAccounts(){
+ return (state.financeAccounts||[]).filter(x=>{
+   if(String(x.source||'').trim().toLowerCase()!=='sequence')return false;
+   const status=String(x.account_status||'').toLowerCase();
+   const name=String(x.account_name||'').trim().toLowerCase();
+   if(/exclude from current total|stale historical|replaced by bnpl/.test(status))return false;
+   if(name==='bills')return false;
+   return true;
+ });
 }
 function financeStatus(row){
  if(!row)return 'Planned';
@@ -1156,24 +1172,21 @@ function financeSourceDetails(){
 
 function renderMoney(){
  const navy=financeAccount('Navy Federal','EveryDay Checking');
- const seq=state.financeAccounts.filter(x=>x.source==='Sequence').reduce((a,x)=>a+Number(x.current_balance||0),0);
+ const seqRows=currentSequenceAccounts();
+ const seq=seqRows.reduce((a,x)=>a+Number(x.current_balance||0),0);
  const fd=financeSourceDetails();
- const snapshotNote=String(fd.sequence_snapshot_note||'').trim();
- const payroll=Number(fd.email_confirmed_payroll||0);
- const insuranceTransfer=Number(fd.email_confirmed_insurance_transfer||0);
- const isReconciling=!!snapshotNote;
+ const reconNote=String(fd.reconciliation_note||fd.sequence_snapshot_note||'').trim();
+ const uncertain=seqRows.some(x=>/source-reported.*unavailable|balance age unknown|reconcil/i.test(String(x.account_status||'')));
+ const isReconciling=uncertain||/reconcil/i.test(reconNote);
 
  $('financeBadge').textContent=isReconciling?'RECONCILING':(state.financeAccounts.length?'LIVE':'LINKING');
  $('availableCash').textContent=navy?money2(navy.available_balance??navy.current_balance):'—';
  $('upcomingBills').textContent=state.financeAccounts.length?money2(seq):'—';
- $('sequenceSnapshotLabel').textContent=isReconciling?'Sequence connected snapshot':'Sequence allocated';
+ $('sequenceSnapshotLabel').textContent='Sequence current connected total';
 
  const note=$('financeReconcileNote');
  if(isReconciling){
-   const confirmed=[];
-   if(payroll)confirmed.push(`${money2(payroll)} payroll deposit`);
-   if(insuranceTransfer)confirmed.push(`${money2(insuranceTransfer)} insurance transfer`);
-   note.innerHTML=`<b>Reconciliation pending:</b> the connected Sequence balance has not caught up to confirmed activity${confirmed.length?` (${confirmed.join(' + ')})`:''}. The number above is the bank-connected snapshot, not the fully reconciled position.`;
+   note.innerHTML=`<b>Connected snapshot:</b> Sequence total excludes stale historical buckets. Provider source-reported timestamps are unavailable for some accounts, so this is the latest connected value rather than a bank-timestamped real-time balance.`;
    note.classList.remove('hidden');
  }else{
    note.textContent='';
@@ -1185,7 +1198,7 @@ function formatMoney(v){return typeof v==='number'?new Intl.NumberFormat(undefin
 
 function renderFinanceCenter(){
  const rows=state.financePayments;
- const seq=state.financeAccounts.filter(x=>x.source==='Sequence');
+ const seq=currentSequenceAccounts();
  const navy=financeAccount('Navy Federal','EveryDay Checking');
  const seqCurrent=seq.reduce((a,x)=>a+Number(x.current_balance||0),0);
  const seven=new Date(today());seven.setDate(seven.getDate()+7);
@@ -1202,7 +1215,7 @@ function renderFinanceCenter(){
 
  $('financeKpis').innerHTML=[
   [navy?money2(navy.available_balance??navy.current_balance):'—','Navy spending cash'],
-  [money2(seqCurrent),'Sequence connected snapshot'],
+  [money2(seqCurrent),'Sequence current connected total'],
   [money2(upcomingAmt),'Planned next 7 days'],
   [`${paid.length}/${rows.length}`,'Plan tasks completed']
  ].map(([v,l])=>`<div class="financeKpi"><b>${v}</b><span>${l}</span></div>`).join('');
@@ -1222,13 +1235,10 @@ function renderFinanceCenter(){
  document.querySelectorAll('.financePayRow').forEach(x=>x.onclick=()=>openFinancePayment(x.dataset.finpay));
 
  const fd=financeSourceDetails();
- const seqNote=String(fd.sequence_snapshot_note||'').trim();
- const seqConfirmed=[];
- if(Number(fd.email_confirmed_payroll||0))seqConfirmed.push(`${money2(Number(fd.email_confirmed_payroll))} payroll deposit`);
- if(Number(fd.email_confirmed_insurance_transfer||0))seqConfirmed.push(`${money2(Number(fd.email_confirmed_insurance_transfer))} insurance transfer`);
- const seqWarning=seqNote?`<div class="financeListItem" style="border-color:rgba(255,202,98,.45);background:rgba(255,202,98,.06)">
-   <div class="financeListTitle">⚠️ Sequence reconciliation pending</div>
-   <div class="financeListMeta">${esc(seqNote)}${seqConfirmed.length?`<br><b>Confirmed outside connected feed:</b> ${esc(seqConfirmed.join(' + '))}`:''}</div>
+ const seqNote=String(fd.reconciliation_note||'').trim();
+ const seqWarning=seq.some(a=>/source-reported.*unavailable|balance age unknown|reconcil/i.test(String(a.account_status||'')))?`<div class="financeListItem" style="border-color:rgba(255,202,98,.45);background:rgba(255,202,98,.06)">
+   <div class="financeListTitle">⚠️ Connected balance timestamp note</div>
+   <div class="financeListMeta">${esc(seqNote||'Sequence is showing the latest connected bucket balances, but the provider does not supply a source-reported balance timestamp for these buckets.')}</div>
  </div>`:'';
  $('sequenceBuckets').innerHTML=seqWarning+(seq.length?seq.map(a=>`<div class="financeListItem">
   <div class="financeListTop"><div><div class="financeListTitle">${esc(a.account_name)}</div><div class="financeListMeta">${esc(a.account_group||'Sequence bucket')} · connected snapshot as of ${new Date(a.as_of).toLocaleString()}</div></div><div class="financeAmount">${money2(a.current_balance)}</div></div>
