@@ -749,7 +749,7 @@ tr:last-child td{border-bottom:0}
 
   <div class="financeSection">
    <div class="financeSectionHead">
-    <div><b>🎯 700 Club</b><div class="cardSub">Credit score goal · utilization attack plan · reporting dates · bureau audit</div></div>
+    <div><b>🎯 700 Credit Club</b><div class="cardSub">Credit score goal · utilization attack plan · reporting dates · bureau audit</div></div>
     <span id="creditGoalBadge" class="badge">—</span>
    </div>
    <div id="creditHero" class="creditHero"></div>
@@ -776,7 +776,7 @@ tr:last-child td{border-bottom:0}
 
 <div id="creditAccountModal" class="modal">
  <div class="modalBox creditEditBox">
-  <div class="modalTop"><div><div class="sectionLabel">700 CLUB ACCOUNT</div><div id="creditAccountTitle" class="modalTitle">Credit account</div></div><button id="creditAccountClose" class="btn">✕</button></div>
+  <div class="modalTop"><div><div class="sectionLabel">700 CREDIT CLUB ACCOUNT</div><div id="creditAccountTitle" class="modalTitle">Credit account</div></div><button id="creditAccountClose" class="btn">✕</button></div>
   <div id="creditAccountMeta" class="modalMeta"></div>
   <div class="taskEditGrid">
    <label>Current balance<input id="creditCurrentBalance" type="number" step="0.01"></label>
@@ -1393,7 +1393,7 @@ function render700Club(){
  const score=Number(goal?.current_score||snap?.score||0), target=Number(goal?.target_score||700), base=300;
  const pct=target>base?Math.max(0,Math.min(100,(score-base)/(target-base)*100)):0;
  $('creditGoalBadge').textContent=goal?(score+' → '+target):'NO GOAL';
- $('creditHero').innerHTML=goal?('<div class="creditScoreCard"><div class="creditScore">'+score+'</div><div class="creditScoreLabel">'+esc(goal.score_model||'Credit score')+' · '+esc(goal.bureau||'')+'</div></div><div class="creditGoalMeta"><div class="financeListTitle">'+esc(goal.name||'700 Club')+'</div><div class="financeListMeta">Planning target: '+target+' by '+fmtDate(goal.target_date)+' · '+esc(goal.status||'Active')+'</div><div class="creditProgressTrack"><div class="creditProgressFill" style="width:'+pct+'%"></div></div><div class="creditGoalLine"><span>Current '+score+'</span><span>Target '+target+'</span></div><div class="financeListMeta" style="margin-top:10px">'+esc(goal.notes||'Planning goal; score changes are not guaranteed.')+'</div></div>'):'<div class="cardSub">No 700 Club goal loaded.</div>';
+ $('creditHero').innerHTML=goal?('<div class="creditScoreCard"><div class="creditScore">'+score+'</div><div class="creditScoreLabel">'+esc(goal.score_model||'Credit score')+' · '+esc(goal.bureau||'')+'</div></div><div class="creditGoalMeta"><div class="financeListTitle">'+esc(goal.name||'700 Credit Club')+'</div><div class="financeListMeta">Planning target: '+target+' by '+fmtDate(goal.target_date)+' · '+esc(goal.status||'Active')+'</div><div class="creditProgressTrack"><div class="creditProgressFill" style="width:'+pct+'%"></div></div><div class="creditGoalLine"><span>Current '+score+'</span><span>Target '+target+'</span></div><div class="financeListMeta" style="margin-top:10px">'+esc(goal.notes||'Planning goal; score changes are not guaranteed.')+'</div></div>'):'<div class="cardSub">No 700 Club goal loaded.</div>';
  const revolving=(state.creditAccounts||[]).filter(a=>Number(a.credit_limit||0)>0).sort((a,b)=>Number(a.priority||999)-Number(b.priority||999));
  $('creditAccountRows').innerHTML=revolving.length?revolving.map(a=>{const util=Number(a.current_utilization??(Number(a.credit_limit||0)?Number(a.current_balance||0)/Number(a.credit_limit)*100:0));const t=targetPaydown(a);return '<tr class="creditRow" data-credit-account="'+a.id+'"><td><span class="creditPriority">'+(a.priority??'—')+'</span></td><td><b>'+esc(a.creditor)+'</b><div class="cardSub">'+esc(a.account_type||'')+'</div></td><td>'+money2(a.current_balance)+'</td><td>'+money2(a.credit_limit)+'</td><td class="'+creditUtilClass(util)+'">'+util.toFixed(1)+'%</td><td>'+Number(t.pct).toFixed(0)+'% · '+money2(t.tb)+'</td><td><b>'+money2(t.pay)+'</b></td><td>'+(a.pay_by_date?fmtDate(a.pay_by_date):'Verify')+'</td></tr>'}).join(''):'<tr><td colspan="8">No revolving accounts loaded.</td></tr>';
  const audit=(state.creditAccounts||[]).filter(a=>a.derogatory_type||a.potential_issue||a.accuracy_review_status).sort((a,b)=>Number(a.priority||999)-Number(b.priority||999));
