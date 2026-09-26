@@ -278,6 +278,24 @@ tr:last-child td{border-bottom:0}
  .financeSplit{grid-template-columns:1fr}
  .financeTable{min-width:760px}
 }
+.creditHero{display:grid;grid-template-columns:180px 1fr;gap:16px}
+.creditScoreCard,.creditGoalMeta{border:1px solid #31576a;border-radius:16px;background:#08151d;padding:16px}
+.creditScoreCard{text-align:center}.creditScore{font-size:58px;line-height:.95;font-weight:950;color:var(--cyan)}
+.creditScoreLabel{font-size:10px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-top:8px}
+.creditProgressTrack{height:12px;border-radius:999px;background:#152833;overflow:hidden;margin:12px 0}
+.creditProgressFill{height:100%;background:linear-gradient(90deg,#19bb88,#43d8ff)}
+.creditGoalLine{display:flex;justify-content:space-between;gap:10px;font-size:11px;color:var(--muted)}
+.creditGrid{display:grid;grid-template-columns:1.25fr .75fr;gap:12px;margin-top:12px}
+.creditTableWrap{max-height:360px;overflow:auto;border:1px solid #203744;border-radius:12px}
+.creditTable{min-width:900px}.creditRow{cursor:pointer}.creditRow:hover td{background:rgba(67,216,255,.04)}
+.creditUtilHigh{color:var(--red);font-weight:900}.creditUtilMed{color:var(--amber);font-weight:900}.creditUtilGood{color:var(--green);font-weight:900}
+.creditPriority{display:inline-grid;place-items:center;min-width:24px;height:24px;border-radius:999px;border:1px solid #31576a;font-size:10px;font-weight:900}
+.creditAuditList{display:flex;flex-direction:column;gap:8px;max-height:360px;overflow:auto}
+.creditAuditItem{border:1px solid #263f4d;border-radius:12px;background:#08151d;padding:10px 12px;cursor:pointer}
+.creditPill{display:inline-block;border:1px solid #31576a;border-radius:999px;padding:4px 7px;font-size:9px;font-weight:900;margin-top:6px}
+.creditSnapshotList{display:flex;gap:8px;overflow:auto}.creditSnapshot{min-width:140px;border:1px solid #263f4d;border-radius:12px;background:#08151d;padding:10px}
+.creditSnapshot b{font-size:24px}.creditEditBox{width:min(760px,96vw);max-height:90vh;overflow:auto}
+@media(max-width:850px){.creditHero,.creditGrid{grid-template-columns:1fr}.creditScoreCard{text-align:left}}
 
 .projectRowClickable{cursor:pointer}
 .projectRowClickable:hover td{background:rgba(67,216,255,.035)}
@@ -728,6 +746,52 @@ tr:last-child td{border-bottom:0}
    </div>
    <div id="financeAccountability" class="financeList"></div>
   </div>
+
+  <div class="financeSection">
+   <div class="financeSectionHead">
+    <div><b>🎯 700 Club</b><div class="cardSub">Credit score goal · utilization attack plan · reporting dates · bureau audit</div></div>
+    <span id="creditGoalBadge" class="badge">—</span>
+   </div>
+   <div id="creditHero" class="creditHero"></div>
+   <div class="creditGrid">
+    <div>
+     <div class="financeSectionHead"><div><b>💳 Utilization + payment targets</b><div class="cardSub">Tap an account to edit target, pay-by date, priority or notes.</div></div></div>
+     <div class="creditTableWrap"><table class="financeTable creditTable">
+      <thead><tr><th>Pri</th><th>Account</th><th>Balance</th><th>Limit</th><th>Util</th><th>Target</th><th>Paydown</th><th>Pay by</th></tr></thead>
+      <tbody id="creditAccountRows"></tbody>
+     </table></div>
+    </div>
+    <div>
+     <div class="financeSectionHead"><div><b>🧾 Credit report audit</b><div class="cardSub">Verify first; negative does not automatically mean inaccurate.</div></div></div>
+     <div id="creditAuditList" class="creditAuditList"></div>
+    </div>
+   </div>
+   <div style="margin-top:12px">
+    <div class="financeSectionHead"><div><b>📈 Score history</b><div class="cardSub">VantageScore® 3.0 credit score from Experian® snapshots</div></div></div>
+    <div id="creditSnapshots" class="creditSnapshotList"></div>
+   </div>
+  </div>
+ </div>
+</div>
+
+<div id="creditAccountModal" class="modal">
+ <div class="modalBox creditEditBox">
+  <div class="modalTop"><div><div class="sectionLabel">700 CLUB ACCOUNT</div><div id="creditAccountTitle" class="modalTitle">Credit account</div></div><button id="creditAccountClose" class="btn">✕</button></div>
+  <div id="creditAccountMeta" class="modalMeta"></div>
+  <div class="taskEditGrid">
+   <label>Current balance<input id="creditCurrentBalance" type="number" step="0.01"></label>
+   <label>Credit limit<input id="creditLimit" type="number" step="0.01"></label>
+   <label>Target utilization %<input id="creditTargetUtil" type="number" step="0.1" min="0" max="100"></label>
+   <label>Proposed payment<input id="creditProposedPayment" type="number" step="0.01"></label>
+   <label>Due date<input id="creditDueDate" type="date"></label>
+   <label>Pay by date<input id="creditPayByDate" type="date"></label>
+   <label>Priority<input id="creditPriority" type="number" min="1" step="1"></label>
+   <label>Action status<input id="creditActionStatus"></label>
+   <label class="full">Accuracy review<select id="creditAccuracyStatus"><option value="">—</option><option>Needs verification</option><option>Reviewing</option><option>Verified accurate</option><option>Potential issue</option><option>Disputed</option><option>Resolved</option></select></label>
+   <label class="full">Potential issue<textarea id="creditPotentialIssue"></textarea></label>
+   <label class="full">Analyst notes<textarea id="creditAnalystNotes"></textarea></label>
+  </div>
+  <div class="jobActions"><button id="creditAccountCancel" class="btn">Cancel</button><button id="creditAccountSave" class="btn primary">Save account</button></div>
  </div>
 </div>
 
@@ -814,7 +878,7 @@ const supabase=createClient(SUPABASE_URL,SUPABASE_KEY,{
  }
 });
 const $=id=>document.getElementById(id);
-let state={tasks:[],projects:[],briefs:[],sources:[],jobs:[],plans:[],planTasks:[],milestones:[],risks:[],decisions:[],financePayments:[],financeAccounts:[],financeAlerts:[],emailActions:[],user:null},activeTaskId=null,activeJobId=null,currentJobLane=null,activeProjectId=null,activeFinancePaymentId=null;
+let state={tasks:[],projects:[],briefs:[],sources:[],jobs:[],plans:[],planTasks:[],milestones:[],risks:[],decisions:[],financePayments:[],financeAccounts:[],financeAlerts:[],emailActions:[],creditGoals:[],creditAccounts:[],creditSnapshots:[],user:null},activeTaskId=null,activeJobId=null,currentJobLane=null,activeProjectId=null,activeFinancePaymentId=null,activeCreditAccountId=null;
 const esc=(v='')=>String(v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const fmtDate=v=>{if(!v)return '—';const d=new Date(v+'T12:00:00');return d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})};
 const daysUntil=v=>{const a=new Date();a.setHours(0,0,0,0);const b=new Date(v+'T12:00:00');return Math.max(0,Math.ceil((b-a)/86400000))};
@@ -943,7 +1007,7 @@ $('signOutBtn').onclick=async()=>{
 async function loadAll(){
  if(!await ensureAuth())return;
  $('liveBar').textContent='● Syncing live data…';
- const [p,t,b,s,j,pl,pt,ms,rs,ds,fp,fa,fal,ea]=await Promise.all([
+ const [p,t,b,s,j,pl,pt,ms,rs,ds,fp,fa,fal,ea,cg,ca,cs]=await Promise.all([
   supabase.from('kay_projects').select('*').order('created_at',{ascending:true}),
   supabase.from('kay_tasks').select('*').order('is_done',{ascending:true}).order('due_date',{ascending:true,nullsFirst:false}),
   supabase.from('kay_briefs').select('*').order('created_at',{ascending:false}).limit(8),
@@ -957,10 +1021,13 @@ async function loadAll(){
   supabase.from('kay_finance_plan_payments').select('*').order('payment_date',{ascending:true}).order('sequence_no',{ascending:true}),
   supabase.from('kay_finance_account_snapshot').select('*').order('source',{ascending:true}).order('account_name',{ascending:true}),
   supabase.from('kay_finance_alerts').select('*').eq('is_open',true).order('due_date',{ascending:true,nullsFirst:false}).order('created_at',{ascending:false}),
-  supabase.from('kay_email_actions').select('*').eq('is_unread',true).order('priority_rank',{ascending:true}).order('email_ts',{ascending:false})
+  supabase.from('kay_email_actions').select('*').eq('is_unread',true).order('priority_rank',{ascending:true}).order('email_ts',{ascending:false}),
+  supabase.from('kay_credit_goals').select('*').order('updated_at',{ascending:false}),
+  supabase.from('kay_credit_accounts').select('*').order('priority',{ascending:true,nullsFirst:false}).order('creditor',{ascending:true}),
+  supabase.from('kay_credit_score_snapshots').select('*').order('report_date',{ascending:false})
  ]);
  if(p.error||t.error||b.error){$('liveBar').textContent='● Data sync error';appendChat('assistant',p.error?.message||t.error?.message||b.error?.message);return}
- state.projects=p.data||[];state.tasks=t.data||[];state.briefs=b.data||[];state.sources=s.error?[]:(s.data||[]);state.jobs=j?.error?[]:(j?.data||[]);state.plans=pl?.error?[]:(pl?.data||[]);state.planTasks=pt?.error?[]:(pt?.data||[]);state.milestones=ms?.error?[]:(ms?.data||[]);state.risks=rs?.error?[]:(rs?.data||[]);state.decisions=ds?.error?[]:(ds?.data||[]);state.financePayments=fp?.error?[]:(fp?.data||[]);state.financeAccounts=fa?.error?[]:(fa?.data||[]);state.financeAlerts=fal?.error?[]:(fal?.data||[]);state.emailActions=ea?.error?[]:(ea?.data||[]);
+ state.projects=p.data||[];state.tasks=t.data||[];state.briefs=b.data||[];state.sources=s.error?[]:(s.data||[]);state.jobs=j?.error?[]:(j?.data||[]);state.plans=pl?.error?[]:(pl?.data||[]);state.planTasks=pt?.error?[]:(pt?.data||[]);state.milestones=ms?.error?[]:(ms?.data||[]);state.risks=rs?.error?[]:(rs?.data||[]);state.decisions=ds?.error?[]:(ds?.data||[]);state.financePayments=fp?.error?[]:(fp?.data||[]);state.financeAccounts=fa?.error?[]:(fa?.data||[]);state.financeAlerts=fal?.error?[]:(fal?.data||[]);state.emailActions=ea?.error?[]:(ea?.data||[]);state.creditGoals=cg?.error?[]:(cg?.data||[]);state.creditAccounts=ca?.error?[]:(ca?.data||[]);state.creditSnapshots=cs?.error?[]:(cs?.data||[]);
  renderAll();$('liveBar').textContent='● Live data loaded';
 }
 
@@ -1316,7 +1383,42 @@ function renderFinanceCenter(){
  </div>`).join(''):'<div class="cardSub">No open financial accountability tasks.</div>';
  document.querySelectorAll('[data-fintaskdone]').forEach(b=>b.onclick=()=>quickCompleteFinanceTask(b.dataset.fintaskdone));
  document.querySelectorAll('[data-fintaskopen]').forEach(b=>b.onclick=()=>{ $('financeModal').classList.remove('show'); openTask(b.dataset.fintaskopen); });
+ render700Club();
 }
+
+function creditUtilClass(v){const n=Number(v||0);return n>=80?'creditUtilHigh':n>=30?'creditUtilMed':'creditUtilGood'}
+function targetPaydown(a){const bal=Number(a.current_balance||0),lim=Number(a.credit_limit||0),pct=Number(a.target_utilization??29);const tb=a.target_balance!==null&&a.target_balance!==undefined?Number(a.target_balance):lim*(pct/100);const pay=a.proposed_payment!==null&&a.proposed_payment!==undefined?Number(a.proposed_payment):Math.max(0,bal-tb);return {pct,tb,pay}}
+function render700Club(){
+ const goal=state.creditGoals[0]||null, snap=state.creditSnapshots[0]||null;
+ const score=Number(goal?.current_score||snap?.score||0), target=Number(goal?.target_score||700), base=300;
+ const pct=target>base?Math.max(0,Math.min(100,(score-base)/(target-base)*100)):0;
+ $('creditGoalBadge').textContent=goal?(score+' → '+target):'NO GOAL';
+ $('creditHero').innerHTML=goal?('<div class="creditScoreCard"><div class="creditScore">'+score+'</div><div class="creditScoreLabel">'+esc(goal.score_model||'Credit score')+' · '+esc(goal.bureau||'')+'</div></div><div class="creditGoalMeta"><div class="financeListTitle">'+esc(goal.name||'700 Club')+'</div><div class="financeListMeta">Planning target: '+target+' by '+fmtDate(goal.target_date)+' · '+esc(goal.status||'Active')+'</div><div class="creditProgressTrack"><div class="creditProgressFill" style="width:'+pct+'%"></div></div><div class="creditGoalLine"><span>Current '+score+'</span><span>Target '+target+'</span></div><div class="financeListMeta" style="margin-top:10px">'+esc(goal.notes||'Planning goal; score changes are not guaranteed.')+'</div></div>'):'<div class="cardSub">No 700 Club goal loaded.</div>';
+ const revolving=(state.creditAccounts||[]).filter(a=>Number(a.credit_limit||0)>0).sort((a,b)=>Number(a.priority||999)-Number(b.priority||999));
+ $('creditAccountRows').innerHTML=revolving.length?revolving.map(a=>{const util=Number(a.current_utilization??(Number(a.credit_limit||0)?Number(a.current_balance||0)/Number(a.credit_limit)*100:0));const t=targetPaydown(a);return '<tr class="creditRow" data-credit-account="'+a.id+'"><td><span class="creditPriority">'+(a.priority??'—')+'</span></td><td><b>'+esc(a.creditor)+'</b><div class="cardSub">'+esc(a.account_type||'')+'</div></td><td>'+money2(a.current_balance)+'</td><td>'+money2(a.credit_limit)+'</td><td class="'+creditUtilClass(util)+'">'+util.toFixed(1)+'%</td><td>'+Number(t.pct).toFixed(0)+'% · '+money2(t.tb)+'</td><td><b>'+money2(t.pay)+'</b></td><td>'+(a.pay_by_date?fmtDate(a.pay_by_date):'Verify')+'</td></tr>'}).join(''):'<tr><td colspan="8">No revolving accounts loaded.</td></tr>';
+ const audit=(state.creditAccounts||[]).filter(a=>a.derogatory_type||a.potential_issue||a.accuracy_review_status).sort((a,b)=>Number(a.priority||999)-Number(b.priority||999));
+ $('creditAuditList').innerHTML=audit.length?audit.map(a=>'<div class="creditAuditItem" data-credit-account="'+a.id+'"><div class="financeListTitle">'+esc(a.creditor)+'</div><div class="financeListMeta">'+esc(a.derogatory_type||a.account_status||'Credit report item')+(a.current_balance!==null&&a.current_balance!==undefined?' · '+money2(a.current_balance):'')+'</div>'+(a.potential_issue?'<div class="financeListMeta" style="margin-top:5px">'+esc(a.potential_issue)+'</div>':'')+'<span class="creditPill">'+esc(a.accuracy_review_status||'Needs verification')+'</span></div>').join(''):'<div class="cardSub">No audit items loaded.</div>';
+ $('creditSnapshots').innerHTML=(state.creditSnapshots||[]).length?state.creditSnapshots.slice(0,8).map(s=>'<div class="creditSnapshot"><b>'+(s.score??'—')+'</b><div class="financeListMeta">'+(s.report_date?fmtDate(s.report_date):'—')+'<br>'+esc(s.bureau||'')+' · '+esc(s.score_model||'')+'</div>'+(s.utilization!==null&&s.utilization!==undefined?'<div class="financeListMeta">Utilization '+Number(s.utilization).toFixed(1)+'%</div>':'')+'</div>').join(''):'<div class="cardSub">No score snapshots loaded.</div>';
+ document.querySelectorAll('[data-credit-account]').forEach(el=>el.onclick=()=>openCreditAccount(el.dataset.creditAccount));
+}
+function openCreditAccount(id){
+ const a=state.creditAccounts.find(x=>String(x.id)===String(id));if(!a)return;activeCreditAccountId=a.id;
+ $('creditAccountTitle').textContent=a.creditor||'Credit account';$('creditAccountMeta').textContent=[a.account_type,a.account_status,a.bureau_source].filter(Boolean).join(' · ');
+ $('creditCurrentBalance').value=a.current_balance??'';$('creditLimit').value=a.credit_limit??'';$('creditTargetUtil').value=a.target_utilization??29;$('creditProposedPayment').value=a.proposed_payment??'';
+ $('creditDueDate').value=a.due_date||'';$('creditPayByDate').value=a.pay_by_date||'';$('creditPriority').value=a.priority??'';$('creditActionStatus').value=a.action_status||'';
+ $('creditAccuracyStatus').value=a.accuracy_review_status||'';$('creditPotentialIssue').value=a.potential_issue||'';$('creditAnalystNotes').value=a.analyst_notes||'';$('creditAccountModal').classList.add('show');
+}
+function closeCreditAccount(){$('creditAccountModal').classList.remove('show');activeCreditAccountId=null}
+$('creditAccountClose').onclick=closeCreditAccount;$('creditAccountCancel').onclick=closeCreditAccount;$('creditAccountModal').onclick=e=>{if(e.target===$('creditAccountModal'))closeCreditAccount()};
+$('creditAccountSave').onclick=async()=>{
+ const a=state.creditAccounts.find(x=>String(x.id)===String(activeCreditAccountId));if(!a)return;
+ const bal=$('creditCurrentBalance').value===''?null:Number($('creditCurrentBalance').value),lim=$('creditLimit').value===''?null:Number($('creditLimit').value),tu=$('creditTargetUtil').value===''?null:Number($('creditTargetUtil').value);
+ const tb=(lim!==null&&tu!==null)?Number((lim*(tu/100)).toFixed(2)):a.target_balance,util=(bal!==null&&lim)?Number((bal/lim*100).toFixed(3)):a.current_utilization;
+ const proposed=$('creditProposedPayment').value===''?Math.max(0,(bal||0)-(tb||0)):Number($('creditProposedPayment').value);
+ const patch={current_balance:bal,credit_limit:lim,current_utilization:util,target_utilization:tu,target_balance:tb,proposed_payment:Number(Number(proposed||0).toFixed(2)),due_date:$('creditDueDate').value||null,pay_by_date:$('creditPayByDate').value||null,priority:$('creditPriority').value===''?null:Number($('creditPriority').value),action_status:$('creditActionStatus').value.trim()||null,accuracy_review_status:$('creditAccuracyStatus').value||null,potential_issue:$('creditPotentialIssue').value.trim()||null,analyst_notes:$('creditAnalystNotes').value.trim()||null,updated_at:new Date().toISOString()};
+ $('creditAccountSave').disabled=true;const {error}=await supabase.from('kay_credit_accounts').update(patch).eq('id',a.id);$('creditAccountSave').disabled=false;if(error)return alert(error.message);closeCreditAccount();await loadAll();
+};
+
 function openFinance(){
  renderFinanceCenter();
  $('financeModal').classList.add('show');
