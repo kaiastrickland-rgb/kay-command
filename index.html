@@ -878,7 +878,7 @@ const supabase=createClient(SUPABASE_URL,SUPABASE_KEY,{
  }
 });
 const $=id=>document.getElementById(id);
-let state={tasks:[],projects:[],briefs:[],sources:[],jobs:[],plans:[],planTasks:[],milestones:[],risks:[],decisions:[],financePayments:[],financeAccounts:[],financeAlerts:[],emailActions:[],creditGoals:[],creditAccounts:[],creditSnapshots:[],user:null},activeTaskId=null,activeJobId=null,currentJobLane=null,activeProjectId=null,activeFinancePaymentId=null,activeCreditAccountId=null;
+let state={tasks:[],projects:[],briefs:[],sources:[],jobs:[],plans:[],planTasks:[],milestones:[],risks:[],decisions:[],financePayments:[],financeAccounts:[],financeAlerts:[],emailActions:[],creditGoals:[],creditAccounts:[],creditSnapshots:[],cigars:[],wines:[],user:null},activeTaskId=null,activeJobId=null,currentJobLane=null,activeProjectId=null,activeFinancePaymentId=null,activeCreditAccountId=null;
 const esc=(v='')=>String(v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const fmtDate=v=>{if(!v)return '—';const d=new Date(v+'T12:00:00');return d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})};
 const daysUntil=v=>{const a=new Date();a.setHours(0,0,0,0);const b=new Date(v+'T12:00:00');return Math.max(0,Math.ceil((b-a)/86400000))};
@@ -1007,7 +1007,7 @@ $('signOutBtn').onclick=async()=>{
 async function loadAll(){
  if(!await ensureAuth())return;
  $('liveBar').textContent='● Syncing live data…';
- const [p,t,b,s,j,pl,pt,ms,rs,ds,fp,fa,fal,ea,cg,ca,cs]=await Promise.all([
+ const [p,t,b,s,j,pl,pt,ms,rs,ds,fp,fa,fal,ea,cg,ca,cs,ci,wi]=await Promise.all([
   supabase.from('kay_projects').select('*').order('created_at',{ascending:true}),
   supabase.from('kay_tasks').select('*').order('is_done',{ascending:true}).order('due_date',{ascending:true,nullsFirst:false}),
   supabase.from('kay_briefs').select('*').order('created_at',{ascending:false}).limit(8),
@@ -1024,49 +1024,82 @@ async function loadAll(){
   supabase.from('kay_email_actions').select('*').eq('is_unread',true).order('priority_rank',{ascending:true}).order('email_ts',{ascending:false}),
   supabase.from('kay_credit_goals').select('*').order('updated_at',{ascending:false}),
   supabase.from('kay_credit_accounts').select('*').order('priority',{ascending:true,nullsFirst:false}).order('creditor',{ascending:true}),
-  supabase.from('kay_credit_score_snapshots').select('*').order('report_date',{ascending:false})
+  supabase.from('kay_credit_score_snapshots').select('*').order('report_date',{ascending:false}),
+  supabase.from('kay_cigars').select('*').eq('is_active',true).order('sort_order',{ascending:true}),
+  supabase.from('kay_wines').select('*').eq('is_active',true).order('sort_order',{ascending:true})
  ]);
  if(p.error||t.error||b.error){$('liveBar').textContent='● Data sync error';appendChat('assistant',p.error?.message||t.error?.message||b.error?.message);return}
- state.projects=p.data||[];state.tasks=t.data||[];state.briefs=b.data||[];state.sources=s.error?[]:(s.data||[]);state.jobs=j?.error?[]:(j?.data||[]);state.plans=pl?.error?[]:(pl?.data||[]);state.planTasks=pt?.error?[]:(pt?.data||[]);state.milestones=ms?.error?[]:(ms?.data||[]);state.risks=rs?.error?[]:(rs?.data||[]);state.decisions=ds?.error?[]:(ds?.data||[]);state.financePayments=fp?.error?[]:(fp?.data||[]);state.financeAccounts=fa?.error?[]:(fa?.data||[]);state.financeAlerts=fal?.error?[]:(fal?.data||[]);state.emailActions=ea?.error?[]:(ea?.data||[]);state.creditGoals=cg?.error?[]:(cg?.data||[]);state.creditAccounts=ca?.error?[]:(ca?.data||[]);state.creditSnapshots=cs?.error?[]:(cs?.data||[]);
+ state.projects=p.data||[];state.tasks=t.data||[];state.briefs=b.data||[];state.sources=s.error?[]:(s.data||[]);state.jobs=j?.error?[]:(j?.data||[]);state.plans=pl?.error?[]:(pl?.data||[]);state.planTasks=pt?.error?[]:(pt?.data||[]);state.milestones=ms?.error?[]:(ms?.data||[]);state.risks=rs?.error?[]:(rs?.data||[]);state.decisions=ds?.error?[]:(ds?.data||[]);state.financePayments=fp?.error?[]:(fp?.data||[]);state.financeAccounts=fa?.error?[]:(fa?.data||[]);state.financeAlerts=fal?.error?[]:(fal?.data||[]);state.emailActions=ea?.error?[]:(ea?.data||[]);state.creditGoals=cg?.error?[]:(cg?.data||[]);state.creditAccounts=ca?.error?[]:(ca?.data||[]);state.creditSnapshots=cs?.error?[]:(cs?.data||[]);state.cigars=ci?.error?[]:(ci?.data||[]);state.wines=wi?.error?[]:(wi?.data||[]);
  renderAll();$('liveBar').textContent='● Live data loaded';
 }
 
-const dailyPleasures=[
- {cigar:"Plasencia Alma Fuerte",strength:"Full",spice:"Warm spice: High",profile:"Cocoa, espresso, dark caramel, cinnamon, roasted nuts",wine:"Amarone della Valpolicella",wineMeta:"Rich Italian red · dried cherry · cocoa · baking spice",wineNotes:"A plush, concentrated red that can stand up to Alma Fuerte without turning the pairing peppery.",pairing:"Tonight’s vibe: deep, luxurious and slow. Let the Amarone’s dried-fruit sweetness soften the cigar’s darker cocoa and espresso."},
- {cigar:"Arturo Fuente Don Carlos",strength:"Medium–Full",spice:"Warm spice: Medium",profile:"Cream, sweet cedar, cinnamon, toasted nuts, gentle earth",wine:"Rioja Reserva",wineMeta:"Tempranillo · red fruit · vanilla · soft oak",wineNotes:"Silky tannin and mellow vanilla-oak fit the Fuente sweetness without overpowering it.",pairing:"Tonight’s vibe: elegant and smooth. Cedar + vanilla + red fruit is a very Kay-friendly lane."},
- {cigar:"Plasencia Alma del Campo",strength:"Medium",spice:"Warm spice: Medium",profile:"Cream, coffee, nuts, cedar, light baking spice",wine:"Merlot",wineMeta:"Plush red · plum · cocoa · soft tannin",wineNotes:"A round Merlot keeps the experience creamy and easy while picking up the cigar’s cocoa and nut notes.",pairing:"Tonight’s vibe: soft-luxe. Smooth, creamy, no sharp pepper edges."},
- {cigar:"Arturo Fuente Hemingway",strength:"Medium",spice:"Warm spice: Low–Medium",profile:"Sweet cedar, cream, nutmeg, toasted almond, gentle fruit",wine:"Pinot Noir",wineMeta:"Silky red · cherry · spice · light earth",wineNotes:"Pinot’s lighter body keeps the cigar in the spotlight and echoes its sweet cedar and subtle fruit.",pairing:"Tonight’s vibe: refined and easy. Great when you want flavor without heaviness."},
- {cigar:"The Tabernacle Havana Seed CT #142",strength:"Full",spice:"Warm spice: High",profile:"Molasses, cocoa, dark fruit, cinnamon, espresso",wine:"Tawny Port",wineMeta:"Fortified red · caramel · fig · toasted nuts",wineNotes:"The Port leans into molasses, dried fruit and cocoa while rounding the cigar’s strength.",pairing:"Tonight’s vibe: dessert without dessert. Rich, sweet, warm and grown."},
- {cigar:"Sobremesa Brûlée",strength:"Mild–Medium",spice:"Warm spice: Low",profile:"Cream, honey, toast, vanilla, soft nuts",wine:"Oaked Chardonnay",wineMeta:"Full-bodied white · vanilla · toast · ripe pear",wineNotes:"The creamy oak and vanilla echo the cigar’s brûlée character beautifully.",pairing:"Tonight’s vibe: creamy on creamy. This is the mellow, pretty pairing."},
- {cigar:"Oliva Serie G Cameroon",strength:"Medium",spice:"Warm spice: Medium",profile:"Cedar, coffee, cinnamon, nuts, natural sweetness",wine:"Grenache",wineMeta:"Juicy red · raspberry · warm spice · soft tannin",wineNotes:"Grenache brings fruit and warm spice without the hard tannin that can make a cigar feel peppery.",pairing:"Tonight’s vibe: lively but still smooth. Sweet spice is the star."},
- {cigar:"Perdomo 10th Anniversary Champagne",strength:"Mild–Medium",spice:"Warm spice: Low",profile:"Cream, honey, almond, vanilla, light cedar",wine:"Viognier",wineMeta:"Aromatic white · peach · honeysuckle · soft spice",wineNotes:"Viognier’s floral stone-fruit richness makes the cigar feel sweeter and rounder.",pairing:"Tonight’s vibe: bright, creamy and a little fancy."},
- {cigar:"My Father Connecticut",strength:"Medium",spice:"Warm spice: Medium",profile:"Cream, cedar, nuts, baking spice, light cocoa",wine:"California Zinfandel",wineMeta:"Jammy red · blackberry · cinnamon · vanilla",wineNotes:"A fruit-forward Zin can handle the cigar’s richer filler while keeping the pairing sweet-spiced.",pairing:"Tonight’s vibe: bold enough to be interesting, sweet enough to stay in your lane."},
- {cigar:"Romeo y Julieta Reserva Real",strength:"Mild–Medium",spice:"Warm spice: Low",profile:"Cream, cedar, toast, almond, subtle sweetness",wine:"Chenin Blanc",wineMeta:"Textured white · apple · honey · gentle acidity",wineNotes:"Chenin’s honeyed fruit lifts the cigar without overwhelming its creamy profile.",pairing:"Tonight’s vibe: easy patio energy. Smooth from start to finish."},
- {cigar:"Plasencia Reserva Original",strength:"Medium",spice:"Warm spice: Medium",profile:"Cocoa, sweet earth, cedar, nuts, soft cinnamon",wine:"Malbec",wineMeta:"Plush red · blackberry · cocoa · soft spice",wineNotes:"Malbec gives you dark fruit and cocoa with softer tannin than many Cabernets.",pairing:"Tonight’s vibe: dark fruit + cocoa + warm spice. Dependable and delicious."},
- {cigar:"Arturo Fuente Gran Reserva",strength:"Medium",spice:"Warm spice: Low–Medium",profile:"Cream, cedar, toasted nuts, caramel, baking spice",wine:"Garnacha Blanca",wineMeta:"Rounded white · pear · almond · subtle spice",wineNotes:"A fuller white keeps the cigar creamy while adding enough texture to feel substantial.",pairing:"Tonight’s vibe: understated luxury."}
-];
 
 let dailyPleasureOffset=0;
-function dailyPleasureIndex(){
+
+function dailyCatalogIndex(items, salt=0){
  const d=new Date();
  const key=Math.floor(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/86400000);
- return ((key+dailyPleasureOffset)%dailyPleasures.length+dailyPleasures.length)%dailyPleasures.length;
+ if(!items?.length)return -1;
+ return ((key + dailyPleasureOffset + salt) % items.length + items.length) % items.length;
 }
+
+function cigarTags(c){
+ const tags=[];
+ const profile=String(c?.profile||'').toLowerCase();
+ const pepper=String(c?.pepper_level||'').toLowerCase();
+ const spice=String(c?.warm_spice||'').toLowerCase();
+ if(/cream/.test(profile))tags.push('Creamy');
+ if(/sweet|honey|caramel|vanilla|molasses|fruit/.test(profile))tags.push('Naturally sweet');
+ if(/very low|low/.test(pepper))tags.push('Low pepper');
+ if(/medium|high/.test(spice))tags.push('Warm spice');
+ return [...new Set(tags)].slice(0,4);
+}
+
+function smokeSipPairingNote(c,w){
+ if(!c||!w)return '';
+ const warm=/medium|high/i.test(String(c.warm_spice||''));
+ const white=/white/i.test(String(w.color||''));
+ const full=/full/i.test(String(c.body||''));
+ if(white && full) return `Tonight’s vibe: creamy contrast. ${w.name} keeps the richer cigar lifted while staying smooth.`;
+ if(white) return `Tonight’s vibe: smooth and bright. ${w.name} complements the cigar without overpowering it.`;
+ if(warm) return `Tonight’s vibe: warm and rounded. The wine’s fruit and texture play nicely with the cigar’s softer spice.`;
+ return `Tonight’s vibe: plush and easy. Smooth cigar + smooth wine, no pepper-forward edge.`;
+}
+
 function renderDailyPleasures(){
- const p=dailyPleasures[dailyPleasureIndex()];
- if(!p)return;
+ const cigars=state.cigars||[];
+ const wines=state.wines||[];
+ const ci=dailyCatalogIndex(cigars,0);
+ const wi=dailyCatalogIndex(wines,7);
+ const cigar=ci>=0?cigars[ci]:null;
+ const wine=wi>=0?wines[wi]:null;
  const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val||''};
- set('cotdName',p.cigar);
- set('cotdMeta',`${p.strength} · ${p.spice}`);
- set('cotdNotes',p.profile);
- const tags=document.getElementById('cotdTags');
- if(tags)tags.innerHTML=['Creamy','Naturally sweet','Low pepper'].map(x=>`<span class="pleasureTag">${x}</span>`).join('');
- set('wotdName',p.wine);
- set('wotdMeta',p.wineMeta);
- set('wotdNotes',p.wineNotes);
- set('pairingNote',p.pairing);
+
+ if(cigar){
+   set('cotdName',cigar.name);
+   set('cotdMeta',`${cigar.body||'Body not listed'} · Warm spice: ${cigar.warm_spice||'—'} · Pepper: ${cigar.pepper_level||'—'}`);
+   set('cotdNotes',cigar.profile||cigar.notes||'');
+   const tags=document.getElementById('cotdTags');
+   if(tags)tags.innerHTML=cigarTags(cigar).map(x=>`<span class="pleasureTag">${esc(x)}</span>`).join('');
+ }else{
+   set('cotdName','No cigar loaded');
+   set('cotdMeta','Smoke & Sip catalog unavailable');
+   set('cotdNotes','');
+ }
+
+ if(wine){
+   set('wotdName',wine.name);
+   set('wotdMeta',`${wine.color||''}${wine.color?' · ':''}${wine.profile||''}`);
+   set('wotdNotes',wine.style_notes||'');
+ }else{
+   set('wotdName','No wine loaded');
+   set('wotdMeta','Smoke & Sip catalog unavailable');
+   set('wotdNotes','');
+ }
+
+ set('pairingNote',smokeSipPairingNote(cigar,wine));
  const d=new Date();
- set('dailyPleasureDate',`Today’s picks · ${d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})}`);
+ set('dailyPleasureDate',`Today’s picks · ${d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})} · ${cigars.length} cigars / ${wines.length} wines in rotation`);
  const b=document.getElementById('anotherVibeBtn');
  if(b && !b.dataset.bound){
    b.dataset.bound='1';
