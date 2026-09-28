@@ -1004,6 +1004,43 @@ $('signOutBtn').onclick=async()=>{
  await supabase.auth.signOut();
  location.reload();
 };
+
+let realtimeChannel=null;
+let realtimeReloadTimer=null;
+
+function scheduleRealtimeReload(){
+ clearTimeout(realtimeReloadTimer);
+ realtimeReloadTimer=setTimeout(async()=>{
+   if(!state.user)return;
+   $('liveBar').textContent='● Live update received…';
+   await loadAll();
+ },300);
+}
+
+function startRealtimeSync(){
+ if(realtimeChannel||!state.user)return;
+ const tables=[
+   'kay_email_actions',
+   'kay_source_status',
+   'kay_tasks',
+   'kay_jobs',
+   'kay_finance_account_snapshot',
+   'kay_finance_alerts',
+   'kay_briefs'
+ ];
+ let channel=supabase.channel('kay-command-live');
+ tables.forEach(table=>{
+   channel=channel.on(
+     'postgres_changes',
+     {event:'*',schema:'public',table},
+     scheduleRealtimeReload
+   );
+ });
+ realtimeChannel=channel.subscribe(status=>{
+   if(status==='SUBSCRIBED')$('liveBar').textContent='● Live push connected';
+ });
+}
+
 async function loadAll(){
  if(!await ensureAuth())return;
  $('liveBar').textContent='● Syncing live data…';
@@ -1031,6 +1068,7 @@ async function loadAll(){
  if(p.error||t.error||b.error){$('liveBar').textContent='● Data sync error';appendChat('assistant',p.error?.message||t.error?.message||b.error?.message);return}
  state.projects=p.data||[];state.tasks=t.data||[];state.briefs=b.data||[];state.sources=s.error?[]:(s.data||[]);state.jobs=j?.error?[]:(j?.data||[]);state.plans=pl?.error?[]:(pl?.data||[]);state.planTasks=pt?.error?[]:(pt?.data||[]);state.milestones=ms?.error?[]:(ms?.data||[]);state.risks=rs?.error?[]:(rs?.data||[]);state.decisions=ds?.error?[]:(ds?.data||[]);state.financePayments=fp?.error?[]:(fp?.data||[]);state.financeAccounts=fa?.error?[]:(fa?.data||[]);state.financeAlerts=fal?.error?[]:(fal?.data||[]);state.emailActions=ea?.error?[]:(ea?.data||[]);state.creditGoals=cg?.error?[]:(cg?.data||[]);state.creditAccounts=ca?.error?[]:(ca?.data||[]);state.creditSnapshots=cs?.error?[]:(cs?.data||[]);state.cigars=ci?.error?[]:(ci?.data||[]);state.wines=wi?.error?[]:(wi?.data||[]);
  renderAll();$('liveBar').textContent='● Live data loaded';
+ startRealtimeSync();
 }
 
 
