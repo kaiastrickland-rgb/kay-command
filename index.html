@@ -491,7 +491,7 @@ tr:last-child td{border-bottom:0}
         </div>
         <div class="pleasureFooter">
           <div id="dailyPleasureDate" class="dailyMoodDate"></div>
-          <button id="anotherVibeBtn" class="dailyMoodBtn">🎲 Another vibe</button>
+          <div style="display:flex;gap:8px;align-items:center"><button id="previousVibeBtn" class="dailyMoodBtn">← Previous vibe</button><button id="anotherVibeBtn" class="dailyMoodBtn">🎲 Another vibe</button></div>
         </div>
       </div>
     </section>
@@ -1100,6 +1100,11 @@ function renderDailyPleasures(){
  set('pairingNote',smokeSipPairingNote(cigar,wine));
  const d=new Date();
  set('dailyPleasureDate',`Today’s picks · ${d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})} · ${cigars.length} cigars / ${wines.length} wines in rotation`);
+ const prev=document.getElementById('previousVibeBtn');
+ if(prev && !prev.dataset.bound){
+   prev.dataset.bound='1';
+   prev.onclick=()=>{dailyPleasureOffset--;renderDailyPleasures()};
+ }
  const b=document.getElementById('anotherVibeBtn');
  if(b && !b.dataset.bound){
    b.dataset.bound='1';
