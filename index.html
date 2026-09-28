@@ -313,7 +313,7 @@ tr:last-child td{border-bottom:0}
 .projectItemTitle{font-weight:850}
 .projectItemMeta{font-size:11px;color:#8fa2ad;margin-top:4px;line-height:1.35}
 .planSource{border:1px solid #284452;border-radius:12px;padding:10px 12px;background:#0a151d;margin-bottom:10px}
-.inlineApply{border:1px solid #2686a5;background:#103747;color:white;border-radius:9px;padding:7px 10px;font-weight:850;cursor:pointer;white-space:nowrap}
+.inlineApply{border:1px solid #2686a5;background:#103747;color:white;border-radius:9px;padding:7px 10px;font-weight:850;cursor:pointer;white-space:nowrap}.inlineApply.opened{border-color:#f0b94c;background:rgba(240,185,76,.14);color:#ffd985;box-shadow:0 0 0 1px rgba(240,185,76,.12) inset}.jobItem.appliedHold{border-color:rgba(71,236,161,.55);background:rgba(71,236,161,.045)}
 
 .inlineApplied{border:1px solid rgba(71,236,161,.65);background:rgba(71,236,161,.10);color:#8ff8c3;border-radius:9px;padding:7px 10px;font-weight:900;cursor:pointer;white-space:nowrap}
 .inlineApplied[disabled]{opacity:.65;cursor:default}
@@ -1916,10 +1916,11 @@ function jobFreshnessLabel(j){
 function jobsForLane(lane){
  const isApplicationStatus=j=>/applied|applying|interview|screen|assessment|offer/i.test(String(j.status||''));
  const isClosedStatus=j=>/closed|rejected|withdrawn/i.test(String(j.status||''));
+ const held=j=>j.keep_in_lane_until_next_scan===true;
  let jobs;
  if(lane==='Applications') jobs=state.jobs.filter(j=>isApplicationStatus(j));
- else if(lane==='Active Leads') jobs=state.jobs.filter(j=>!isClosedStatus(j) && !isApplicationStatus(j));
- else jobs=state.jobs.filter(j=>String(j.lane||'')===lane && !isClosedStatus(j) && !isApplicationStatus(j));
+ else if(lane==='Active Leads') jobs=state.jobs.filter(j=>!isClosedStatus(j) && (!isApplicationStatus(j) || held(j)));
+ else jobs=state.jobs.filter(j=>String(j.lane||'')===lane && !isClosedStatus(j) && (!isApplicationStatus(j) || held(j)));
  return jobs.sort((a,b)=>{
    const an=jobFirstSeenDate(a), bn=jobFirstSeenDate(b), now=new Date();
    const aNew=an&&isSameLocalDay(an,now)?1:0, bNew=bn&&isSameLocalDay(bn,now)?1:0;
@@ -1938,16 +1939,18 @@ function renderJobList(lane){
  const jobs=jobsForLane(lane);
  $('jobList').innerHTML=jobs.length?jobs.map(j=>{
   const applied=/^applied$/i.test(String(j.status||''));
-  return `<div class="jobItem" data-job="${j.id}">
+  const opened=!!j.apply_opened_at;
+  const held=j.keep_in_lane_until_next_scan===true;
+  return `<div class="jobItem ${applied&&held?'appliedHold':''}" data-job="${j.id}">
    <div class="jobTop">
     <div style="min-width:0"><div class="jobTitle">${esc(j.title||'Untitled role')}</div><div class="jobMeta">${esc(j.employer||'')} · ${esc(j.location||'')} · ${esc(j.work_arrangement||'')}</div></div>
     <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;justify-content:flex-end">
       <div class="jobStatus">${esc(j.status||'Open')}</div>
-      <button class="inlineApply" data-apply="${j.id}" ${j.apply_url?'':'disabled'}>Apply ↗</button>
+      <button class="inlineApply ${opened?'opened':''}" data-apply="${j.id}" ${j.apply_url?'':'disabled'}>${opened?'Opened ✓':'Apply ↗'}</button>
       <button class="inlineApplied" data-applied="${j.id}" ${applied?'disabled':''}>${applied?'Applied ✓':'I Applied ✓'}</button>
     </div>
    </div>
-   <div class="jobMeta">${esc(j.compensation||'Comp not listed')} · ${applied && j.applied_at?`Applied ${new Date(j.applied_at).toLocaleDateString()}`:`${jobFreshnessLabel(j)}${jobFreshnessLabel(j)?' · ':''}First seen ${jobFirstSeenDate(j)?jobFirstSeenDate(j).toLocaleDateString(undefined,{month:'short',day:'numeric'}):'—'}`}</div>
+   <div class="jobMeta">${esc(j.compensation||'Comp not listed')} · ${applied && j.applied_at?`Applied ${new Date(j.applied_at).toLocaleDateString()}`:`${opened&&j.apply_opened_at?`Opened ${new Date(j.apply_opened_at).toLocaleDateString()}`+` · `:''}${jobFreshnessLabel(j)}${jobFreshnessLabel(j)?' · ':''}First seen ${jobFirstSeenDate(j)?jobFirstSeenDate(j).toLocaleDateString(undefined,{month:'short',day:'numeric'}):'—'}`}</div>
   </div>`;
  }).join(''):'<div class="cardSub">No jobs in this category yet.</div>';
 
@@ -1960,11 +1963,15 @@ function renderJobList(lane){
    e.stopPropagation();
    const j=state.jobs.find(x=>String(x.id)===String(b.dataset.apply));if(!j)return;
    if(j.apply_url)window.open(j.apply_url,'_blank','noopener');
-   const {error}=await supabase.from('kay_jobs').update({status:'Applying',updated_at:new Date().toISOString()}).eq('id',j.id);
-   if(!error){
-     try{await supabase.from('kay_chat_messages').insert({user_id:state.user?.id||null,role:'system',message:`Career Command action: Opened application for ${j.title} at ${j.employer}; status set to Applying.`})}catch(e){}
-     await loadAll();openJobLane(lane);
-   }
+   const now=new Date().toISOString();
+   const {error}=await supabase.from('kay_jobs').update({apply_opened_at:now,updated_at:now}).eq('id',j.id);
+   if(error)return alert(error.message);
+   j.apply_opened_at=now;
+   b.classList.add('opened');
+   b.textContent='Opened ✓';
+   await logJobAction(j,`Opened application page for ${j.title} at ${j.employer}; job remains in its current lane until Kay confirms I Applied.`);
+   const meta=b.closest('.jobItem')?.querySelectorAll('.jobMeta');
+   if(meta?.length>1) renderJobList(lane);
  });
 
  document.querySelectorAll('[data-applied]').forEach(b=>b.onclick=async e=>{
@@ -1972,11 +1979,17 @@ function renderJobList(lane){
    const j=state.jobs.find(x=>String(x.id)===String(b.dataset.applied));if(!j)return;
    if(/^applied$/i.test(String(j.status||'')))return;
    const now=new Date().toISOString();
-   const {error}=await supabase.from('kay_jobs').update({status:'Applied',applied_at:now,updated_at:now}).eq('id',j.id);
+   const {error}=await supabase.from('kay_jobs').update({
+     status:'Applied',
+     applied_at:now,
+     keep_in_lane_until_next_scan:true,
+     updated_at:now
+   }).eq('id',j.id);
    if(error)return alert(error.message);
-   await logJobAction(j,`Marked ${j.title} at ${j.employer} as Applied from the dashboard.`);
-   await loadAll();
-   openJobLane(lane);
+   j.status='Applied';j.applied_at=now;j.keep_in_lane_until_next_scan=true;
+   await logJobAction(j,`Marked ${j.title} at ${j.employer} as Applied from the dashboard; keep visible in its current lane until the next career scan.`);
+   renderCareer();
+   renderJobList(lane);
  });
 }
 function openJob(id){
@@ -1986,6 +1999,10 @@ function openJob(id){
  $('jobDetailMeta').textContent=[j.employer,j.location,j.work_arrangement,j.compensation,j.status].filter(Boolean).join(' · ');
  $('jobDetailText').textContent=j.fit_note||'No additional fit notes are saved for this role.';
  $('jobApply').disabled=!j.apply_url;
+ $('jobApply').textContent=j.apply_opened_at?'Opened ✓ — open again':'Apply';
+ $('jobApply').classList.toggle('opened',!!j.apply_opened_at);
+ $('jobMarkApplied').disabled=/^applied$/i.test(String(j.status||''));
+ $('jobMarkApplied').textContent=/^applied$/i.test(String(j.status||''))?'Applied ✓':'Mark applied';
 }
 $('jobClose').onclick=()=>{$('jobModal').classList.remove('show');activeJobId=null};
 $('jobModal').onclick=e=>{if(e.target===$('jobModal'))$('jobModal').classList.remove('show')};
@@ -1998,16 +2015,28 @@ async function logJobAction(j,message){
 $('jobApply').onclick=async()=>{
  const j=state.jobs.find(x=>x.id===activeJobId);if(!j)return;
  if(j.apply_url) window.open(j.apply_url,'_blank','noopener');
- const {error}=await supabase.from('kay_jobs').update({status:'Applying',updated_at:new Date().toISOString()}).eq('id',j.id);
- if(!error){await logJobAction(j,`Opened application for ${j.title} at ${j.employer}; status set to Applying.`);await loadAll();openJob(j.id)}
+ const now=new Date().toISOString();
+ const {error}=await supabase.from('kay_jobs').update({apply_opened_at:now,updated_at:now}).eq('id',j.id);
+ if(error)return alert(error.message);
+ j.apply_opened_at=now;
+ await logJobAction(j,`Opened application page for ${j.title} at ${j.employer}; status not changed until Kay confirms Mark applied.`);
+ openJob(j.id);
+ renderJobList(currentJobLane);
 };
 $('jobMarkApplied').onclick=async()=>{
  const j=state.jobs.find(x=>x.id===activeJobId);if(!j)return;
  const now=new Date().toISOString();
- const {error}=await supabase.from('kay_jobs').update({status:'Applied',applied_at:now,updated_at:now}).eq('id',j.id);
+ const {error}=await supabase.from('kay_jobs').update({
+   status:'Applied',
+   applied_at:now,
+   keep_in_lane_until_next_scan:true,
+   updated_at:now
+ }).eq('id',j.id);
  if(error)return alert(error.message);
- await logJobAction(j,`Marked ${j.title} at ${j.employer} as Applied from the dashboard.`);
- await loadAll();openJob(j.id)
+ j.status='Applied';j.applied_at=now;j.keep_in_lane_until_next_scan=true;
+ await logJobAction(j,`Marked ${j.title} at ${j.employer} as Applied from the dashboard; keep visible in its current lane until the next career scan.`);
+ renderCareer();
+ openJob(j.id);
 };
 
 
