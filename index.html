@@ -104,7 +104,7 @@ button,input,textarea{font:inherit} button{cursor:pointer}
  radial-gradient(circle at top right,rgba(69,217,255,.08),transparent 34%),
  linear-gradient(180deg,#0c1a23,#09151d);overflow:hidden;min-height:180px}
 .pleasureEyebrow{font-size:10px;letter-spacing:.16em;font-weight:900;color:var(--cyan);text-transform:uppercase}
-.pleasureName{font-size:24px;line-height:1.08;font-weight:950;margin:8px 0 5px;max-width:80%}
+.pleasureName{font-size:24px;line-height:1.08;font-weight:950;margin:8px 0 5px;max-width:80%}.pleasureNameLink{color:inherit;text-decoration:none;display:block}.pleasureNameLink:hover{color:var(--cyan);text-decoration:underline;text-underline-offset:3px}
 .pleasureMeta{font-size:12px;color:var(--muted);line-height:1.45}
 .pleasureNotes{font-size:13px;line-height:1.5;margin-top:11px}
 .pleasureTags{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
@@ -475,7 +475,7 @@ tr:last-child td{border-bottom:0}
               <span class="cigarBody"></span><span class="cigarBand"></span><span class="cigarAsh"></span><span class="cigarEmber"></span>
             </div>
             <div class="pleasureEyebrow">COTD · Cigar of the Day</div>
-            <div id="cotdName" class="pleasureName">Loading today’s cigar…</div>
+            <a id="cotdName" class="pleasureName pleasureNameLink" href="#" target="_blank" rel="noopener noreferrer">Loading today’s cigar…</a>
             <div id="cotdMeta" class="pleasureMeta"></div>
             <div id="cotdNotes" class="pleasureNotes"></div>
             <div id="cotdTags" class="pleasureTags"></div>
@@ -483,7 +483,7 @@ tr:last-child td{border-bottom:0}
           <div class="pleasureCard">
             <div class="pleasureIcon" aria-hidden="true">🍷</div>
             <div class="pleasureEyebrow">WOTD · Wine of the Day</div>
-            <div id="wotdName" class="pleasureName">Loading today’s pour…</div>
+            <a id="wotdName" class="pleasureName pleasureNameLink" href="#" target="_blank" rel="noopener noreferrer">Loading today’s pour…</a>
             <div id="wotdMeta" class="pleasureMeta"></div>
             <div id="wotdNotes" class="pleasureNotes"></div>
             <div id="pairingNote" class="pleasurePairing"></div>
@@ -1077,6 +1077,11 @@ function renderDailyPleasures(){
 
  if(cigar){
    set('cotdName',cigar.name);
+   const cotdLink=document.getElementById('cotdName');
+   if(cotdLink){
+     if(cigar.info_url){cotdLink.href=cigar.info_url;cotdLink.setAttribute('aria-label',`Open information for ${cigar.name}`)}
+     else{cotdLink.removeAttribute('href')}
+   }
    set('cotdMeta',`${cigar.body||'Body not listed'} · Warm spice: ${cigar.warm_spice||'—'} · Pepper: ${cigar.pepper_level||'—'}`);
    set('cotdNotes',cigar.profile||cigar.notes||'');
    const tags=document.getElementById('cotdTags');
@@ -1089,6 +1094,11 @@ function renderDailyPleasures(){
 
  if(wine){
    set('wotdName',wine.name);
+   const wotdLink=document.getElementById('wotdName');
+   if(wotdLink){
+     if(wine.info_url){wotdLink.href=wine.info_url;wotdLink.setAttribute('aria-label',`Open information for ${wine.name}`)}
+     else{wotdLink.removeAttribute('href')}
+   }
    set('wotdMeta',`${wine.color||''}${wine.color?' · ':''}${wine.profile||''}`);
    set('wotdNotes',wine.style_notes||'');
  }else{
