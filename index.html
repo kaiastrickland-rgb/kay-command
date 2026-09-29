@@ -1337,15 +1337,15 @@ function renderCareer(){
    leadsCard.onclick=()=>openJobLane('Active Leads');
    leadsCard.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openJobLane('Active Leads')}};
  }
- const row=(icon,name,desc,count,category)=>\`<div class="careerRow" data-lane="\${category}">
-   <div><div class="careerName">\${icon} \${name}</div><div class="careerDesc">\${desc}</div></div>
-   <div class="careerCount">\${count} jobs<br><span class="cardSub">Tap to open</span></div>
- </div>\`;
+ const row=(icon,name,desc,count,category)=>`<div class="careerRow" data-lane="${category}">
+   <div><div class="careerName">${icon} ${name}</div><div class="careerDesc">${desc}</div></div>
+   <div class="careerCount">${count} jobs<br><span class="cardSub">Tap to open</span></div>
+ </div>`;
  $('careerRows').innerHTML=
    row('♛','Strategic C-Suite','Director+ / $240K+ target',jobsForCategory('Strategic C-Suite').length,'Strategic C-Suite')+
    row('✈️','Aviation','Strategic Move + Immediate Income',jobsForCategory('Aviation').length,'Aviation')+
    row('🏨','Hospitality & Travel','Strategic Move + Immediate Income',jobsForCategory('Hospitality & Travel').length,'Hospitality & Travel')+
-   \`<div class="careerCategoryNote">Applications remain preserved in the Applications view.</div>\`;
+   `<div class="careerCategoryNote">Applications remain preserved in the Applications view.</div>`;
  document.querySelectorAll('.careerRow').forEach(x=>x.onclick=()=>openJobLane(x.dataset.lane));
 }
 function financeAccount(sourceName,accountName){
