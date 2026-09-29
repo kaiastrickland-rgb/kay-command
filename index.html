@@ -4,6 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>KAY // COMMAND</title>
+<script>
+(()=>{
+  const canonicalHost='kay-command.vercel.app';
+  const h=location.hostname;
+  if(h!==canonicalHost && h.startsWith('kay-command-') && h.endsWith('.vercel.app')){
+    location.replace('https://'+canonicalHost+location.pathname+location.search+location.hash);
+  }
+})();
+</script>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=4">
 <link rel="shortcut icon" href="/favicon.svg?v=4">
 <link rel="apple-touch-icon" href="/favicon.svg?v=4">
@@ -36,18 +45,13 @@ button,input,textarea{font:inherit} button{cursor:pointer}
 .sectionLabel{font-size:11px;letter-spacing:.20em;color:var(--cyan);font-weight:900;margin-bottom:8px}
 .badge{padding:7px 10px;border:1px solid #244857;border-radius:999px;color:var(--green);font-size:11px;font-weight:900;white-space:nowrap}
 .hero{grid-column:span 8;height:305px}
-.milestones{grid-column:span 4;height:305px}.milestones .cardHeader{padding-bottom:6px}.milestoneCalendarScroll{height:246px;overflow:auto;padding:0 20px 18px}.milestoneCalendarScroll .milestoneBody{padding:0}.calendarWithinMilestones{border-top:1px solid rgba(70,101,116,.32);margin-top:4px;padding-top:13px}.calendarMiniHead{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:8px}.calendarMiniTitle{font-size:14px;font-weight:900}.calendarMiniSub{font-size:10px;color:var(--muted);margin-top:2px}
+.rightRail{grid-column:span 4;height:305px;display:grid;grid-template-rows:1fr 1fr;gap:16px;min-width:0}.milestones,.calendarCard{height:auto;min-height:0}.milestones .cardHeader,.calendarCard .cardHeader{padding:14px 16px 7px}.milestones .milestoneBody{padding:0 16px 12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;overflow:auto}.milestone{padding:9px 10px;border:1px solid rgba(70,101,116,.28);border-radius:12px;background:#0a151d;min-width:0}.milestone:last-child{border-bottom:1px solid rgba(70,101,116,.28)}.milestoneNum{font-size:34px;font-weight:950;line-height:1}.milestoneDesc{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.25}.milestoneDate{font-size:11px;font-weight:850;margin-top:3px;line-height:1.25}.calendarCard .trioBody{height:auto;min-height:0;max-height:92px;padding:0 16px 12px;overflow:auto}.calendarCard .cardTitle{font-size:16px}.calendarCard .cardSub{font-size:10px}.calendarText{font-size:12px;color:var(--muted);line-height:1.4}
 .heroBody{padding:0 20px 18px;height:232px;overflow:auto}
 .heroGreeting{font-size:38px;line-height:1.08;font-weight:950;letter-spacing:-.035em;margin:4px 0 10px}
 .briefList{margin:0;padding-left:20px;font-size:15px;line-height:1.55}
 .briefList li{margin:8px 0}
 .liveBar{border:1px solid rgba(71,236,161,.34);color:#b7f9d9;background:rgba(27,109,75,.13);border-radius:999px;padding:9px 12px;font-size:11px;font-weight:750;margin-top:10px}
-.milestoneBody{padding:0 20px 18px}
-.milestone{padding:12px 0 18px;border-bottom:1px solid rgba(70,101,116,.26)}
-.milestone:last-child{border-bottom:0}
-.milestoneNum{font-size:47px;font-weight:950;line-height:1}
-.milestoneDesc{font-size:14px;color:var(--muted);margin-top:3px}
-.milestoneDate{font-weight:850;margin-top:2px}
+
 .action{grid-column:span 7;height:330px}
 .career{grid-column:span 5;height:330px}
 .scroll{overflow:auto}
@@ -96,7 +100,6 @@ button,input,textarea{font:inherit} button{cursor:pointer}
 .emailTag{font-size:8px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;padding:4px 6px;border:1px solid #315060;border-radius:999px;color:#bdd4df;white-space:nowrap}
 .emailEmpty{font-size:12px;color:var(--muted);padding:12px 2px}
 
-.calendarText{font-size:15px;color:var(--muted);line-height:1.45}
 
 .dailyPleasures{grid-column:span 12;min-height:285px}
 .dailyPleasuresBody{padding:0 20px 20px}
@@ -346,8 +349,8 @@ tr:last-child td{border-bottom:0}
 @media(max-width:900px){
  .shell{padding:12px} .topbar{height:auto;padding:10px 0;align-items:flex-start}
  .brandTitle{font-size:17px} .tagline{letter-spacing:.15em}
- .hero,.milestones,.action,.career,.trio,.emailActionCard,.projects,.lower{grid-column:span 12}
- .hero,.milestones{height:auto;min-height:275px}.milestoneCalendarScroll{height:auto;max-height:380px} .action,.career{height:310px}
+ .hero,.rightRail,.milestones,.calendarCard,.action,.career,.trio,.emailActionCard,.projects,.lower{grid-column:span 12}
+ .hero{height:auto;min-height:275px}.rightRail{height:auto;grid-template-rows:auto auto}.milestones,.calendarCard{height:auto;min-height:150px}.milestones .milestoneBody{grid-template-columns:1fr 1fr}.calendarCard .trioBody{max-height:160px} .action,.career{height:310px}
  .trio{height:auto;min-height:250px} .projects{height:390px}
  .lower{height:auto;min-height:290px}
 }
@@ -508,22 +511,23 @@ tr:last-child td{border-bottom:0}
       </div>
     </section>
 
-    <section class="card milestones">
-      <div class="cardHeader"><div><div class="sectionLabel">NEXT MAJOR MILESTONES</div></div></div>
-      <div class="milestoneCalendarScroll">
+    <div class="rightRail">
+      <section class="card milestones">
+        <div class="cardHeader"><div><div class="sectionLabel">NEXT MAJOR MILESTONES</div></div></div>
         <div class="milestoneBody">
           <div class="milestone"><div id="turn50Days" class="milestoneNum">—</div><div class="milestoneDesc">days until The ’76s Turn 50</div><div class="milestoneDate">October 3, 2026 · Atlanta</div></div>
-          <div class="milestone"><div id="weddingDays" class="milestoneNum">—</div><div class="milestoneDesc">days until K / R · 11.7.26</div></div>
+          <div class="milestone"><div id="weddingDays" class="milestoneNum">—</div><div class="milestoneDesc">days until K / R</div><div class="milestoneDate">November 7, 2026</div></div>
         </div>
-        <div class="calendarWithinMilestones">
-          <div class="calendarMiniHead">
-            <div><div class="calendarMiniTitle">📅 Today / This Week</div><div class="calendarMiniSub">Google Calendar</div></div>
-            <span id="calendarBadge" class="badge">LIVE</span>
-          </div>
-          <div id="calendarText" class="calendarText">Loading calendar snapshot…</div>
+      </section>
+
+      <section class="card calendarCard">
+        <div class="cardHeader">
+          <div><div class="cardTitle">📅 Today / This Week</div><div class="cardSub">Google Calendar</div></div>
+          <span id="calendarBadge" class="badge">LIVE</span>
         </div>
-      </div>
-    </section>
+        <div class="trioBody"><div id="calendarText" class="calendarText">Loading calendar snapshot…</div></div>
+      </section>
+    </div>
 
     <section class="card action">
       <div class="cardHeader">
