@@ -36,7 +36,7 @@ button,input,textarea{font:inherit} button{cursor:pointer}
 .sectionLabel{font-size:11px;letter-spacing:.20em;color:var(--cyan);font-weight:900;margin-bottom:8px}
 .badge{padding:7px 10px;border:1px solid #244857;border-radius:999px;color:var(--green);font-size:11px;font-weight:900;white-space:nowrap}
 .hero{grid-column:span 8;height:305px}
-.milestones{grid-column:span 4;height:305px}
+.milestones{grid-column:span 4;height:305px}.milestones .cardHeader{padding-bottom:6px}.milestoneCalendarScroll{height:246px;overflow:auto;padding:0 20px 18px}.milestoneCalendarScroll .milestoneBody{padding:0}.calendarWithinMilestones{border-top:1px solid rgba(70,101,116,.32);margin-top:4px;padding-top:13px}.calendarMiniHead{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:8px}.calendarMiniTitle{font-size:14px;font-weight:900}.calendarMiniSub{font-size:10px;color:var(--muted);margin-top:2px}
 .heroBody{padding:0 20px 18px;height:232px;overflow:auto}
 .heroGreeting{font-size:38px;line-height:1.08;font-weight:950;letter-spacing:-.035em;margin:4px 0 10px}
 .briefList{margin:0;padding-left:20px;font-size:15px;line-height:1.55}
@@ -78,7 +78,7 @@ button,input,textarea{font:inherit} button{cursor:pointer}
 .inboxKpi strong{display:block;font-size:27px}
 .inboxKpi span{font-size:10px;color:var(--muted);line-height:1.25;display:block}
 
-.emailActionCard .trioBody{height:214px;overflow:hidden;display:flex;flex-direction:column}
+.emailActionCard{grid-column:span 8;height:288px}.emailActionCard .trioBody{height:214px;overflow:hidden;display:flex;flex-direction:column}
 .emailSummaryRow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
 .emailMiniStats{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .emailMiniStat{font-size:10px;color:var(--muted);border:1px solid #263f4d;background:#0a151d;border-radius:999px;padding:5px 8px;white-space:nowrap}
@@ -346,8 +346,8 @@ tr:last-child td{border-bottom:0}
 @media(max-width:900px){
  .shell{padding:12px} .topbar{height:auto;padding:10px 0;align-items:flex-start}
  .brandTitle{font-size:17px} .tagline{letter-spacing:.15em}
- .hero,.milestones,.action,.career,.trio,.projects,.lower{grid-column:span 12}
- .hero,.milestones{height:auto;min-height:275px} .action,.career{height:310px}
+ .hero,.milestones,.action,.career,.trio,.emailActionCard,.projects,.lower{grid-column:span 12}
+ .hero,.milestones{height:auto;min-height:275px}.milestoneCalendarScroll{height:auto;max-height:380px} .action,.career{height:310px}
  .trio{height:auto;min-height:250px} .projects{height:390px}
  .lower{height:auto;min-height:290px}
 }
@@ -510,9 +510,18 @@ tr:last-child td{border-bottom:0}
 
     <section class="card milestones">
       <div class="cardHeader"><div><div class="sectionLabel">NEXT MAJOR MILESTONES</div></div></div>
-      <div class="milestoneBody">
-        <div class="milestone"><div id="turn50Days" class="milestoneNum">—</div><div class="milestoneDesc">days until The ’76s Turn 50</div><div class="milestoneDate">October 3, 2026 · Atlanta</div></div>
-        <div class="milestone"><div id="weddingDays" class="milestoneNum">—</div><div class="milestoneDesc">days until K / R · 11.7.26</div></div>
+      <div class="milestoneCalendarScroll">
+        <div class="milestoneBody">
+          <div class="milestone"><div id="turn50Days" class="milestoneNum">—</div><div class="milestoneDesc">days until The ’76s Turn 50</div><div class="milestoneDate">October 3, 2026 · Atlanta</div></div>
+          <div class="milestone"><div id="weddingDays" class="milestoneNum">—</div><div class="milestoneDesc">days until K / R · 11.7.26</div></div>
+        </div>
+        <div class="calendarWithinMilestones">
+          <div class="calendarMiniHead">
+            <div><div class="calendarMiniTitle">📅 Today / This Week</div><div class="calendarMiniSub">Google Calendar</div></div>
+            <span id="calendarBadge" class="badge">LIVE</span>
+          </div>
+          <div id="calendarText" class="calendarText">Loading calendar snapshot…</div>
+        </div>
       </div>
     </section>
 
@@ -574,10 +583,6 @@ tr:last-child td{border-bottom:0}
       </div>
     </section>
 
-    <section class="card trio">
-      <div class="cardHeader"><div><div class="cardTitle">📅 Today / This Week</div><div class="cardSub">Google Calendar</div></div><span id="calendarBadge" class="badge">LIVE</span></div>
-      <div class="trioBody"><div id="calendarText" class="calendarText">Loading calendar snapshot…</div></div>
-    </section>
     <section class="card projects">
       <div class="cardHeader">
         <div><div class="cardTitle">📁 Project Command Center</div><div class="cardSub">Project portfolio · scroll to see all</div></div>
