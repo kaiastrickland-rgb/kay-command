@@ -66,6 +66,7 @@ button,input,textarea{font:inherit} button{cursor:pointer}
 .careerName{font-weight:850}
 .careerDesc{font-size:12px;color:var(--muted);margin-top:2px}
 .careerCount{font-size:12px;font-weight:850;text-align:right;white-space:nowrap}
+.careerCategoryNote{font-size:11px;color:var(--muted);line-height:1.35;padding:2px 0 7px}
 .trio{grid-column:span 4;height:288px}
 .trioBody{padding:0 20px 18px;height:210px;overflow:auto}
 .moneyBoxes{display:grid;grid-template-columns:1fr;gap:10px}
@@ -536,7 +537,7 @@ tr:last-child td{border-bottom:0}
         <div class="kpi"><strong>$70/hr</strong><span>Hard floor</span></div>
         <div class="kpi"><strong>&lt;2</strong><span>Hybrid days preferred</span></div>
       </div>
-      <div id="careerRows" class="careerBody scroll"></div>
+      <div id="careerRows" class="careerBody scroll"><div class="careerCategoryNote">Choose a category. Each category keeps the Strategic Move and Immediate Income lanes intact.</div></div>
     </section>
 
     <section id="moneySnapshotCard" class="card trio financeEntry" title="Open Financial Command Center">
@@ -1290,28 +1291,51 @@ function renderActions(){
  $('actionList').innerHTML=rows.length?rows.map(t=>{const p=projectFor(t);return `<div class="actionRow" data-id="${t.id}"><div class="pin">📌</div><div><div class="actionName">${esc(t.name)}</div><div class="actionMeta">${esc(p?.name||p?.title||'Kay')}${t.due_date?` · due ${fmtDate(t.due_date)}`:''}</div></div></div>`}).join(''):'<div class="cardSub">No open actions.</div>';
  document.querySelectorAll('.actionRow').forEach(x=>x.onclick=()=>openTask(x.dataset.id));
 }
+function careerCategoryFor(j){
+ const explicit=String(j?.category||'').trim();
+ if(explicit==='Aviation'||explicit==='Hospitality & Travel')return explicit;
+ const employer=String(j?.employer||'').toLowerCase();
+ if(/delta|alaska airlines|jetblue|planesense|american airlines|united airlines|southwest|frontier|spirit|allegiant|sun country|breeze|avelo|endeavor|netjets|executive jet|flexjet|wheels up|vista|xo|flyexclusive|solairus|jet linx|airshare|nicholas air|jet aviation|clay lacy|jsx|sentient jet|fxair|privatefly|air partner|tradewind aviation|ati jet/.test(employer))return 'Aviation';
+ if(/marriott|hilton|hyatt|ihg|accor|wyndham|choice hotels|omni hotels|loews|four seasons|mgm resorts|caesars|las vegas sands|disney parks|airbnb|vacasa|american gaming|expedia|booking holdings|tripadvisor|american express global business travel|cwt|sabre|amadeus|travelport|delta vacations|aaa travel|carnival|royal caribbean|norwegian cruise/.test(employer))return 'Hospitality & Travel';
+ return '';
+}
+function jobsForCategory(category){
+ const isApplicationStatus=j=>/applied|applying|interview|screen|assessment|offer/i.test(String(j.status||''));
+ const isClosedStatus=j=>/closed|rejected|withdrawn/i.test(String(j.status||''));
+ const held=j=>j.keep_in_lane_until_next_scan===true;
+ return (state.jobs||[]).filter(j=>{
+   if(isClosedStatus(j))return false;
+   if(category==='Strategic C-Suite' && String(j.lane||'')!=='Strategic Move')return false;
+   if(category==='Aviation' && careerCategoryFor(j)!=='Aviation')return false;
+   if(category==='Hospitality & Travel' && careerCategoryFor(j)!=='Hospitality & Travel')return false;
+   return !isApplicationStatus(j)||held(j);
+ }).sort((a,b)=>{
+   const an=jobFirstSeenDate(a), bn=jobFirstSeenDate(b), now=new Date();
+   const aNew=an&&isSameLocalDay(an,now)?1:0, bNew=bn&&isSameLocalDay(bn,now)?1:0;
+   if(aNew!==bNew)return bNew-aNew;
+   return (bn?.getTime()||0)-(an?.getTime()||0);
+ });
+}
 function renderCareer(){
  const all=state.jobs||[];
  const isApplicationStatus=j=>/applied|applying|interview|screen|assessment|offer/i.test(String(j.status||''));
  const isClosedStatus=j=>/closed|rejected|withdrawn/i.test(String(j.status||''));
  const active=all.filter(j=>!isClosedStatus(j) && !isApplicationStatus(j));
- const strategic=active.filter(j=>String(j.lane||'').toLowerCase()==='strategic move');
- const immediate=active.filter(j=>String(j.lane||'').toLowerCase()==='immediate income');
- const applications=all.filter(j=>isApplicationStatus(j));
  $('careerLeads').textContent=active.length||'—';
  const leadsCard=$('careerLeadsCard');
  if(leadsCard){
    leadsCard.onclick=()=>openJobLane('Active Leads');
    leadsCard.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openJobLane('Active Leads')}};
  }
- const row=(icon,name,desc,count,lane)=>`<div class="careerRow" data-lane="${lane}">
-   <div><div class="careerName">${icon} ${name}</div><div class="careerDesc">${desc}</div></div>
-   <div class="careerCount">${count} jobs<br><span class="cardSub">Tap to open</span></div>
- </div>`;
+ const row=(icon,name,desc,count,category)=>\`<div class="careerRow" data-lane="\${category}">
+   <div><div class="careerName">\${icon} \${name}</div><div class="careerDesc">\${desc}</div></div>
+   <div class="careerCount">\${count} jobs<br><span class="cardSub">Tap to open</span></div>
+ </div>\`;
  $('careerRows').innerHTML=
-   row('🚀','Strategic Move','Director / VP / PMO / Transformation',strategic.length,'Strategic Move')+
-   row('⚡','Immediate Income','$70/hr+ / near-term income',immediate.length,'Immediate Income')+
-   row('📨','Applications','Applying / Applied / Interview',applications.length,'Applications');
+   row('♛','Strategic C-Suite','Director+ / $240K+ target',jobsForCategory('Strategic C-Suite').length,'Strategic C-Suite')+
+   row('✈️','Aviation','Strategic Move + Immediate Income',jobsForCategory('Aviation').length,'Aviation')+
+   row('🏨','Hospitality & Travel','Strategic Move + Immediate Income',jobsForCategory('Hospitality & Travel').length,'Hospitality & Travel')+
+   \`<div class="careerCategoryNote">Applications remain preserved in the Applications view.</div>\`;
  document.querySelectorAll('.careerRow').forEach(x=>x.onclick=()=>openJobLane(x.dataset.lane));
 }
 function financeAccount(sourceName,accountName){
@@ -1955,6 +1979,7 @@ function jobsForLane(lane){
  const isApplicationStatus=j=>/applied|applying|interview|screen|assessment|offer/i.test(String(j.status||''));
  const isClosedStatus=j=>/closed|rejected|withdrawn/i.test(String(j.status||''));
  const held=j=>j.keep_in_lane_until_next_scan===true;
+ if(lane==='Strategic C-Suite'||lane==='Aviation'||lane==='Hospitality & Travel')return jobsForCategory(lane);
  let jobs;
  if(lane==='Applications') jobs=state.jobs.filter(j=>isApplicationStatus(j));
  else if(lane==='Active Leads') jobs=state.jobs.filter(j=>!isClosedStatus(j) && (!isApplicationStatus(j) || held(j)));
