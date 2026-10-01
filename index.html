@@ -874,7 +874,18 @@ tr:last-child td{border-bottom:0}
 </div>
 
 <div id="authModal" class="auth">
- <div class="authBox"><div class="sectionLabel">TRUSTED DEVICE ACCESS</div><h2>Trust this device once</h2><p class="cardSub">Enter your private Kay Command device access code one time. After that, this Home Screen app will silently restore its Supabase session without emailing you a magic link.</p><input id="deviceCodeInput" type="password" autocomplete="off" placeholder="Private device access code"><button id="trustDeviceBtn" class="btn primary" style="width:100%">Trust this device</button><p id="authMsg" class="cardSub"></p><p class="cardSub" style="margin-top:8px">This code stays on this device. Use Sign Out if you want Kay Command to forget the device.</p></div>
+ <div class="authBox">
+  <div class="sectionLabel">KAY COMMAND ACCESS</div>
+  <h2>Restore this device</h2>
+  <p class="cardSub">If your saved trusted-device code still works, use it below. If not, use the one-time email sign-in to restore this Safari/iPad session securely.</p>
+  <input id="deviceCodeInput" type="password" autocomplete="off" placeholder="Private device access code">
+  <button id="trustDeviceBtn" class="btn primary" style="width:100%">Trust this device</button>
+  <div style="display:flex;align-items:center;gap:10px;margin:14px 0;color:#6f8794;font-size:10px"><span style="height:1px;background:#294957;flex:1"></span>OR<span style="height:1px;background:#294957;flex:1"></span></div>
+  <input id="authEmailInput" type="email" inputmode="email" autocomplete="email" placeholder="Email for Kay Command">
+  <button id="emailSignInBtn" class="btn" style="width:100%">Send one-time sign-in link</button>
+  <p id="authMsg" class="cardSub"></p>
+  <p class="cardSub" style="margin-top:8px">After a successful sign-in, this browser keeps the Supabase session and refreshes it automatically. Use Sign Out to forget this device.</p>
+ </div>
 </div>
 
 <script type="module">
@@ -937,7 +948,13 @@ async function establishSessionFromDeviceCode(code,{silent=false}={}){
    if(!silent)$('authMsg').textContent='Trusted device authorized ✓';
    return true;
  }catch(error){
-   if(!silent)$('authMsg').textContent=error?.message||'Unable to authorize this device.';
+   const msg=error?.message||'Unable to authorize this device.';
+   if(/invalid device access code/i.test(msg)){
+     try{localStorage.removeItem(TRUSTED_DEVICE_CODE_KEY)}catch(e){}
+   }
+   if(!silent)$('authMsg').textContent=/invalid device access code/i.test(msg)
+     ? 'That saved device code is no longer valid. Use the one-time email sign-in below to restore this browser.'
+     : msg;
    return false;
  }
 }
@@ -1007,6 +1024,36 @@ $('trustDeviceBtn').onclick=async()=>{
  if(ok){
    $('deviceCodeInput').value='';
    await loadAll();
+ }
+};
+
+$('emailSignInBtn').onclick=async()=>{
+ const email=$('authEmailInput').value.trim();
+ if(!email){
+   $('authMsg').textContent='Enter the email address you use for Kay Command.';
+   return;
+ }
+ const btn=$('emailSignInBtn');
+ btn.disabled=true;
+ const original=btn.textContent;
+ btn.textContent='Sending…';
+ $('authMsg').textContent='Sending a secure one-time sign-in link…';
+ try{
+   const {error}=await supabase.auth.signInWithOtp({
+     email,
+     options:{
+       emailRedirectTo:'https://kay-command.vercel.app/',
+       shouldCreateUser:false
+     }
+   });
+   if(error)throw error;
+   $('authMsg').textContent='Sign-in link sent. Open it on this same iPad/Safari, then Kay Command will restore automatically.';
+   btn.textContent='Link sent ✓';
+ }catch(error){
+   $('authMsg').textContent=error?.message||'Could not send the sign-in link.';
+   btn.textContent=original;
+ }finally{
+   setTimeout(()=>{btn.disabled=false;if(btn.textContent==='Link sent ✓')btn.textContent=original},2500);
  }
 };
 
