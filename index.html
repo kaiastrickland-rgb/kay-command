@@ -1350,10 +1350,11 @@ function renderActions(){
 }
 function careerCategoryFor(j){
  const explicit=String(j?.category||'').trim();
- if(explicit==='Aviation'||explicit==='Hospitality & Travel')return explicit;
+ if(explicit==='Aviation'||explicit==='Hospitality & Travel'||explicit==='Gaming')return explicit;
  const employer=String(j?.employer||'').toLowerCase();
  if(/delta|alaska airlines|jetblue|planesense|american airlines|united airlines|southwest|frontier|spirit|allegiant|sun country|breeze|avelo|endeavor|netjets|executive jet|flexjet|wheels up|vista|xo|flyexclusive|solairus|jet linx|airshare|nicholas air|jet aviation|clay lacy|jsx|sentient jet|fxair|privatefly|air partner|tradewind aviation|ati jet/.test(employer))return 'Aviation';
- if(/marriott|hilton|hyatt|ihg|accor|wyndham|choice hotels|omni hotels|loews|four seasons|mgm resorts|caesars|las vegas sands|disney parks|airbnb|vacasa|american gaming|expedia|booking holdings|tripadvisor|american express global business travel|cwt|sabre|amadeus|travelport|delta vacations|aaa travel|carnival|royal caribbean|norwegian cruise/.test(employer))return 'Hospitality & Travel';
+ if(/ags|american gaming|mgm resorts|caesars|las vegas sands|wynn resorts|penn entertainment|draftkings|fanduel|flutter|aristocrat|light & wonder|igt|playstation|xbox|microsoft gaming|nintendo|electronic arts|take-two|epic games|activision|blizzard/.test(employer))return 'Gaming';
+ if(/marriott|hilton|hyatt|ihg|accor|wyndham|choice hotels|omni hotels|loews|four seasons|disney parks|airbnb|vacasa|expedia|booking holdings|tripadvisor|american express global business travel|cwt|sabre|amadeus|travelport|delta vacations|aaa travel|carnival|royal caribbean|norwegian cruise/.test(employer))return 'Hospitality & Travel';
  return '';
 }
 function jobsForCategory(category){
@@ -1365,6 +1366,7 @@ function jobsForCategory(category){
    if(category==='Strategic C-Suite' && String(j.lane||'')!=='Strategic Move')return false;
    if(category==='Aviation' && careerCategoryFor(j)!=='Aviation')return false;
    if(category==='Hospitality & Travel' && careerCategoryFor(j)!=='Hospitality & Travel')return false;
+   if(category==='Gaming' && careerCategoryFor(j)!=='Gaming')return false;
    return !isApplicationStatus(j)||held(j);
  }).sort((a,b)=>{
    const an=jobFirstSeenDate(a), bn=jobFirstSeenDate(b), now=new Date();
@@ -1392,6 +1394,7 @@ function renderCareer(){
    row('♛','Strategic C-Suite','Director+ / $240K+ target',jobsForCategory('Strategic C-Suite').length,'Strategic C-Suite')+
    row('✈️','Aviation','Strategic Move + Immediate Income',jobsForCategory('Aviation').length,'Aviation')+
    row('🏨','Hospitality & Travel','Strategic Move + Immediate Income',jobsForCategory('Hospitality & Travel').length,'Hospitality & Travel')+
+   row('🎮','Gaming','Strategic Move + Immediate Income',jobsForCategory('Gaming').length,'Gaming')+
    `<div class="careerCategoryNote">Applications remain preserved in the Applications view.</div>`;
  document.querySelectorAll('.careerRow').forEach(x=>x.onclick=()=>openJobLane(x.dataset.lane));
 }
@@ -2036,7 +2039,7 @@ function jobsForLane(lane){
  const isApplicationStatus=j=>/applied|applying|interview|screen|assessment|offer/i.test(String(j.status||''));
  const isClosedStatus=j=>/closed|rejected|withdrawn/i.test(String(j.status||''));
  const held=j=>j.keep_in_lane_until_next_scan===true;
- if(lane==='Strategic C-Suite'||lane==='Aviation'||lane==='Hospitality & Travel')return jobsForCategory(lane);
+ if(lane==='Strategic C-Suite'||lane==='Aviation'||lane==='Hospitality & Travel'||lane==='Gaming')return jobsForCategory(lane);
  let jobs;
  if(lane==='Applications') jobs=state.jobs.filter(j=>isApplicationStatus(j));
  else if(lane==='Active Leads') jobs=state.jobs.filter(j=>!isClosedStatus(j) && (!isApplicationStatus(j) || held(j)));
