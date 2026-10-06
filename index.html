@@ -332,6 +332,11 @@ tr:last-child td{border-bottom:0}
 .jobMeta{font-size:11px;color:var(--muted);margin-top:4px}
 .jobStatus{font-size:10px;color:var(--green);font-weight:900;white-space:nowrap}
 .jobActions{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}
+.jobStatusEditor{margin-top:14px;padding-top:14px;border-top:1px solid #284452}
+.jobStatusEditor label{display:block;font-size:11px;color:var(--muted);font-weight:850;margin-bottom:6px}
+.jobStatusEditorRow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.jobStatusEditor select{width:100%;border:1px solid #2a4f61;border-radius:11px;background:#07131b;color:#fff;padding:10px}
+@media(max-width:560px){.jobStatusEditorRow{grid-template-columns:1fr}}
 @media(max-width:560px){.taskEditGrid{grid-template-columns:1fr}.taskEditGrid .full{grid-column:1}.modalActions{grid-template-columns:1fr}.modalActions .danger{grid-column:1}}
 
 .modal{display:none;position:fixed;inset:0;background:rgba(2,7,11,.82);backdrop-filter:blur(8px);z-index:50;align-items:center;justify-content:center;padding:18px}
@@ -698,6 +703,24 @@ tr:last-child td{border-bottom:0}
       <button id="jobBack" class="btn">← Back to jobs</button>
       <button id="jobApply" class="btn primary">Apply</button>
       <button id="jobMarkApplied" class="btn">Mark applied</button>
+    </div>
+    <div class="jobStatusEditor">
+      <label for="jobStatusSelect">Update job status</label>
+      <div class="jobStatusEditorRow">
+        <select id="jobStatusSelect">
+          <option value="Open">Open</option>
+          <option value="Applied">Applied</option>
+          <option value="Interview">Interview</option>
+          <option value="Assessment">Assessment</option>
+          <option value="Offer">Offer</option>
+          <option value="Rejected">Rejected</option>
+          <option value="Expired">Expired</option>
+          <option value="Closed">Closed</option>
+          <option value="Withdrawn">Withdrawn</option>
+        </select>
+        <button id="jobSaveStatus" class="btn">Save status</button>
+      </div>
+      <div id="jobStatusMsg" class="cardSub"></div>
     </div>
   </div>
  </div>
@@ -1359,7 +1382,7 @@ function careerCategoryFor(j){
 }
 function jobsForCategory(category){
  const isApplicationStatus=j=>/applied|applying|interview|screen|assessment|offer/i.test(String(j.status||''));
- const isClosedStatus=j=>/closed|rejected|withdrawn/i.test(String(j.status||''));
+ const isClosedStatus=j=>/closed|expired|rejected|withdrawn/i.test(String(j.status||''));
  const held=j=>j.keep_in_lane_until_next_scan===true;
  return (state.jobs||[]).filter(j=>{
    if(isClosedStatus(j))return false;
@@ -1378,7 +1401,7 @@ function jobsForCategory(category){
 function renderCareer(){
  const all=state.jobs||[];
  const isApplicationStatus=j=>/applied|applying|interview|screen|assessment|offer/i.test(String(j.status||''));
- const isClosedStatus=j=>/closed|rejected|withdrawn/i.test(String(j.status||''));
+ const isClosedStatus=j=>/closed|expired|rejected|withdrawn/i.test(String(j.status||''));
  const active=all.filter(j=>!isClosedStatus(j) && !isApplicationStatus(j));
  $('careerLeads').textContent=active.length||'—';
  const leadsCard=$('careerLeadsCard');
@@ -2037,7 +2060,7 @@ function jobFreshnessLabel(j){
 }
 function jobsForLane(lane){
  const isApplicationStatus=j=>/applied|applying|interview|screen|assessment|offer/i.test(String(j.status||''));
- const isClosedStatus=j=>/closed|rejected|withdrawn/i.test(String(j.status||''));
+ const isClosedStatus=j=>/closed|expired|rejected|withdrawn/i.test(String(j.status||''));
  const held=j=>j.keep_in_lane_until_next_scan===true;
  if(lane==='Strategic C-Suite'||lane==='Aviation'||lane==='Hospitality & Travel'||lane==='Gaming')return jobsForCategory(lane);
  let jobs;
@@ -2126,6 +2149,13 @@ function openJob(id){
  $('jobApply').classList.toggle('opened',!!j.apply_opened_at);
  $('jobMarkApplied').disabled=/^applied$/i.test(String(j.status||''));
  $('jobMarkApplied').textContent=/^applied$/i.test(String(j.status||''))?'Applied ✓':'Mark applied';
+ const statusSelect=$('jobStatusSelect');
+ if(statusSelect){
+   const status=String(j.status||'Open');
+   const known=[...statusSelect.options].some(o=>o.value.toLowerCase()===status.toLowerCase());
+   statusSelect.value=known?[...statusSelect.options].find(o=>o.value.toLowerCase()===status.toLowerCase()).value:'Open';
+ }
+ if($('jobStatusMsg'))$('jobStatusMsg').textContent='';
 }
 $('jobClose').onclick=()=>{$('jobModal').classList.remove('show');activeJobId=null};
 $('jobModal').onclick=e=>{if(e.target===$('jobModal'))$('jobModal').classList.remove('show')};
@@ -2160,6 +2190,43 @@ $('jobMarkApplied').onclick=async()=>{
  await logJobAction(j,`Marked ${j.title} at ${j.employer} as Applied from the dashboard; keep visible in its current lane until the next career scan.`);
  renderCareer();
  openJob(j.id);
+};
+
+$('jobSaveStatus').onclick=async()=>{
+ const j=state.jobs.find(x=>x.id===activeJobId);if(!j)return;
+ const next=$('jobStatusSelect').value;
+ const now=new Date().toISOString();
+ const terminal=/expired|closed|rejected|withdrawn/i.test(next);
+ const patch={
+   status:next,
+   updated_at:now,
+   keep_in_lane_until_next_scan: next==='Applied' ? true : (terminal ? false : (j.keep_in_lane_until_next_scan||false))
+ };
+ if(next==='Applied' && !j.applied_at)patch.applied_at=now;
+
+ $('jobSaveStatus').disabled=true;
+ $('jobStatusMsg').textContent='Saving…';
+ const {error}=await supabase.from('kay_jobs').update(patch).eq('id',j.id);
+ if(error){
+   $('jobSaveStatus').disabled=false;
+   $('jobStatusMsg').textContent=error.message;
+   return;
+ }
+
+ Object.assign(j,patch);
+ await logJobAction(j,`Updated ${j.title} at ${j.employer} to ${next} from Career Command.`);
+ $('jobStatusMsg').textContent=`Saved as ${next} ✓`;
+ $('jobSaveStatus').disabled=false;
+ renderCareer();
+
+ if(terminal){
+   // Terminal jobs should leave active/search lanes immediately, while remaining in Supabase history.
+   $('jobDetail').style.display='none';
+   $('jobList').style.display='flex';
+   renderJobList(currentJobLane);
+ }else{
+   openJob(j.id);
+ }
 };
 
 
