@@ -498,6 +498,8 @@ tr:last-child td{border-bottom:0}
             <div class="pleasureEyebrow">WOTD · Wine of the Day</div>
             <a id="wotdName" class="pleasureName pleasureNameLink" href="#" target="_blank" rel="noopener noreferrer">Loading today’s pour…</a>
             <div id="wotdMeta" class="pleasureMeta"></div>
+            <div id="wotdBottle" class="pleasureNotes" style="margin-top:10px;font-weight:700"></div>
+            <a id="wotdBuy" class="pleasureNameLink" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-top:7px;font-size:13px">Shop this bottle ↗</a>
             <div id="wotdNotes" class="pleasureNotes"></div>
             <div id="pairingNote" class="pleasurePairing"></div>
           </div>
@@ -524,7 +526,7 @@ tr:last-child td{border-bottom:0}
       <section class="card milestones">
         <div class="cardHeader"><div><div class="sectionLabel">NEXT MAJOR MILESTONES</div></div></div>
         <div class="milestoneBody">
-          <div class="milestone"><div id="turn50Days" class="milestoneNum">—</div><div class="milestoneDesc">days until The ’76ers Turn 50</div><div class="milestoneDate">October 3, 2026</div></div>
+          <div class="milestone"><div id="turn50Days" class="milestoneNum">—</div><div class="milestoneDesc">The ’76s Turn 50 · event complete</div><div class="milestoneDate">October 3, 2026</div></div>
           <div class="milestone"><div id="weddingDays" class="milestoneNum">—</div><div class="milestoneDesc">days until K / R</div><div class="milestoneDate">November 7, 2026</div></div>
         </div>
       </section>
@@ -937,7 +939,9 @@ const today=()=>{const d=new Date();d.setHours(0,0,0,0);return d};
 function dueWeek(t){if(!t.due_date)return false;const d=new Date(t.due_date+'T12:00:00'),e=today();e.setDate(e.getDate()+7);return d>=today()&&d<=e}
 function atRisk(t){if(t.is_done)return false;const txt=`${t.name} ${t.details||''}`;if(/risk|blocked|overdue|dependency|late/i.test(txt))return true;if(t.due_date)return new Date(t.due_date+'T12:00:00')<today();return false}
 function projectFor(t){return state.projects.find(p=>p.id===t.project_id)}
-function setGreeting(){const h=new Date().getHours();$('greeting').textContent=`Good ${h<12?'morning':h<18?'afternoon':'evening'}, Kay.`;$('turn50Days').textContent=daysUntil('2026-10-03');$('weddingDays').textContent=daysUntil('2026-11-07')}
+function isClosedProject(p){return /^(closed|complete|completed|archived)$/i.test(String(p?.status||''))}
+function isActiveTask(t){return !t.is_done && !isClosedProject(projectFor(t))}
+function setGreeting(){const h=new Date().getHours();$('greeting').textContent=`Good ${h<12?'morning':h<18?'afternoon':'evening'}, Kay.`;$('turn50Days').textContent='DONE';$('weddingDays').textContent=daysUntil('2026-11-07')}
 let authBooting=true;
 const TRUSTED_DEVICE_CODE_KEY='kay-command-device-code-v1';
 
@@ -1189,13 +1193,40 @@ function smokeSipPairingNote(c,w){
  return `Tonight’s vibe: plush and easy. Smooth cigar + smooth wine, no pepper-forward edge.`;
 }
 
+function chooseWineForCigar(c,wines){
+ const options=(wines||[]).filter(w=>w.bottle_name && /^https:\/\//i.test(String(w.purchase_url||'')));
+ if(!options.length)return null;
+ const p=String(c?.profile||'').toLowerCase();
+ const body=String(c?.body||'').toLowerCase();
+ const warm=String(c?.warm_spice||'').toLowerCase();
+ const full=/full/.test(body),creamy=/cream|butter|nut|almond|cashew|cedar/.test(p);
+ const cocoa=/cocoa|chocolate|coffee|espresso|molasses/.test(p);
+ const sweet=/sweet|honey|caramel|vanilla/.test(p);
+ const spice=/medium|high/.test(warm);
+ const scored=options.map(w=>{
+   const n=String(w.name||'').toLowerCase(),white=/white/i.test(w.color||'');
+   let score=0;
+   if(full)score+=white?-2:4;else if(creamy)score+=white?4:1;
+   if(cocoa)score+=/merlot|malbec|red blend/.test(n)?5:0;
+   if(sweet)score+=/chardonnay|pinot noir|red blend/.test(n)?3:0;
+   if(spice)score+=/pinot noir|merlot|côtes/.test(n)?2:0;
+   if(/pepper/.test(String(w.bottle_notes||'').toLowerCase()))score-=3;
+   if(/pinot noir|chardonnay/.test(n))score+=1;
+   return {w,score};
+ }).sort((a,b)=>b.score-a.score || a.w.name.localeCompare(b.w.name));
+ const top=scored.filter(x=>x.score>=scored[0].score-2).slice(0,3);
+ const day=Math.floor(Date.now()/86400000);
+ return top[((day+dailyPleasureOffset)%top.length+top.length)%top.length].w;
+}
+
 function renderDailyPleasures(){
  const cigars=state.cigars||[];
  const wines=state.wines||[];
  const ci=dailyCatalogIndex(cigars,0);
- const wi=dailyCatalogIndex(wines,7);
+ const wine=chooseWineForCigar(cigars[ci],wines);
+ const wi=-1;
  const cigar=ci>=0?cigars[ci]:null;
- const wine=wi>=0?wines[wi]:null;
+ // Wine is selected for the cigar, not independently rotated.
  const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val||''};
 
  if(cigar){
@@ -1219,18 +1250,23 @@ function renderDailyPleasures(){
    set('wotdName',wine.name);
    const wotdLink=document.getElementById('wotdName');
    if(wotdLink){
-     if(wine.info_url){wotdLink.href=wine.info_url;wotdLink.setAttribute('aria-label',`Open information for ${wine.name}`)}
+     if(wine.purchase_url){wotdLink.href=wine.purchase_url;wotdLink.setAttribute('aria-label',`Shop ${wine.bottle_name}`)}
      else{wotdLink.removeAttribute('href')}
    }
    set('wotdMeta',`${wine.color||''}${wine.color?' · ':''}${wine.profile||''}`);
    set('wotdNotes',wine.style_notes||'');
+   set('wotdBottle',`🍾 ${wine.bottle_name}`);
+   const buy=document.getElementById('wotdBuy');
+   if(buy){buy.href=wine.purchase_url;buy.style.display='inline-block';buy.setAttribute('aria-label',`Shop ${wine.bottle_name}`)}
  }else{
-   set('wotdName','No wine loaded');
+   set('wotdName','No verified bottle loaded');
+   set('wotdBottle','');
+   const buy=document.getElementById('wotdBuy');if(buy)buy.style.display='none';
    set('wotdMeta','Smoke & Sip catalog unavailable');
    set('wotdNotes','');
  }
 
- set('pairingNote',smokeSipPairingNote(cigar,wine));
+ set('pairingNote',wine?.bottle_notes?`Why it fits this cigar: ${wine.bottle_notes}`:smokeSipPairingNote(cigar,wine));
  const d=new Date();
  set('dailyPleasureDate',`Today’s picks · ${d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})} · ${cigars.length} cigars / ${wines.length} wines in rotation`);
  const prev=document.getElementById('previousVibeBtn');
@@ -1261,7 +1297,7 @@ function renderBriefs(){
    return `${y}-${m}-${day}`;
  })();
 
- const openTasks=(state.tasks||[]).filter(t=>!t.is_done);
+ const openTasks=(state.tasks||[]).filter(isActiveTask);
  const overdue=openTasks.filter(t=>t.due_date && t.due_date<todayStr);
  const dueToday=openTasks.filter(t=>t.due_date===todayStr);
  const upcoming=openTasks.filter(t=>t.due_date && t.due_date>todayStr)
@@ -1371,7 +1407,7 @@ function renderBriefs(){
 }
 
 function renderActions(){
- const rows=state.tasks.filter(t=>!t.is_done);$('openCount').textContent=`${rows.length} OPEN`;
+ const rows=state.tasks.filter(isActiveTask);$('openCount').textContent=`${rows.length} OPEN`;
  $('actionList').innerHTML=rows.length?rows.map(t=>{const p=projectFor(t);return `<div class="actionRow" data-id="${t.id}"><div class="pin">📌</div><div><div class="actionName">${esc(t.name)}</div><div class="actionMeta">${esc(p?.name||p?.title||'Kay')}${t.due_date?` · due ${fmtDate(t.due_date)}`:''}</div></div></div>`}).join(''):'<div class="cardSub">No open actions.</div>';
  document.querySelectorAll('.actionRow').forEach(x=>x.onclick=()=>openTask(x.dataset.id));
 }
@@ -1734,7 +1770,7 @@ function projectPlanInfo(projectId){
 }
 
 function openAllActionTasks(){
- const rows=(state.tasks||[]).filter(t=>!t.is_done);
+ const rows=(state.tasks||[]).filter(isActiveTask);
  $('fullListLabel').textContent='ACTION CENTER';
  $('fullListTitle').textContent='All open tasks';
  $('fullListMeta').textContent=`${rows.length} open task${rows.length===1?'':'s'}`;
@@ -1756,7 +1792,7 @@ function openAllActionTasks(){
 }
 
 function openAllProjects(){
- const rows=(state.projects||[]).filter(p=>String(p.status||'active').toLowerCase()!=='complete');
+ const rows=(state.projects||[]).filter(p=>!isClosedProject(p));
  $('fullListLabel').textContent='PROJECT COMMAND CENTER';
  $('fullListTitle').textContent='All active projects';
  $('fullListMeta').textContent=`${rows.length} active project${rows.length===1?'':'s'}`;
@@ -1791,7 +1827,7 @@ function bindSummaryCountBadges(){
 }
 
 function renderProjects(){
- const active=state.projects.filter(p=>String(p.status||'active').toLowerCase()!=='complete');
+ const active=state.projects.filter(p=>!isClosedProject(p));
  $('projectBadge').textContent=`${active.length} PROJECTS`;
  $('projectTable').innerHTML=active.map(p=>{
    const live=state.tasks.filter(t=>t.project_id===p.id),liveDone=live.filter(t=>t.is_done).length;
@@ -1879,7 +1915,7 @@ function populateNewTaskProjects(){
  const sel=$('newTaskProject');
  if(!sel)return;
  const current=sel.value;
- sel.innerHTML='<option value="">Choose project…</option>'+state.projects.map(p=>`<option value="${p.id}">${esc(p.name||'Untitled project')}</option>`).join('');
+ sel.innerHTML='<option value="">Choose project…</option>'+state.projects.filter(p=>!isClosedProject(p)).map(p=>`<option value="${p.id}">${esc(p.name||'Untitled project')}</option>`).join('');
  if(current && state.projects.some(p=>String(p.id)===String(current)))sel.value=current;
 }
 $('newTaskBtn').onclick=()=>{
