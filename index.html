@@ -512,6 +512,7 @@ tr:last-child td{border-bottom:0}
 .dailyPleasures.smokeSipCollapsed .dailyPleasuresBody{display:none}
 .dailyPleasures.smokeSipCollapsed .cardHeader{margin-bottom:6px}
 @media(max-width:500px){.smokeSipSummary{gap:6px;padding:0 9px 10px}.smokeSipSummaryItem{padding:8px}.smokeSipSummaryItem strong{font-size:12px}.smokeSipHeaderActions{gap:5px}.smokeSipToggle{font-size:10px;padding:6px 8px}}
+.cigarBlendSource{grid-column:1/-1;display:flex;justify-content:space-between;gap:8px;align-items:center;border-top:1px solid rgba(255,255,255,.08);padding-top:5px;margin-top:3px;font-size:9px;color:#a4b9c5}.cigarBlendSource a{color:#88d8ee;text-decoration:none}.cigarBlendSource span{cursor:help}
 </style>
 </head>
 <body>
@@ -1354,6 +1355,9 @@ function renderCigarTobacco(cigar){
    const confirmed=String(value||'').trim();
    return `<div class="cigarBlendRow" title="${esc(help)}"><span class="cigarBlendLabel">${label}</span><span class="cigarBlendValue${confirmed?'':' unconfirmed'}">${confirmed?esc(confirmed):'Not yet verified'}</span></div>`;
  }).join('');
+ const source=String(cigar.blend_source_url||'');
+ const note=String(cigar.blend_verification_note||'').trim();
+ if(/^https:\/\/[^\s]+$/i.test(source))target.innerHTML+=`<div class="cigarBlendSource"><a href="${esc(source)}" target="_blank" rel="noopener noreferrer">Blend source ↗</a>${note?`<span title="${esc(note)}">ⓘ Blend details vary</span>`:''}</div>`;
 }
 function syncSmokeSipCollapse(){
  const section=document.getElementById('smokeSipSection'),button=document.getElementById('smokeSipToggle'),summary=document.getElementById('smokeSipSummary');
