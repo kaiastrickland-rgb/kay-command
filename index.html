@@ -1309,9 +1309,9 @@ function renderWineRatings(wine){
 
 function renderSipManager(){
  const el=document.getElementById('sipManager');if(!el||el.hidden)return;
- const items=[...state.cigars.map(x=>({...x,kind:'cigar'})),...state.wines.map(x=>({...x,kind:'wine'}))];
+ const items=[...state.cigars.map(x=>({...x,kind:'cigar'})),...state.wines.map(x=>({...x,kind:'wine'}))].filter(x=>x.is_favorite===true||Number(x.user_rating)>=4);
  items.sort((a,b)=>(b.is_favorite?1:0)-(a.is_favorite?1:0)||(Number(b.user_rating)||0)-(Number(a.user_rating)||0)||a.name.localeCompare(b.name));
- el.innerHTML='<div class="sipManagerTitle">My palate · Favorites and feedback ('+items.length+' suggestions)</div>'+items.map(x=>`<div class="sipManagerRow"><div><strong>${esc(x.is_favorite?'♥ '+x.name:x.name)}</strong><div class="sipManagerMeta">${x.kind} · ${x.user_rating?x.user_rating+'/5 stars':'Not rated'} · ${x.rotation_status==='paused'?'Out of rotation':'In rotation'}${x.user_feedback?' · Notes saved':''}</div></div><button data-sip-manage="${x.id}" data-sip-kind="${x.kind}" data-sip-status="${x.rotation_status==='paused'?'active':'paused'}">${x.rotation_status==='paused'?'Restore':'Pause'}</button></div>`).join('');
+ el.innerHTML='<div class="sipManagerTitle">My Palate · ♥ Favorites and 4–5 star picks ('+items.length+')</div>'+(items.length?items.map(x=>`<div class="sipManagerRow"><div><strong>${esc(x.is_favorite?'♥ '+x.name:x.name)}</strong><div class="sipManagerMeta">${x.kind} · ${x.user_rating?x.user_rating+'/5 stars':'Not rated'} · ${x.rotation_status==='paused'?'Out of rotation':'In rotation'}${x.user_feedback?' · Notes saved':''}</div></div><button data-sip-manage="${x.id}" data-sip-kind="${x.kind}" data-sip-status="${x.rotation_status==='paused'?'active':'paused'}">${x.rotation_status==='paused'?'Restore':'Pause'}</button></div>`).join(''):'<div class="sipManagerMeta" style="padding:12px 0">Your favorites and 4–5 star picks will appear here. Tap ♡ or rate a recommendation to add it.</div>');
  el.querySelectorAll('[data-sip-manage]').forEach(b=>b.onclick=()=>saveSip(b.dataset.sipKind,b.dataset.sipManage,{rotation_status:b.dataset.sipStatus}));
 }
 function renderDailyPleasures(){
