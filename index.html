@@ -114,14 +114,21 @@ button,input,textarea{font:inherit} button{cursor:pointer}
 .pleasureNotes{font-size:13px;line-height:1.5;margin-top:11px}
 .pleasureTags{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
 .pleasureTag{font-size:10px;font-weight:900;padding:6px 8px;border:1px solid #2a4b59;border-radius:999px;color:#b9d0dc;background:rgba(255,255,255,.02)}
-.wineRatings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;margin-top:13px;padding:12px;border:1px solid rgba(255,255,255,.11);border-radius:12px;background:rgba(255,255,255,.025)}
-.wineRatingLabel{display:flex;justify-content:space-between;gap:6px;font-size:11px;font-weight:700;color:#e9e6e0}
-.wineRatingTrack{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px;margin:7px 0 4px}
-.wineRatingSegment{height:7px;border-radius:3px;background:rgba(255,255,255,.12)}
+.wineProfileHeading{font-size:9px;letter-spacing:.13em;font-weight:800;color:#b4a1aa;margin-top:12px}
+.wineRatings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 12px;margin-top:6px;padding:9px 10px;border:1px solid rgba(255,255,255,.09);border-radius:9px;background:rgba(255,255,255,.02)}
+.wineRatingLabel{display:flex;justify-content:space-between;gap:6px;font-size:10px;font-weight:650;color:#e9e6e0}
+.wineRatingTrack{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;margin:5px 0 3px}
+.wineRatingSegment{height:5px;border-radius:3px;background:rgba(255,255,255,.12)}
 .wineRatingSegment.on{background:#ad6079}
 .wineRatingEnds{display:flex;justify-content:space-between;gap:5px;font-size:9px;color:#aab9c3}
-.wineRatingFootnote{grid-column:1/-1;font-size:10px;color:#aab9c3;line-height:1.4}
+.wineRatingFootnote{grid-column:1/-1;font-size:9px;color:#aab9c3;line-height:1.4}
 @media(max-width:440px){.wineRatings{gap:10px 8px;padding:9px}.wineRatingLabel{font-size:10px}.wineRatingEnds{font-size:8px}}
+.wineBottleSection{margin-top:14px;padding-top:11px;border-top:1px solid rgba(255,255,255,.12)}
+.wineBottleHeading{font-size:9px;letter-spacing:.12em;font-weight:800;color:#d5b7c0}
+.wineBottleName{margin-top:5px;font-size:16px;line-height:1.3;font-weight:800;color:#f4e9eb}
+.wineBottleDescription{margin-top:6px;font-size:12px;line-height:1.5;color:#c9d2d8}
+.wineBottleBuy{display:inline-flex;margin-top:9px;padding:7px 12px;border:1px solid rgba(190,126,146,.6);border-radius:8px;color:#f4ceda;font-size:12px;font-weight:750;text-decoration:none;background:rgba(173,96,121,.10)}
+.wineBottleBuy:hover{background:rgba(173,96,121,.24)}
 .pleasurePairing{margin-top:13px;padding:10px 12px;border-radius:12px;background:rgba(255,193,94,.07);border:1px solid rgba(255,193,94,.24);font-size:12px;line-height:1.4;color:#e8d3aa}
 .pleasureIcon{position:absolute;right:16px;top:14px;font-size:34px;opacity:.95}
 .cigarArt{position:absolute;right:18px;top:22px;width:74px;height:18px;transform:rotate(-8deg)}
@@ -506,10 +513,14 @@ tr:last-child td{border-bottom:0}
             <div class="pleasureEyebrow">WOTD · Wine of the Day</div>
             <a id="wotdName" class="pleasureName pleasureNameLink" href="#" target="_blank" rel="noopener noreferrer">Loading today’s pour…</a>
             <div id="wotdMeta" class="pleasureMeta"></div>
+            <div class="wineProfileHeading">VARIETAL PROFILE</div>
             <div id="wotdRatings" class="wineRatings" aria-label="Typical varietal taste profile"></div>
-            <div id="wotdBottle" class="pleasureNotes" style="margin-top:10px;font-weight:700"></div>
-            <a id="wotdBuy" class="pleasureNameLink" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-top:7px;font-size:13px">Shop this bottle ↗</a>
-            <div id="wotdNotes" class="pleasureNotes"></div>
+            <div class="wineBottleSection">
+              <div class="wineBottleHeading">RECOMMENDED BOTTLE</div>
+              <div id="wotdBottle" class="wineBottleName"></div>
+              <div id="wotdNotes" class="wineBottleDescription"></div>
+              <a id="wotdBuy" class="wineBottleBuy" target="_blank" rel="noopener noreferrer">Shop this bottle ↗</a>
+            </div>
             <div id="pairingNote" class="pleasurePairing"></div>
           </div>
         </div>
@@ -1276,8 +1287,9 @@ function renderDailyPleasures(){
    }
    set('wotdMeta',WINE_VARIETAL_PROFILES[String(wine.name||'').toLowerCase()]?.desc||wine.profile||'');
    renderWineRatings(wine);
-   set('wotdNotes',wine.style_notes||'');
-   set('wotdBottle',`🍾 ${wine.bottle_name}`);
+   const bottleParts=String(wine.bottle_notes||'').split(/;\s*/);
+   set('wotdNotes',bottleParts[0]||wine.style_notes||'');
+   set('wotdBottle',wine.bottle_name);
    const buy=document.getElementById('wotdBuy');
    if(buy){buy.href=wine.purchase_url;buy.style.display='inline-block';buy.setAttribute('aria-label',`Shop ${wine.bottle_name}`)}
  }else{
@@ -1289,7 +1301,7 @@ function renderDailyPleasures(){
    set('wotdNotes','');
  }
 
- set('pairingNote',wine?.bottle_notes?`Why it fits this cigar: ${wine.bottle_notes}`:smokeSipPairingNote(cigar,wine));
+ set('pairingNote',wine?.bottle_notes?.includes(';')?`Why it fits this cigar: ${wine.bottle_notes.split(/;\s*/).slice(1).join('; ')}`:smokeSipPairingNote(cigar,wine));
  const d=new Date();
  set('dailyPleasureDate',`Today’s picks · ${d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})} · ${cigars.length} cigars / ${wines.length} wines in rotation`);
  const prev=document.getElementById('previousVibeBtn');
