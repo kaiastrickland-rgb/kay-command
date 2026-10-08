@@ -322,6 +322,9 @@ tr:last-child td{border-bottom:0}
 
 .inlineApplied{border:1px solid rgba(71,236,161,.65);background:rgba(71,236,161,.10);color:#8ff8c3;border-radius:9px;padding:7px 10px;font-weight:900;cursor:pointer;white-space:nowrap}
 .inlineApplied[disabled]{opacity:.65;cursor:default}
+.inlineResume{border:1px solid #8e6fe8;background:rgba(142,111,232,.12);color:#d8cbff;border-radius:9px;padding:7px 10px;font-weight:900;cursor:pointer;white-space:nowrap}
+.inlineResume:hover{border-color:#b9a4ff;background:rgba(142,111,232,.20)}
+.inlineResume[disabled]{opacity:.48;cursor:default}
 @media(max-width:620px){.projectStats{grid-template-columns:repeat(2,1fr)}}
 
 .jobList{display:flex;flex-direction:column;gap:9px;margin-top:12px}
@@ -702,6 +705,7 @@ tr:last-child td{border-bottom:0}
     <div class="jobActions">
       <button id="jobBack" class="btn">← Back to jobs</button>
       <button id="jobApply" class="btn primary">Apply</button>
+      <button id="jobResume" class="btn inlineResume">Tailored résumé</button>
       <button id="jobMarkApplied" class="btn">Mark applied</button>
     </div>
     <div class="jobStatusEditor">
@@ -2093,6 +2097,7 @@ function renderJobList(lane){
     <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;justify-content:flex-end">
       <div class="jobStatus">${esc(j.status||'Open')}</div>
       <button class="inlineApply ${opened?'opened':''}" data-apply="${j.id}" ${j.apply_url?'':'disabled'}>${opened?'Opened ✓':'Apply ↗'}</button>
+      <button class="inlineResume" data-resume="${j.id}" ${j.tailored_resume_url?'':'disabled'}>${j.tailored_resume_url?'Tailored résumé ↗':'Résumé pending'}</button>
       <button class="inlineApplied" data-applied="${j.id}" ${applied?'disabled':''}>${applied?'Applied ✓':'I Applied ✓'}</button>
     </div>
    </div>
@@ -2101,8 +2106,14 @@ function renderJobList(lane){
  }).join(''):'<div class="cardSub">No jobs in this category yet.</div>';
 
  document.querySelectorAll('.jobItem').forEach(x=>x.onclick=e=>{
-   if(e.target.closest('[data-apply]')||e.target.closest('[data-applied]'))return;
+   if(e.target.closest('[data-apply]')||e.target.closest('[data-resume]')||e.target.closest('[data-applied]'))return;
    openJob(x.dataset.job)
+ });
+
+ document.querySelectorAll('[data-resume]').forEach(b=>b.onclick=e=>{
+   e.stopPropagation();
+   const j=state.jobs.find(x=>String(x.id)===String(b.dataset.resume));if(!j?.tailored_resume_url)return;
+   window.open(j.tailored_resume_url,'_blank','noopener');
  });
 
  document.querySelectorAll('[data-apply]').forEach(b=>b.onclick=async e=>{
@@ -2147,6 +2158,9 @@ function openJob(id){
  $('jobApply').disabled=!j.apply_url;
  $('jobApply').textContent=j.apply_opened_at?'Opened ✓ — open again':'Apply';
  $('jobApply').classList.toggle('opened',!!j.apply_opened_at);
+ $('jobResume').disabled=!j.tailored_resume_url;
+ $('jobResume').textContent=j.tailored_resume_url?'Open tailored résumé ↗':'Tailored résumé pending';
+ $('jobResume').title=j.tailored_resume_url?(j.tailored_resume_name||'Open the résumé tailored for this job'):'A tailored résumé has not been attached yet.';
  $('jobMarkApplied').disabled=/^applied$/i.test(String(j.status||''));
  $('jobMarkApplied').textContent=/^applied$/i.test(String(j.status||''))?'Applied ✓':'Mark applied';
  const statusSelect=$('jobStatusSelect');
@@ -2165,6 +2179,10 @@ async function logJobAction(j,message){
   await supabase.from('kay_chat_messages').insert({user_id:state.user?.id||null,role:'system',message:`Career Command action: ${message}`});
  }catch(e){}
 }
+$('jobResume').onclick=()=>{
+ const j=state.jobs.find(x=>x.id===activeJobId);if(!j?.tailored_resume_url)return;
+ window.open(j.tailored_resume_url,'_blank','noopener');
+};
 $('jobApply').onclick=async()=>{
  const j=state.jobs.find(x=>x.id===activeJobId);if(!j)return;
  if(j.apply_url) window.open(j.apply_url,'_blank','noopener');
