@@ -470,6 +470,7 @@ tr:last-child td{border-bottom:0}
 
 
 .dailyPleasuresBody{padding:0 12px 12px}.pleasureGrid{gap:8px}.pleasureCard{padding:10px 12px;min-height:0;border-radius:12px}.pleasureName{font-size:17px;margin:5px 0 3px}.pleasureMeta{font-size:10px;line-height:1.3}.pleasureNotes{font-size:11px;margin-top:5px;line-height:1.35}.pleasureTags{margin-top:6px;gap:4px}.pleasureTag{font-size:9px;padding:3px 5px}.wineProfileHeading{display:none}.wineRatings{padding:5px 7px;margin-top:5px;gap:4px 7px}.wineRatingTrack{margin:3px 0 2px}.wineRatingSegment{height:4px}.wineRatingLabel{font-size:9px}.wineRatingEnds,.wineRatingFootnote{font-size:8px}.wineBottleSection{margin-top:7px;padding-top:7px}.wineBottleRow{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.wineBottleName{font-size:13px;flex:1 1 135px;margin-top:2px}.wineBottleDescription{font-size:10px;margin-top:4px}.wineBottleBuy{margin-top:0;padding:5px 7px;font-size:10px;white-space:nowrap}.pleasurePairing{font-size:10px;margin-top:7px;padding:7px}.sipFeedback{margin-top:8px;border-top:1px solid #2a3e49;padding-top:7px}.sipFeedbackTop,.sipFeedbackActions{display:flex;align-items:center;gap:5px;flex-wrap:wrap}.sipFeedbackTop{justify-content:space-between}.sipFeedback button{cursor:pointer}.sipFav,.sipToggle,.sipSave,.sipPause{background:#14242f;border:1px solid #365260;border-radius:6px;color:#e8edf0;padding:4px 6px;font-size:10px}.sipFav.on{color:#f2b5c7}.sipStar{background:none;border:0;color:#627681;font-size:17px;padding:0 1px}.sipStar.on{color:#e5b66e}.sipEditor{margin-top:7px}.sipEditor textarea{width:100%;min-height:45px;border-radius:7px;background:#0b1922;color:white;border:1px solid #365260;padding:6px;font:inherit;font-size:11px}.sipFeedbackActions{margin-top:5px}.sipStatus{font-size:10px;color:#e2b9c4}
+.sipManager{margin:0 12px 12px;padding:10px;border:1px solid #365260;border-radius:10px;background:#0b1922;max-height:300px;overflow:auto}.sipManagerTitle{font-size:12px;font-weight:800;margin-bottom:8px}.sipManagerRow{display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid #263f4d;padding:7px 0;font-size:11px}.sipManagerMeta{font-size:9px;color:#aebec8}.sipManagerRow button{background:#14242f;border:1px solid #365260;border-radius:6px;color:#e8edf0;padding:4px 7px;font-size:10px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -525,8 +526,9 @@ tr:last-child td{border-bottom:0}
         </div>
         <div class="pleasureFooter">
           <div id="dailyPleasureDate" class="dailyMoodDate"></div>
-          <div style="display:flex;gap:8px;align-items:center"><button id="previousVibeBtn" class="dailyMoodBtn">← Previous vibe</button><button id="anotherVibeBtn" class="dailyMoodBtn">🎲 Another vibe</button></div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button id="manageSipBtn" class="dailyMoodBtn">♥ My palate</button><button id="previousVibeBtn" class="dailyMoodBtn">← Previous vibe</button><button id="anotherVibeBtn" class="dailyMoodBtn">🎲 Another vibe</button></div>
         </div>
+      <div id="sipManager" class="sipManager" hidden></div>
       </div>
     </section>
 
@@ -1257,9 +1259,20 @@ function renderSipFeedback(kind,item){
  el.querySelector('[data-pause]').onclick=()=>{if(confirm('Remove from rotation? Your rating and notes will remain saved.'))saveSip(kind,item.id,{rotation_status:'paused'})};
 }
 const WINE_VARIETAL_PROFILES={"pinot noir":{"ratings":[1,4,2,2],"desc":"Dry red · Bright cherry · Silky, light-bodied"},"merlot":{"ratings":[1,3,3,3],"desc":"Dry red · Plush plum · Soft, medium-bodied"},"malbec":{"ratings":[1,3,4,4],"desc":"Dry red · Dark berries · Rich, full-bodied"},"rioja reserva":{"ratings":[1,3,4,3],"desc":"Dry red · Red fruit · Oak and spice"},"grenache / garnacha":{"ratings":[1,3,2,3],"desc":"Dry red · Ripe raspberry · Soft texture"},"zinfandel":{"ratings":[1,3,3,4],"desc":"Dry red · Jammy berry · Rich texture"},"amarone":{"ratings":[1,3,3,5],"desc":"Dry red · Dried cherry · Concentrated, full-bodied"},"barbera":{"ratings":[1,5,2,3],"desc":"Dry red · Juicy cherry · Bright acidity"},"côtes du rhône":{"ratings":[1,3,3,3],"desc":"Dry red · Red berries · Gentle spice"},"red blend":{"ratings":[1,3,3,4],"desc":"Usually dry red · Dark fruit · Rounded texture"},"oaked chardonnay":{"ratings":[1,3,1,4],"desc":"Dry white · Creamy vanilla · Rich texture"},"viognier":{"ratings":[1,2,1,4],"desc":"Dry white · Peach · Floral and rounded"},"chenin blanc":{"ratings":[2,4,1,3],"desc":"Dry to off-dry white · Apple · Honeyed notes"},"white rioja":{"ratings":[1,3,1,3],"desc":"Dry white · Citrus · Almond and soft oak"},"marsanne/roussanne blend":{"ratings":[1,2,1,4],"desc":"Dry white · Honeyed pear · Full-bodied"},"white burgundy / chardonnay":{"ratings":[1,4,1,3],"desc":"Dry white · Apple · Mineral and subtle oak"},"pinot gris":{"ratings":[1,3,1,3],"desc":"Dry white · Pear · Smooth texture"},"gewürztraminer":{"ratings":[2,2,1,4],"desc":"Dry to off-dry white · Lychee · Floral spice"},"semillon":{"ratings":[1,3,1,3],"desc":"Typically dry white · Citrus · Waxy richness"},"soave classico":{"ratings":[1,4,1,2],"desc":"Dry white · Pear · Almond and citrus"}};
+function inferWineProfile(w){
+ if(!w)return null;
+ const name=String(w.name||'').toLowerCase(),white=/white/i.test(w.color||'');
+ let r=white?[1,4,1,2]:[1,3,3,4];
+ if(/riesling|gewürztraminer|chenin/.test(name))r=[2,4,1,2];
+ if(/chardonnay|viognier|fiano|marsanne|semillon/.test(name))r=[1,3,1,4];
+ if(/gamay|beaujolais|dolcetto/.test(name))r=[1,4,2,2];
+ if(/cabernet sauvignon|tannat|nebbiolo|barolo|petite sirah|brunello/.test(name))r=[1,3,5,5];
+ if(/sancerre|sauvignon|albariño|grüner|gavi/.test(name))r=[1,5,1,2];
+ return {ratings:r,desc:w.profile||''};
+}
 function renderWineRatings(wine){
  const target=document.getElementById('wotdRatings');if(!target)return;
- const profile=WINE_VARIETAL_PROFILES[String(wine?.name||'').toLowerCase()];
+ const profile=WINE_VARIETAL_PROFILES[String(wine?.name||'').toLowerCase()]||inferWineProfile(wine);
  if(!profile){target.innerHTML='';return}
  const dimensions=[['Sweetness','Dry','Sweet'],['Acidity','Soft','Tart'],['Tannins','Silky','Grippy'],['Body','Light','Full']];
  target.innerHTML=dimensions.map(([name,left,right],i)=>{
@@ -1268,6 +1281,13 @@ function renderWineRatings(wine){
  }).join('')+'<div class="wineRatingFootnote">Typical style of this varietal · Individual bottles may vary</div>';
 }
 
+function renderSipManager(){
+ const el=document.getElementById('sipManager');if(!el||el.hidden)return;
+ const items=[...state.cigars.map(x=>({...x,kind:'cigar'})),...state.wines.map(x=>({...x,kind:'wine'}))];
+ items.sort((a,b)=>(b.is_favorite?1:0)-(a.is_favorite?1:0)||(Number(b.user_rating)||0)-(Number(a.user_rating)||0)||a.name.localeCompare(b.name));
+ el.innerHTML='<div class="sipManagerTitle">My palate · Favorites and feedback ('+items.length+' suggestions)</div>'+items.map(x=>`<div class="sipManagerRow"><div><strong>${esc(x.is_favorite?'♥ '+x.name:x.name)}</strong><div class="sipManagerMeta">${x.kind} · ${x.user_rating?x.user_rating+'/5 stars':'Not rated'} · ${x.rotation_status==='paused'?'Out of rotation':'In rotation'}${x.user_feedback?' · Notes saved':''}</div></div><button data-sip-manage="${x.id}" data-sip-kind="${x.kind}" data-sip-status="${x.rotation_status==='paused'?'active':'paused'}">${x.rotation_status==='paused'?'Restore':'Pause'}</button></div>`).join('');
+ el.querySelectorAll('[data-sip-manage]').forEach(b=>b.onclick=()=>saveSip(b.dataset.sipKind,b.dataset.sipManage,{rotation_status:b.dataset.sipStatus}));
+}
 function renderDailyPleasures(){
  const cigars=activeSip('cigar');
  const wines=activeSip('wine');
@@ -1317,8 +1337,11 @@ function renderDailyPleasures(){
  set('pairingNote',smokeSipPairingNote(cigar,wine));
  renderSipFeedback('cigar',cigar);
  renderSipFeedback('wine',wine);
+ renderSipManager();
  const d=new Date();
  set('dailyPleasureDate',`Today’s picks · ${d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'})} · ${cigars.length} cigars / ${wines.length} wines in rotation`);
+ const manage=document.getElementById('manageSipBtn');
+ if(manage&&!manage.dataset.bound){manage.dataset.bound='1';manage.onclick=()=>{const panel=document.getElementById('sipManager');panel.hidden=!panel.hidden;renderSipManager()}}
  const prev=document.getElementById('previousVibeBtn');
  if(prev && !prev.dataset.bound){
    prev.dataset.bound='1';
