@@ -489,6 +489,15 @@ tr:last-child td{border-bottom:0}
  .topActions{justify-content:flex-end}
  .topActions .btn{padding:8px 12px}
 }
+
+.cigarBlendTitle{font-size:9px;font-weight:800;letter-spacing:.11em;color:#c6b4bc;margin-top:11px}
+.cigarBlendHelp{color:#97aebd;font-size:11px;cursor:help}
+.cigarBlendGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 11px;margin-top:6px;padding:8px 9px;border:1px solid rgba(255,255,255,.10);border-radius:8px;background:rgba(255,255,255,.025)}
+.cigarBlendRow{min-width:0}
+.cigarBlendLabel{display:block;font-size:9px;font-weight:750;letter-spacing:.03em;color:#9eb2bf}
+.cigarBlendValue{display:block;font-size:11px;line-height:1.3;color:#e9edf0;margin-top:2px;overflow-wrap:anywhere}
+.cigarBlendValue.unconfirmed{font-style:italic;color:#7f929f;font-size:10px}
+@media(max-width:420px){.cigarBlendGrid{gap:5px 8px;padding:7px}.cigarBlendValue{font-size:10px}}
 </style>
 </head>
 <body>
@@ -531,7 +540,10 @@ tr:last-child td{border-bottom:0}
             <a id="cotdName" class="pleasureName pleasureNameLink" href="#" target="_blank" rel="noopener noreferrer">Loading today’s cigar…</a>
             <div id="cotdMeta" class="pleasureMeta"></div>
             <div id="cotdNotes" class="pleasureNotes"></div>
-            <div id="cotdTags" class="pleasureTags"></div><div id="cigarFeedback" class="sipFeedback"></div>
+            <div id="cotdTags" class="pleasureTags"></div>
+            <div class="cigarBlendTitle">TOBACCO PROFILE <span class="cigarBlendHelp" title="Wrapper is the outside leaf; binder holds the filler together; filler is the inner tobacco blend.">ⓘ</span></div>
+            <div id="cotdTobacco" class="cigarBlendGrid" aria-label="Cigar tobacco blend characteristics"></div>
+            <div id="cigarFeedback" class="sipFeedback"></div>
           </div>
           <div class="pleasureCard">
             <div class="pleasureIcon" aria-hidden="true">🍷</div>
@@ -1314,6 +1326,20 @@ function renderSipManager(){
  el.innerHTML='<div class="sipManagerTitle">My Palate · ♥ Favorites and 4–5 star picks ('+items.length+')</div>'+(items.length?items.map(x=>`<div class="sipManagerRow"><div><strong>${esc(x.is_favorite?'♥ '+x.name:x.name)}</strong><div class="sipManagerMeta">${x.kind} · ${x.user_rating?x.user_rating+'/5 stars':'Not rated'} · ${x.rotation_status==='paused'?'Out of rotation':'In rotation'}${x.user_feedback?' · Notes saved':''}</div></div><button data-sip-manage="${x.id}" data-sip-kind="${x.kind}" data-sip-status="${x.rotation_status==='paused'?'active':'paused'}">${x.rotation_status==='paused'?'Restore':'Pause'}</button></div>`).join(''):'<div class="sipManagerMeta" style="padding:12px 0">Your favorites and 4–5 star picks will appear here. Tap ♡ or rate a recommendation to add it.</div>');
  el.querySelectorAll('[data-sip-manage]').forEach(b=>b.onclick=()=>saveSip(b.dataset.sipKind,b.dataset.sipManage,{rotation_status:b.dataset.sipStatus}));
 }
+function renderCigarTobacco(cigar){
+ const target=document.getElementById('cotdTobacco');if(!target)return;
+ if(!cigar){target.innerHTML='';return}
+ const values=[
+   ['Wrapper',cigar.wrapper_leaf,'The outside tobacco leaf'],
+   ['Binder',cigar.binder_leaf,'Leaf that holds the filler together'],
+   ['Filler',cigar.filler_tobacco,'The internal tobacco blend'],
+   ['Leaf origin',cigar.tobacco_origin,'Countries where the tobacco was grown']
+ ];
+ target.innerHTML=values.map(([label,value,help])=>{
+   const confirmed=String(value||'').trim();
+   return `<div class="cigarBlendRow" title="${esc(help)}"><span class="cigarBlendLabel">${label}</span><span class="cigarBlendValue${confirmed?'':' unconfirmed'}">${confirmed?esc(confirmed):'Not yet verified'}</span></div>`;
+ }).join('');
+}
 function renderDailyPleasures(){
  const cigars=activeSip('cigar');
  const wines=activeSip('wine');
@@ -1329,12 +1355,14 @@ function renderDailyPleasures(){
    }
    set('cotdMeta',`${cigar.body||'Body not listed'} · Warm spice: ${cigar.warm_spice||'—'} · Pepper: ${cigar.pepper_level||'—'}`);
    set('cotdNotes',cigar.profile||cigar.notes||'');
+   renderCigarTobacco(cigar);
    const tags=document.getElementById('cotdTags');
    if(tags)tags.innerHTML=cigarTags(cigar).map(x=>`<span class="pleasureTag">${esc(x)}</span>`).join('');
  }else{
    set('cotdName','No cigar loaded');
    set('cotdMeta','Smoke & Sip catalog unavailable');
    set('cotdNotes','');
+   renderCigarTobacco(null);
  }
 
  if(wine){
