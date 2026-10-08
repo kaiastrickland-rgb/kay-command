@@ -1225,9 +1225,12 @@ function sipScore(c,w){
  if(/tannat|barolo|nebbiolo/.test(n))score-=2;
  return score;
 }
+let lastSipSelection=null;
 function dailySipPair(){
  const cs=activeSip('cigar'),ws=activeSip('wine');
  if(!cs.length||!ws.length)return {cigar:cs[0]||null,wine:ws[0]||null};
+ const day=Math.floor(Date.now()/86400000),key=day+':'+dailyPleasureOffset;
+ if(lastSipSelection?.key===key){const cigar=cs.find(x=>x.id===lastSipSelection.cigarId),wine=ws.find(x=>x.id===lastSipSelection.wineId);if(cigar&&wine)return {cigar,wine}}
  const count=Math.max(cs.length,ws.length),unused=new Set(ws.map(w=>w.id)),pairs=[];
  for(let i=0;i<count;i++){
    if(!unused.size)ws.forEach(w=>unused.add(w.id));
@@ -1235,7 +1238,8 @@ function dailySipPair(){
    options.sort((a,b)=>sipScore(c,b)-sipScore(c,a)||String(a.id).localeCompare(String(b.id)));
    const w=options[0];unused.delete(w.id);pairs.push({cigar:c,wine:w});
  }
- const day=Math.floor(Date.now()/86400000),i=((day+dailyPleasureOffset)%count+count)%count;
+ const i=((day+dailyPleasureOffset)%count+count)%count;
+ lastSipSelection={key,cigarId:pairs[i].cigar.id,wineId:pairs[i].wine.id};
  return pairs[i];
 }
 async function saveSip(kind,id,patch){
@@ -1324,7 +1328,7 @@ function renderDailyPleasures(){
    set('wotdNotes',bottleParts[0]||wine.style_notes||'');
    set('wotdBottle',wine.bottle_name);
    const buy=document.getElementById('wotdBuy');
-   if(buy){if(wine.purchase_url){buy.href=wine.purchase_url;buy.style.display='inline-flex';buy.textContent='Shop bottle ↗';buy.setAttribute('aria-label',`Shop ${wine.bottle_name}`)}else{buy.removeAttribute('href');buy.style.display='none'}}
+   if(buy){if(wine.purchase_url){buy.href=wine.purchase_url;buy.style.display='inline-flex';buy.textContent='Shop bottle ↗';buy.setAttribute('aria-label',`Shop ${wine.bottle_name}`)}else{buy.href='https://www.google.com/search?q='+encodeURIComponent(wine.bottle_name+' buy wine');buy.style.display='inline-flex';buy.textContent='Find bottle ↗';buy.setAttribute('aria-label',`Search sellers for ${wine.bottle_name}`)}}
  }else{
    set('wotdName','No verified bottle loaded');
    renderWineRatings(null);
