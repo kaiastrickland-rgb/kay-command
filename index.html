@@ -471,6 +471,24 @@ tr:last-child td{border-bottom:0}
 
 .dailyPleasuresBody{padding:0 12px 12px}.pleasureGrid{gap:8px}.pleasureCard{padding:10px 12px;min-height:0;border-radius:12px}.pleasureName{font-size:17px;margin:5px 0 3px}.pleasureMeta{font-size:10px;line-height:1.3}.pleasureNotes{font-size:11px;margin-top:5px;line-height:1.35}.pleasureTags{margin-top:6px;gap:4px}.pleasureTag{font-size:9px;padding:3px 5px}.wineProfileHeading{display:none}.wineRatings{padding:5px 7px;margin-top:5px;gap:4px 7px}.wineRatingTrack{margin:3px 0 2px}.wineRatingSegment{height:4px}.wineRatingLabel{font-size:9px}.wineRatingEnds,.wineRatingFootnote{font-size:8px}.wineBottleSection{margin-top:7px;padding-top:7px}.wineBottleRow{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.wineBottleName{font-size:13px;flex:1 1 135px;margin-top:2px}.wineBottleDescription{font-size:10px;margin-top:4px}.wineBottleBuy{margin-top:0;padding:5px 7px;font-size:10px;white-space:nowrap}.pleasurePairing{font-size:10px;margin-top:7px;padding:7px}.sipFeedback{margin-top:8px;border-top:1px solid #2a3e49;padding-top:7px}.sipFeedbackTop,.sipFeedbackActions{display:flex;align-items:center;gap:5px;flex-wrap:wrap}.sipFeedbackTop{justify-content:space-between}.sipFeedback button{cursor:pointer}.sipFav,.sipToggle,.sipSave,.sipPause{background:#14242f;border:1px solid #365260;border-radius:6px;color:#e8edf0;padding:4px 6px;font-size:10px}.sipFav.on{color:#f2b5c7}.sipStar{background:none;border:0;color:#627681;font-size:17px;padding:0 1px}.sipStar.on{color:#e5b66e}.sipEditor{margin-top:7px}.sipEditor textarea{width:100%;min-height:45px;border-radius:7px;background:#0b1922;color:white;border:1px solid #365260;padding:6px;font:inherit;font-size:11px}.sipFeedbackActions{margin-top:5px}.sipStatus{font-size:10px;color:#e2b9c4}
 .sipManager{margin:0 12px 12px;padding:10px;border:1px solid #365260;border-radius:10px;background:#0b1922;max-height:300px;overflow:auto}.sipManagerTitle{font-size:12px;font-weight:800;margin-bottom:8px}.sipManagerRow{display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid #263f4d;padding:7px 0;font-size:11px}.sipManagerMeta{font-size:9px;color:#aebec8}.sipManagerRow button{background:#14242f;border:1px solid #365260;border-radius:6px;color:#e8edf0;padding:4px 7px;font-size:10px;cursor:pointer}
+
+/* Header alignment: account and date on first row; actions paired on second row */
+.topbar{height:auto;min-height:88px;padding:10px 0;align-items:center}
+.headerRight{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:8px;min-width:0;flex:1}
+.headerMeta{display:flex;align-items:center;justify-content:flex-end;gap:14px;max-width:100%;flex-wrap:wrap}
+.headerMeta .chip{padding:7px 12px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.headerMeta .topDate{margin:0;font-size:11px;white-space:nowrap;letter-spacing:.07em}
+.topActions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:nowrap;gap:8px}
+.topActions .btn{white-space:nowrap;padding:8px 14px;border-radius:12px}
+@media(max-width:700px){
+ .topbar{align-items:flex-start;flex-direction:column;gap:12px}
+ .headerRight{width:100%;align-items:stretch}
+ .headerMeta{justify-content:space-between;gap:8px}
+ .headerMeta .chip{font-size:10px;max-width:65%}
+ .headerMeta .topDate{font-size:10px;white-space:normal;text-align:right}
+ .topActions{justify-content:flex-end}
+ .topActions .btn{padding:8px 12px}
+}
 </style>
 </head>
 <body>
@@ -480,12 +498,16 @@ tr:last-child td{border-bottom:0}
       <div class="logo">K//</div>
       <div><div class="brandTitle">KAY // COMMAND</div><div class="tagline">LIFE · WORK · MONEY · MOVES</div></div>
     </div>
-    <div class="topActions">
-      <span id="emailChip" class="chip">Restoring trusted device session…</span>
-      <button id="refreshBtn" class="btn">↻ Refresh</button>
-      <button id="signOutBtn" class="btn">Sign out</button>
+    <div class="headerRight">
+      <div class="headerMeta">
+        <span id="emailChip" class="chip">Restoring trusted device session…</span>
+        <div id="topCurrentDate" class="topDate"></div>
+      </div>
+      <div class="topActions">
+        <button id="refreshBtn" class="btn">↻ Refresh</button>
+        <button id="signOutBtn" class="btn">Sign out</button>
+      </div>
     </div>
-  <div id="topCurrentDate" class="topDate"></div>
 </header>
 
   <main class="grid">
