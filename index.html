@@ -498,6 +498,20 @@ tr:last-child td{border-bottom:0}
 .cigarBlendValue{display:block;font-size:11px;line-height:1.3;color:#e9edf0;margin-top:2px;overflow-wrap:anywhere}
 .cigarBlendValue.unconfirmed{font-style:italic;color:#7f929f;font-size:10px}
 @media(max-width:420px){.cigarBlendGrid{gap:5px 8px;padding:7px}.cigarBlendValue{font-size:10px}}
+
+/* Collapsible Smoke & Sip — compact two-pick preview */
+.smokeSipHeaderActions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.smokeSipToggle{border:1px solid #315363;background:#102530;color:#d6e9f2;border-radius:9px;padding:7px 11px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap}
+.smokeSipToggle:hover{border-color:#54b8d5;background:#173440}
+.smokeSipSummary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;padding:0 14px 13px}
+.smokeSipSummary[hidden]{display:none}
+.smokeSipSummaryItem{min-width:0;padding:10px 12px;background:#0b1a23;border:1px solid #263f4d;border-radius:10px}
+.smokeSipSummaryItem span{display:block;color:var(--cyan);font-size:9px;letter-spacing:.12em;font-weight:900;margin-bottom:4px}
+.smokeSipSummaryItem strong{display:block;font-size:14px;line-height:1.25;color:#f3f6f8;overflow-wrap:anywhere}
+.dailyPleasures.smokeSipCollapsed{min-height:0;height:auto}
+.dailyPleasures.smokeSipCollapsed .dailyPleasuresBody{display:none}
+.dailyPleasures.smokeSipCollapsed .cardHeader{margin-bottom:6px}
+@media(max-width:500px){.smokeSipSummary{gap:6px;padding:0 9px 10px}.smokeSipSummaryItem{padding:8px}.smokeSipSummaryItem strong{font-size:12px}.smokeSipHeaderActions{gap:5px}.smokeSipToggle{font-size:10px;padding:6px 8px}}
 </style>
 </head>
 <body>
@@ -522,15 +536,16 @@ tr:last-child td{border-bottom:0}
   <main class="grid">
 
 
-    <section class="card dailyPleasures">
+    <section id="smokeSipSection" class="card dailyPleasures">
       <div class="cardHeader">
         <div>
           <div class="cardTitle">🥂 Smoke & Sip</div>
           <div class="cardSub">Your Cigar of the Day + Wine of the Day</div>
         </div>
-        <span class="badge">JUST FOR KAY</span>
+        <div class="smokeSipHeaderActions"><span class="badge">JUST FOR KAY</span><button id="smokeSipToggle" class="smokeSipToggle" type="button" aria-expanded="true" aria-controls="smokeSipBody" aria-label="Collapse Smoke and Sip">▴ Collapse</button></div>
       </div>
-      <div class="dailyPleasuresBody">
+      <div id="smokeSipSummary" class="smokeSipSummary" hidden aria-label="Today’s cigar and wine"><div class="smokeSipSummaryItem"><span>CIGAR OF THE DAY</span><strong id="smokeSipCigarPreview">Loading today’s cigar…</strong></div><div class="smokeSipSummaryItem"><span>WINE OF THE DAY</span><strong id="smokeSipWinePreview">Loading today’s wine…</strong></div></div>
+      <div id="smokeSipBody" class="dailyPleasuresBody">
         <div class="pleasureGrid">
           <div class="pleasureCard">
             <div class="cigarArt" aria-hidden="true">
@@ -1340,10 +1355,33 @@ function renderCigarTobacco(cigar){
    return `<div class="cigarBlendRow" title="${esc(help)}"><span class="cigarBlendLabel">${label}</span><span class="cigarBlendValue${confirmed?'':' unconfirmed'}">${confirmed?esc(confirmed):'Not yet verified'}</span></div>`;
  }).join('');
 }
+function syncSmokeSipCollapse(){
+ const section=document.getElementById('smokeSipSection'),button=document.getElementById('smokeSipToggle'),summary=document.getElementById('smokeSipSummary');
+ if(!section||!button||!summary)return;
+ if(!button.dataset.bound){
+   button.dataset.bound='1';
+   try{section.classList.toggle('smokeSipCollapsed',localStorage.getItem('kaySmokeSipCollapsed')==='true')}catch(e){}
+   button.onclick=()=>{
+     const collapsed=section.classList.toggle('smokeSipCollapsed');
+     try{localStorage.setItem('kaySmokeSipCollapsed',String(collapsed))}catch(e){}
+     syncSmokeSipCollapse();
+   };
+ }
+ const collapsed=section.classList.contains('smokeSipCollapsed');
+ summary.hidden=!collapsed;
+ button.setAttribute('aria-expanded',String(!collapsed));
+ button.setAttribute('aria-label',collapsed?'Expand Smoke and Sip':'Collapse Smoke and Sip');
+ button.textContent=collapsed?'▾ Expand':'▴ Collapse';
+}
 function renderDailyPleasures(){
  const cigars=activeSip('cigar');
  const wines=activeSip('wine');
  const {cigar,wine}=dailySipPair();
+ const previewCigar=document.getElementById("smokeSipCigarPreview");
+ const previewWine=document.getElementById("smokeSipWinePreview");
+ if(previewCigar)previewCigar.textContent=cigar?.name||"No cigar loaded";
+ if(previewWine)previewWine.textContent=wine?.name||"No wine loaded";
+ syncSmokeSipCollapse();
  const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val||''};
 
  if(cigar){
