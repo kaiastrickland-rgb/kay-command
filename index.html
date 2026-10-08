@@ -114,6 +114,14 @@ button,input,textarea{font:inherit} button{cursor:pointer}
 .pleasureNotes{font-size:13px;line-height:1.5;margin-top:11px}
 .pleasureTags{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
 .pleasureTag{font-size:10px;font-weight:900;padding:6px 8px;border:1px solid #2a4b59;border-radius:999px;color:#b9d0dc;background:rgba(255,255,255,.02)}
+.wineRatings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;margin-top:13px;padding:12px;border:1px solid rgba(255,255,255,.11);border-radius:12px;background:rgba(255,255,255,.025)}
+.wineRatingLabel{display:flex;justify-content:space-between;gap:6px;font-size:11px;font-weight:700;color:#e9e6e0}
+.wineRatingTrack{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px;margin:7px 0 4px}
+.wineRatingSegment{height:7px;border-radius:3px;background:rgba(255,255,255,.12)}
+.wineRatingSegment.on{background:#ad6079}
+.wineRatingEnds{display:flex;justify-content:space-between;gap:5px;font-size:9px;color:#aab9c3}
+.wineRatingFootnote{grid-column:1/-1;font-size:10px;color:#aab9c3;line-height:1.4}
+@media(max-width:440px){.wineRatings{gap:10px 8px;padding:9px}.wineRatingLabel{font-size:10px}.wineRatingEnds{font-size:8px}}
 .pleasurePairing{margin-top:13px;padding:10px 12px;border-radius:12px;background:rgba(255,193,94,.07);border:1px solid rgba(255,193,94,.24);font-size:12px;line-height:1.4;color:#e8d3aa}
 .pleasureIcon{position:absolute;right:16px;top:14px;font-size:34px;opacity:.95}
 .cigarArt{position:absolute;right:18px;top:22px;width:74px;height:18px;transform:rotate(-8deg)}
@@ -498,6 +506,7 @@ tr:last-child td{border-bottom:0}
             <div class="pleasureEyebrow">WOTD · Wine of the Day</div>
             <a id="wotdName" class="pleasureName pleasureNameLink" href="#" target="_blank" rel="noopener noreferrer">Loading today’s pour…</a>
             <div id="wotdMeta" class="pleasureMeta"></div>
+            <div id="wotdRatings" class="wineRatings" aria-label="Typical varietal taste profile"></div>
             <div id="wotdBottle" class="pleasureNotes" style="margin-top:10px;font-weight:700"></div>
             <a id="wotdBuy" class="pleasureNameLink" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-top:7px;font-size:13px">Shop this bottle ↗</a>
             <div id="wotdNotes" class="pleasureNotes"></div>
@@ -1219,6 +1228,18 @@ function chooseWineForCigar(c,wines){
  return top[((day+dailyPleasureOffset)%top.length+top.length)%top.length].w;
 }
 
+const WINE_VARIETAL_PROFILES={"pinot noir":{"ratings":[1,4,2,2],"desc":"Dry red · Bright cherry · Silky, light-bodied"},"merlot":{"ratings":[1,3,3,3],"desc":"Dry red · Plush plum · Soft, medium-bodied"},"malbec":{"ratings":[1,3,4,4],"desc":"Dry red · Dark berries · Rich, full-bodied"},"rioja reserva":{"ratings":[1,3,4,3],"desc":"Dry red · Red fruit · Oak and spice"},"grenache / garnacha":{"ratings":[1,3,2,3],"desc":"Dry red · Ripe raspberry · Soft texture"},"zinfandel":{"ratings":[1,3,3,4],"desc":"Dry red · Jammy berry · Rich texture"},"amarone":{"ratings":[1,3,3,5],"desc":"Dry red · Dried cherry · Concentrated, full-bodied"},"barbera":{"ratings":[1,5,2,3],"desc":"Dry red · Juicy cherry · Bright acidity"},"côtes du rhône":{"ratings":[1,3,3,3],"desc":"Dry red · Red berries · Gentle spice"},"red blend":{"ratings":[1,3,3,4],"desc":"Usually dry red · Dark fruit · Rounded texture"},"oaked chardonnay":{"ratings":[1,3,1,4],"desc":"Dry white · Creamy vanilla · Rich texture"},"viognier":{"ratings":[1,2,1,4],"desc":"Dry white · Peach · Floral and rounded"},"chenin blanc":{"ratings":[2,4,1,3],"desc":"Dry to off-dry white · Apple · Honeyed notes"},"white rioja":{"ratings":[1,3,1,3],"desc":"Dry white · Citrus · Almond and soft oak"},"marsanne/roussanne blend":{"ratings":[1,2,1,4],"desc":"Dry white · Honeyed pear · Full-bodied"},"white burgundy / chardonnay":{"ratings":[1,4,1,3],"desc":"Dry white · Apple · Mineral and subtle oak"},"pinot gris":{"ratings":[1,3,1,3],"desc":"Dry white · Pear · Smooth texture"},"gewürztraminer":{"ratings":[2,2,1,4],"desc":"Dry to off-dry white · Lychee · Floral spice"},"semillon":{"ratings":[1,3,1,3],"desc":"Typically dry white · Citrus · Waxy richness"},"soave classico":{"ratings":[1,4,1,2],"desc":"Dry white · Pear · Almond and citrus"}};
+function renderWineRatings(wine){
+ const target=document.getElementById('wotdRatings');if(!target)return;
+ const profile=WINE_VARIETAL_PROFILES[String(wine?.name||'').toLowerCase()];
+ if(!profile){target.innerHTML='';return}
+ const dimensions=[['Sweetness','Dry','Sweet'],['Acidity','Soft','Tart'],['Tannins','Silky','Grippy'],['Body','Light','Full']];
+ target.innerHTML=dimensions.map(([name,left,right],i)=>{
+   const value=profile.ratings[i];
+   return `<div class="wineRating" aria-label="${name}: ${value} out of 5"><div class="wineRatingLabel"><span>${name}</span><span>${value}/5</span></div><div class="wineRatingTrack" aria-hidden="true">${[1,2,3,4,5].map(n=>`<span class="wineRatingSegment${n<=value?' on':''}"></span>`).join('')}</div><div class="wineRatingEnds"><span>${left}</span><span>${right}</span></div></div>`;
+ }).join('')+'<div class="wineRatingFootnote">Typical style of this varietal · Individual bottles may vary</div>';
+}
+
 function renderDailyPleasures(){
  const cigars=state.cigars||[];
  const wines=state.wines||[];
@@ -1253,13 +1274,15 @@ function renderDailyPleasures(){
      if(wine.purchase_url){wotdLink.href=wine.purchase_url;wotdLink.setAttribute('aria-label',`Shop ${wine.bottle_name}`)}
      else{wotdLink.removeAttribute('href')}
    }
-   set('wotdMeta',`${wine.color||''}${wine.color?' · ':''}${wine.profile||''}`);
+   set('wotdMeta',WINE_VARIETAL_PROFILES[String(wine.name||'').toLowerCase()]?.desc||wine.profile||'');
+   renderWineRatings(wine);
    set('wotdNotes',wine.style_notes||'');
    set('wotdBottle',`🍾 ${wine.bottle_name}`);
    const buy=document.getElementById('wotdBuy');
    if(buy){buy.href=wine.purchase_url;buy.style.display='inline-block';buy.setAttribute('aria-label',`Shop ${wine.bottle_name}`)}
  }else{
    set('wotdName','No verified bottle loaded');
+   renderWineRatings(null);
    set('wotdBottle','');
    const buy=document.getElementById('wotdBuy');if(buy)buy.style.display='none';
    set('wotdMeta','Smoke & Sip catalog unavailable');
