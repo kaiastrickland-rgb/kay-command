@@ -113,7 +113,7 @@ button,input,textarea{font:inherit} button{cursor:pointer}
 .pleasureMeta{font-size:12px;color:var(--muted);line-height:1.45}
 .pleasureNotes{font-size:13px;line-height:1.5;margin-top:11px}
 .pleasureTags{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
-.cigarQuickFacts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+.cigarQuickFacts{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
 .cigarFact{border:1px solid #2a4b59;border-radius:10px;background:rgba(255,255,255,.025);padding:9px 10px;min-width:0}
 .cigarFactLabel{font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:#8fa7b3;font-weight:900;margin-bottom:4px}
 .cigarFactValue{font-size:11px;line-height:1.35;font-weight:800;color:#eef7fb;overflow-wrap:anywhere}
@@ -1405,8 +1405,8 @@ function renderDailyPleasures(){
    set('cotdMeta','Strength: '+(cigar.strength||cigar.body||'—')+' · Body: '+(cigar.body||'—')+' · Warm spice: '+(cigar.warm_spice||'—')+' · Pepper: '+(cigar.pepper_level||'—')+' · '+costIcon);
    const quick=document.getElementById('cotdQuickFacts');
    if(quick){
-     quick.innerHTML='<div class="cigarFact"><div class="cigarFactLabel">Sizes</div><div class="cigarFactValue">'+esc(cigar.size_options||'Typical vitolas vary by line')+'</div></div>'+
-       '<div class="cigarFact"><div class="cigarFactLabel">Smoke time</div><div class="cigarFactValue">'+esc(cigar.smoke_time||'Varies by size')+'</div></div>';
+     const sizeSmoke=cigar.size_options||'Robusto (45–60 min) · Toro (60–75 min) · Churchill/larger (75–100 min)';
+     quick.innerHTML='<div class="cigarFact cigarFactWide"><div class="cigarFactLabel">Sizes</div><div class="cigarFactValue">'+esc(sizeSmoke)+'</div></div>';
    }
    renderCigarTobacco(cigar);
    const tags=document.getElementById('cotdTags');
