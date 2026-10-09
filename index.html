@@ -113,11 +113,10 @@ button,input,textarea{font:inherit} button{cursor:pointer}
 .pleasureMeta{font-size:12px;color:var(--muted);line-height:1.45}
 .pleasureNotes{font-size:13px;line-height:1.5;margin-top:11px}
 .pleasureTags{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
-.cigarQuickFacts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+.cigarQuickFacts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
 .cigarFact{border:1px solid #2a4b59;border-radius:10px;background:rgba(255,255,255,.025);padding:9px 10px;min-width:0}
 .cigarFactLabel{font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:#8fa7b3;font-weight:900;margin-bottom:4px}
 .cigarFactValue{font-size:11px;line-height:1.35;font-weight:800;color:#eef7fb;overflow-wrap:anywhere}
-.cigarCost{letter-spacing:.08em;color:#ffd36a}
 @media(max-width:620px){.cigarQuickFacts{grid-template-columns:1fr}.cigarFact{padding:8px 9px}}
 .pleasureTag{font-size:10px;font-weight:900;padding:6px 8px;border:1px solid #2a4b59;border-radius:999px;color:#b9d0dc;background:rgba(255,255,255,.02)}
 .wineProfileHeading{font-size:9px;letter-spacing:.13em;font-weight:800;color:#b4a1aa;margin-top:12px}
@@ -1402,15 +1401,14 @@ function renderDailyPleasures(){
      if(cigar.info_url){cotdLink.href=cigar.info_url;cotdLink.setAttribute('aria-label',`Open information for ${cigar.name}`)}
      else{cotdLink.removeAttribute('href')}
    }
-   set('cotdMeta','Strength: '+(cigar.strength||cigar.body||'—')+' · Body: '+(cigar.body||'—')+' · Warm spice: '+(cigar.warm_spice||'—')+' · Pepper: '+(cigar.pepper_level||'—'));
+   const costScale=Math.max(1,Math.min(4,Number(cigar.cost_scale||2)));
+   const costIcon=String.fromCharCode(36).repeat(costScale);
+   set('cotdMeta','Strength: '+(cigar.strength||cigar.body||'—')+' · Body: '+(cigar.body||'—')+' · Warm spice: '+(cigar.warm_spice||'—')+' · Pepper: '+(cigar.pepper_level||'—')+' · '+costIcon);
    set('cotdNotes',cigar.profile||cigar.notes||'');
    const quick=document.getElementById('cotdQuickFacts');
    if(quick){
-     const scale=Math.max(1,Math.min(4,Number(cigar.cost_scale||2)));
-     const dollars=String.fromCharCode(36).repeat(scale);
-     quick.innerHTML='<div class="cigarFact"><div class="cigarFactLabel">Size options</div><div class="cigarFactValue">'+esc(cigar.size_options||'Typical vitolas vary by line')+'</div></div>'+
-       '<div class="cigarFact"><div class="cigarFactLabel">Time to smoke</div><div class="cigarFactValue">'+esc(cigar.smoke_time||'Varies by size')+'</div></div>'+
-       '<div class="cigarFact" title="Cost scale: 1 dollar = budget, 2 = moderate, 3 = premium, 4 = luxury"><div class="cigarFactLabel">Typical cost</div><div class="cigarFactValue cigarCost">'+dollars+'</div></div>';
+     quick.innerHTML='<div class="cigarFact"><div class="cigarFactLabel">Sizes</div><div class="cigarFactValue">'+esc(cigar.size_options||'Typical vitolas vary by line')+'</div></div>'+
+       '<div class="cigarFact"><div class="cigarFactLabel">Smoke time</div><div class="cigarFactValue">'+esc(cigar.smoke_time||'Varies by size')+'</div></div>';
    }
    renderCigarTobacco(cigar);
    const tags=document.getElementById('cotdTags');
