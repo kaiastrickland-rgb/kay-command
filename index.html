@@ -631,15 +631,15 @@ tr:last-child td{border-bottom:0}
 
     <section class="card career">
       <div class="cardHeader">
-        <div><div class="cardTitle">💼 Career Command</div><div class="cardSub">Director+ strategy & immediate income</div></div>
-        <span class="badge">$240K+ TARGET</span>
+        <div><div class="cardTitle">💼 Career Command</div><div class="cardSub">Director+ strategy · $80/hr income floor · &lt;2 hybrid days preferred</div></div>
+        <span class="badge">$240K+ STRATEGIC</span>
       </div>
       <div class="kpis">
-        <div class="kpi" id="careerLeadsCard" role="button" tabindex="0" style="cursor:pointer"><strong id="careerLeads">—</strong><span>Active / Warm leads<br><span class="cardSub">Tap to open</span></span></div>
-        <div class="kpi"><strong>$80/hr</strong><span>Hard floor</span></div>
-        <div class="kpi"><strong>&lt;2</strong><span>Hybrid days preferred</span></div>
+        <div class="kpi" id="careerLeadsCard" role="button" tabindex="0" style="cursor:pointer"><strong id="careerLeads">—</strong><span>Active / In progress<br><span class="cardSub">Tap to see all</span></span></div>
+        <div class="kpi" id="careerOpenCard" role="button" tabindex="0" style="cursor:pointer"><strong id="careerOpen">—</strong><span>Open jobs<br><span class="cardSub">Tap to open</span></span></div>
+        <div class="kpi" id="careerAppsCard" role="button" tabindex="0" style="cursor:pointer"><strong id="careerApps">—</strong><span>Applications / recruiter<br><span class="cardSub">Tap to open</span></span></div>
       </div>
-      <div id="careerRows" class="careerBody scroll"><div class="careerCategoryNote">Choose a category. Each category keeps the Strategic Move and Immediate Income lanes intact.</div></div>
+      <div id="careerRows" class="careerBody scroll"><div class="careerCategoryNote">Every non-closed job is available below. Industry views retain Strategic Move and Immediate Income roles.</div></div>
     </section>
 
     <section id="moneySnapshotCard" class="card trio financeEntry" title="Open Financial Command Center">
@@ -793,7 +793,13 @@ tr:last-child td{border-bottom:0}
       <div class="jobStatusEditorRow">
         <select id="jobStatusSelect">
           <option value="Open">Open</option>
+          <option value="Invitation to Apply">Invitation to Apply</option>
+          <option value="Applying">Applying</option>
           <option value="Applied">Applied</option>
+          <option value="Recruiter Outreach">Recruiter Outreach</option>
+          <option value="Recruiter Follow-Up">Recruiter Follow-Up</option>
+          <option value="Recruiter Submission">Recruiter Submission</option>
+          <option value="Waiting / Follow-Up">Waiting / Follow-Up</option>
           <option value="Interview">Interview</option>
           <option value="Assessment">Assessment</option>
           <option value="Offer">Offer</option>
@@ -1594,6 +1600,12 @@ function renderActions(){
  $('actionList').innerHTML=rows.length?rows.map(t=>{const p=projectFor(t);return `<div class="actionRow" data-id="${t.id}"><div class="pin">📌</div><div><div class="actionName">${esc(t.name)}</div><div class="actionMeta">${esc(p?.name||p?.title||'Kay')}${t.due_date?` · due ${fmtDate(t.due_date)}`:''}</div></div></div>`}).join(''):'<div class="cardSub">No open actions.</div>';
  document.querySelectorAll('.actionRow').forEach(x=>x.onclick=()=>openTask(x.dataset.id));
 }
+function careerStatusGroup(j){
+ const status=String(j?.status||'Open').trim().toLowerCase();
+ if(/closed|expired|rejected|withdrawn|filled|canceled|cancelled|paused|no current opening/.test(status))return 'closed';
+ if(status==='open'||status==='warm lead')return 'open';
+ return 'pipeline';
+}
 function careerCategoryFor(j){
  const explicit=String(j?.category||'').trim();
  if(explicit==='Aviation'||explicit==='Hospitality & Travel'||explicit==='Gaming')return explicit;
@@ -1603,45 +1615,52 @@ function careerCategoryFor(j){
  if(/marriott|hilton|hyatt|ihg|accor|wyndham|choice hotels|omni hotels|loews|four seasons|disney parks|airbnb|vacasa|expedia|booking holdings|tripadvisor|american express global business travel|cwt|sabre|amadeus|travelport|delta vacations|aaa travel|carnival|royal caribbean|norwegian cruise/.test(employer))return 'Hospitality & Travel';
  return '';
 }
-function jobsForCategory(category){
- const isApplicationStatus=j=>/applied|applying|interview|screen|assessment|offer/i.test(String(j.status||''));
- const isClosedStatus=j=>/closed|expired|rejected|withdrawn/i.test(String(j.status||''));
- const held=j=>j.keep_in_lane_until_next_scan===true;
- return (state.jobs||[]).filter(j=>{
-   if(isClosedStatus(j))return false;
-   if(category==='Strategic C-Suite' && String(j.lane||'')!=='Strategic Move')return false;
-   if(category==='Aviation' && careerCategoryFor(j)!=='Aviation')return false;
-   if(category==='Hospitality & Travel' && careerCategoryFor(j)!=='Hospitality & Travel')return false;
-   if(category==='Gaming' && careerCategoryFor(j)!=='Gaming')return false;
-   return !isApplicationStatus(j)||held(j);
- }).sort((a,b)=>{
-   const an=jobFirstSeenDate(a), bn=jobFirstSeenDate(b), now=new Date();
-   const aNew=an&&isSameLocalDay(an,now)?1:0, bNew=bn&&isSameLocalDay(bn,now)?1:0;
-   if(aNew!==bNew)return bNew-aNew;
-   return (bn?.getTime()||0)-(an?.getTime()||0);
+function sortCareerJobs(jobs){
+ return jobs.sort((a,b)=>{
+  const an=jobFirstSeenDate(a),bn=jobFirstSeenDate(b),now=new Date();
+  const aNew=an&&isSameLocalDay(an,now)?1:0,bNew=bn&&isSameLocalDay(bn,now)?1:0;
+  if(aNew!==bNew)return bNew-aNew;
+  return (bn?.getTime()||0)-(an?.getTime()||0);
  });
+}
+function jobsForCategory(category){
+ return sortCareerJobs((state.jobs||[]).filter(j=>{
+  if(careerStatusGroup(j)==='closed')return false;
+  if(category==='Strategic C-Suite')return String(j.lane||'')==='Strategic Move';
+  if(category==='Aviation'||category==='Hospitality & Travel'||category==='Gaming')return careerCategoryFor(j)===category;
+  if(category==='General PM / Tech / Supply Chain')return !careerCategoryFor(j)&&String(j.lane||'')!=='Strategic Move';
+  return true;
+ }));
 }
 function renderCareer(){
  const all=state.jobs||[];
- const isApplicationStatus=j=>/applied|applying|interview|screen|assessment|offer/i.test(String(j.status||''));
- const isClosedStatus=j=>/closed|expired|rejected|withdrawn/i.test(String(j.status||''));
- const active=all.filter(j=>!isClosedStatus(j) && !isApplicationStatus(j));
- $('careerLeads').textContent=active.length||'—';
- const leadsCard=$('careerLeadsCard');
- if(leadsCard){
-   leadsCard.onclick=()=>openJobLane('Active Leads');
-   leadsCard.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openJobLane('Active Leads')}};
- }
+ const nonClosed=all.filter(j=>careerStatusGroup(j)!=='closed');
+ const open=nonClosed.filter(j=>careerStatusGroup(j)==='open');
+ const pipeline=nonClosed.filter(j=>careerStatusGroup(j)==='pipeline');
+ $('careerLeads').textContent=nonClosed.length;
+ $('careerOpen').textContent=open.length;
+ $('careerApps').textContent=pipeline.length;
+ const bindCard=(id,lane)=>{
+  const card=$(id);if(!card)return;
+  card.onclick=()=>openJobLane(lane);
+  card.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openJobLane(lane)}};
+ };
+ bindCard('careerLeadsCard','All Active & In Progress');
+ bindCard('careerOpenCard','Open Jobs');
+ bindCard('careerAppsCard','Applications & Recruiter Activity');
  const row=(icon,name,desc,count,category)=>`<div class="careerRow" data-lane="${category}">
-   <div><div class="careerName">${icon} ${name}</div><div class="careerDesc">${desc}</div></div>
-   <div class="careerCount">${count} jobs<br><span class="cardSub">Tap to open</span></div>
+  <div><div class="careerName">${icon} ${name}</div><div class="careerDesc">${desc}</div></div>
+  <div class="careerCount">${count} jobs<br><span class="cardSub">Tap to open</span></div>
  </div>`;
  $('careerRows').innerHTML=
-   row('♛','Strategic C-Suite','Director+ / $240K+ target',jobsForCategory('Strategic C-Suite').length,'Strategic C-Suite')+
-   row('✈️','Aviation','Strategic Move + Immediate Income',jobsForCategory('Aviation').length,'Aviation')+
-   row('🏨','Hospitality & Travel','Strategic Move + Immediate Income',jobsForCategory('Hospitality & Travel').length,'Hospitality & Travel')+
-   row('🎮','Gaming','Strategic Move + Immediate Income',jobsForCategory('Gaming').length,'Gaming')+
-   `<div class="careerCategoryNote">Applications remain preserved in the Applications view.</div>`;
+  row('◎','All Active & In Progress','Open jobs + application and recruiter stages',nonClosed.length,'All Active & In Progress')+
+  row('♛','Strategic C-Suite','All non-closed Strategic Move roles',jobsForCategory('Strategic C-Suite').length,'Strategic C-Suite')+
+  row('✈️','Aviation','Strategic Move + Immediate Income',jobsForCategory('Aviation').length,'Aviation')+
+  row('🏨','Hospitality & Travel','Strategic Move + Immediate Income',jobsForCategory('Hospitality & Travel').length,'Hospitality & Travel')+
+  row('🎮','Gaming','Strategic Move + Immediate Income',jobsForCategory('Gaming').length,'Gaming')+
+  row('🧭','General PM / Tech / Supply Chain','Qualified roles outside the three industry groups',jobsForCategory('General PM / Tech / Supply Chain').length,'General PM / Tech / Supply Chain')+
+  row('✓','Applications & Recruiter Activity','Applied, applying, outreach, submission and follow-up',pipeline.length,'Applications & Recruiter Activity')+
+  `<div class="careerCategoryNote">${nonClosed.length} total = ${open.length} open + ${pipeline.length} application/recruiter stage. Closed roles remain in database history and are excluded here.</div>`;
  document.querySelectorAll('.careerRow').forEach(x=>x.onclick=()=>openJobLane(x.dataset.lane));
 }
 function financeAccount(sourceName,accountName){
@@ -2282,20 +2301,13 @@ function jobFreshnessLabel(j){
  return '';
 }
 function jobsForLane(lane){
- const isApplicationStatus=j=>/applied|applying|interview|screen|assessment|offer/i.test(String(j.status||''));
- const isClosedStatus=j=>/closed|expired|rejected|withdrawn/i.test(String(j.status||''));
- const held=j=>j.keep_in_lane_until_next_scan===true;
- if(lane==='Strategic C-Suite'||lane==='Aviation'||lane==='Hospitality & Travel'||lane==='Gaming')return jobsForCategory(lane);
+ if(lane==='Strategic C-Suite'||lane==='Aviation'||lane==='Hospitality & Travel'||lane==='Gaming'||lane==='General PM / Tech / Supply Chain')return jobsForCategory(lane);
  let jobs;
- if(lane==='Applications') jobs=state.jobs.filter(j=>isApplicationStatus(j));
- else if(lane==='Active Leads') jobs=state.jobs.filter(j=>!isClosedStatus(j) && (!isApplicationStatus(j) || held(j)));
- else jobs=state.jobs.filter(j=>String(j.lane||'')===lane && !isClosedStatus(j) && (!isApplicationStatus(j) || held(j)));
- return jobs.sort((a,b)=>{
-   const an=jobFirstSeenDate(a), bn=jobFirstSeenDate(b), now=new Date();
-   const aNew=an&&isSameLocalDay(an,now)?1:0, bNew=bn&&isSameLocalDay(bn,now)?1:0;
-   if(aNew!==bNew)return bNew-aNew;
-   return (bn?.getTime()||0)-(an?.getTime()||0);
- });
+ if(lane==='Applications'||lane==='Applications & Recruiter Activity')jobs=state.jobs.filter(j=>careerStatusGroup(j)==='pipeline');
+ else if(lane==='Open Jobs')jobs=state.jobs.filter(j=>careerStatusGroup(j)==='open');
+ else if(lane==='Active Leads'||lane==='All Active & In Progress')jobs=state.jobs.filter(j=>careerStatusGroup(j)!=='closed');
+ else jobs=state.jobs.filter(j=>String(j.lane||'')===lane&&careerStatusGroup(j)!=='closed');
+ return sortCareerJobs(jobs);
 }
 function openJobLane(lane){
  currentJobLane=lane;activeJobId=null;
@@ -2312,7 +2324,7 @@ function renderJobList(lane){
   const held=j.keep_in_lane_until_next_scan===true;
   return `<div class="jobItem ${applied&&held?'appliedHold':''}" data-job="${j.id}">
    <div class="jobTop">
-    <div style="min-width:0"><div class="jobTitle">${esc(j.title||'Untitled role')}</div><div class="jobMeta">${esc(j.employer||'')} · ${esc(j.location||'')} · ${esc(j.work_arrangement||'')}</div></div>
+    <div style="min-width:0"><div class="jobTitle">${esc(j.title||'Untitled role')}</div><div class="jobMeta">${[j.employer,j.category,j.lane,j.location,j.work_arrangement].filter(Boolean).map(esc).join(' · ')}</div></div>
     <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;justify-content:flex-end">
       <div class="jobStatus">${esc(j.status||'Open')}</div>
       <button class="inlineApply ${opened?'opened':''}" data-apply="${j.id}" ${j.apply_url?'':'disabled'}>${opened?'Opened ✓':'Apply ↗'}</button>
@@ -2372,7 +2384,7 @@ function openJob(id){
  const j=state.jobs.find(x=>String(x.id)===String(id));if(!j)return;activeJobId=j.id;
  $('jobList').style.display='none';$('jobDetail').style.display='block';
  $('jobDetailTitle').textContent=j.title||'Role';
- $('jobDetailMeta').textContent=[j.employer,j.location,j.work_arrangement,j.compensation,j.status].filter(Boolean).join(' · ');
+ $('jobDetailMeta').textContent=[j.employer,j.category,j.lane,j.location,j.work_arrangement,j.compensation,j.status].filter(Boolean).join(' · ');
  $('jobDetailText').textContent=j.fit_note||'No additional fit notes are saved for this role.';
  $('jobApply').disabled=!j.apply_url;
  $('jobApply').textContent=j.apply_opened_at?'Opened ✓ — open again':'Apply';
@@ -2385,8 +2397,12 @@ function openJob(id){
  const statusSelect=$('jobStatusSelect');
  if(statusSelect){
    const status=String(j.status||'Open');
-   const known=[...statusSelect.options].some(o=>o.value.toLowerCase()===status.toLowerCase());
-   statusSelect.value=known?[...statusSelect.options].find(o=>o.value.toLowerCase()===status.toLowerCase()).value:'Open';
+   let option=[...statusSelect.options].find(o=>o.value.toLowerCase()===status.toLowerCase());
+   if(!option){
+    option=document.createElement('option');
+    option.value=status;option.textContent=status;statusSelect.appendChild(option);
+   }
+   statusSelect.value=option.value;
  }
  if($('jobStatusMsg'))$('jobStatusMsg').textContent='';
 }
@@ -2629,5 +2645,6 @@ supabase.auth.onAuthStateChange((event,session)=>{
 setGreeting();
 initializeApp();
 </script>
+<!-- career-display-accuracy-fix: 2026-10-09 -->
 </body>
 </html>
