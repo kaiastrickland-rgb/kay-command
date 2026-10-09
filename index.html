@@ -117,6 +117,8 @@ button,input,textarea{font:inherit} button{cursor:pointer}
 .cigarFact{border:1px solid #2a4b59;border-radius:10px;background:rgba(255,255,255,.025);padding:9px 10px;min-width:0}
 .cigarFactLabel{font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:#8fa7b3;font-weight:900;margin-bottom:4px}
 .cigarFactValue{font-size:11px;line-height:1.35;font-weight:800;color:#eef7fb;overflow-wrap:anywhere}
+.cigarSizeList{margin:4px 0 0;padding-left:18px;display:grid;gap:4px}
+.cigarSizeList li{font-size:11px;line-height:1.35;font-weight:800;color:#eef7fb}
 @media(max-width:620px){.cigarQuickFacts{grid-template-columns:1fr}.cigarFact{padding:8px 9px}}
 .pleasureTag{font-size:10px;font-weight:900;padding:6px 8px;border:1px solid #2a4b59;border-radius:999px;color:#b9d0dc;background:rgba(255,255,255,.02)}
 .wineProfileHeading{font-size:9px;letter-spacing:.13em;font-weight:800;color:#b4a1aa;margin-top:12px}
@@ -1406,7 +1408,8 @@ function renderDailyPleasures(){
    const quick=document.getElementById('cotdQuickFacts');
    if(quick){
      const sizeSmoke=cigar.size_options||'Robusto (45–60 min) · Toro (60–75 min) · Churchill/larger (75–100 min)';
-     quick.innerHTML='<div class="cigarFact cigarFactWide"><div class="cigarFactLabel">Sizes</div><div class="cigarFactValue">'+esc(sizeSmoke)+'</div></div>';
+     const sizeItems=String(sizeSmoke).split(/\s*·\s*/).filter(Boolean);
+     quick.innerHTML='<div class="cigarFact cigarFactWide"><div class="cigarFactLabel">Sizes</div><ul class="cigarSizeList">'+sizeItems.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div>';
    }
    renderCigarTobacco(cigar);
    const tags=document.getElementById('cotdTags');
