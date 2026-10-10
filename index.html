@@ -1013,7 +1013,7 @@ const supabase=createClient(SUPABASE_URL,SUPABASE_KEY,{
  }
 });
 const $=id=>document.getElementById(id);
-let state={tasks:[],projects:[],briefs:[],sources:[],jobs:[],plans:[],planTasks:[],milestones:[],risks:[],decisions:[],financePayments:[],financeAccounts:[],financeAlerts:[],emailActions:[],creditGoals:[],creditAccounts:[],creditSnapshots:[],cigars:[],wines:[],user:null},activeTaskId=null,activeJobId=null,currentJobLane=null,activeProjectId=null,activeFinancePaymentId=null,activeCreditAccountId=null;
+let state={tasks:[],projects:[],briefs:[],sources:[],jobs:[],plans:[],planTasks:[],milestones:[],risks:[],decisions:[],financePayments:[],financeAccounts:[],financeAlerts:[],emailActions:[],creditGoals:[],creditAccounts:[],creditSnapshots:[],cigars:[],wines:[],icloudEvents:[],icloudStatus:'',user:null},activeTaskId=null,activeJobId=null,currentJobLane=null,activeProjectId=null,activeFinancePaymentId=null,activeCreditAccountId=null;
 const esc=(v='')=>String(v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 const fmtDate=v=>{if(!v)return '—';const d=new Date(v+'T12:00:00');return d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})};
 const daysUntil=v=>{const a=new Date();a.setHours(0,0,0,0);const b=new Date(v+'T12:00:00');return Math.max(0,Math.ceil((b-a)/86400000))};
@@ -1240,6 +1240,7 @@ async function loadAll(){
  ]);
  if(p.error||t.error||b.error){$('liveBar').textContent='● Data sync error';appendChat('assistant',p.error?.message||t.error?.message||b.error?.message);return}
  state.projects=p.data||[];state.tasks=t.data||[];state.briefs=b.data||[];state.sources=s.error?[]:(s.data||[]);state.jobs=j?.error?[]:(j?.data||[]);state.plans=pl?.error?[]:(pl?.data||[]);state.planTasks=pt?.error?[]:(pt?.data||[]);state.milestones=ms?.error?[]:(ms?.data||[]);state.risks=rs?.error?[]:(rs?.data||[]);state.decisions=ds?.error?[]:(ds?.data||[]);state.financePayments=fp?.error?[]:(fp?.data||[]);state.financeAccounts=fa?.error?[]:(fa?.data||[]);state.financeAlerts=fal?.error?[]:(fal?.data||[]);state.emailActions=ea?.error?[]:(ea?.data||[]);state.creditGoals=cg?.error?[]:(cg?.data||[]);state.creditAccounts=ca?.error?[]:(ca?.data||[]);state.creditSnapshots=cs?.error?[]:(cs?.data||[]);state.cigars=ci?.error?[]:(ci?.data||[]);state.wines=wi?.error?[]:(wi?.data||[]);
+ await loadICloudEvents();
  renderAll();$('liveBar').textContent='● Live data loaded';
  startRealtimeSync();
 }
@@ -1961,8 +1962,48 @@ function renderInbox(){
    </div>`;
  }).join('');
 }
+async function loadICloudEvents(){
+ try{
+   const r=await fetch('/api/icloud-calendar?days=7',{cache:'no-store'});
+   const data=await r.json().catch(()=>({}));
+   state.icloudEvents=r.ok&&Array.isArray(data.events)?data.events:[];
+   state.icloudStatus=r.ok?'connected':(data.configured===false?'not-connected':'error');
+ }catch(e){
+   state.icloudEvents=[];
+   state.icloudStatus='error';
+ }
+}
+function calendarEventKey(e){
+ return [String(e.title||e.summary||'').trim().toLowerCase(),String(e.start||'').slice(0,16),String(e.end||'').slice(0,16)].join('|');
+}
+function formatCalendarEvent(e){
+ const title=e.title||e.summary||'Untitled event';
+ const start=String(e.start||'');
+ if(e.all_day||/^\d{4}-\d{2}-\d{2}$/.test(start)){
+   const d=new Date(start+'T12:00:00');
+   return d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})+' · '+title+' · all day';
+ }
+ const d=new Date(start);
+ const day=d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+ const time=d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+ return day+' · '+title+' · '+time;
+}
 function renderCalendar(){
- const c=source('Calendar'),d=(c&&typeof c.details==='object')?c.details:{};$('calendarBadge').textContent=sourceGood(c?.status)?'LIVE':'CHECK';$('calendarText').textContent=d.summary||d.message||'No active events in the current synced window.';
+ const c=source('Calendar'),d=(c&&typeof c.details==='object')?c.details:{};
+ const googleEvents=Array.isArray(d.events)?d.events:[];
+ const combined=[...googleEvents,...(state.icloudEvents||[])];
+ const seen=new Set();
+ const events=combined.filter(e=>{const k=calendarEventKey(e);if(seen.has(k))return false;seen.add(k);return true})
+   .sort((a,b)=>String(a.start||'').localeCompare(String(b.start||'')))
+   .slice(0,8);
+ const googleLive=sourceGood(c?.status);
+ const iCloudLive=state.icloudStatus==='connected';
+ $('calendarBadge').textContent=(googleLive||iCloudLive)?'LIVE':'CHECK';
+ if(events.length){
+   $('calendarText').textContent=events.map(formatCalendarEvent).join('\n');
+ }else{
+   $('calendarText').textContent=d.summary||d.message||(state.icloudStatus==='not-connected'?'Google Calendar has no events in the synced window. iCloud is not connected yet.':'No active events in the current synced window.');
+ }
 }
 function projectPlanInfo(projectId){
  const plans=state.plans.filter(x=>x.project_id===projectId);
