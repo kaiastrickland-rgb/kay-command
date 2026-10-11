@@ -45,8 +45,26 @@ button,input,textarea{font:inherit} button{cursor:pointer}
 .cardSub{font-size:12px;color:var(--muted);margin-top:3px}
 .sectionLabel{font-size:11px;letter-spacing:.20em;color:var(--cyan);font-weight:900;margin-bottom:8px}
 .badge{padding:7px 10px;border:1px solid #244857;border-radius:999px;color:var(--green);font-size:11px;font-weight:900;white-space:nowrap}
+.countdownStrip{grid-column:span 12;min-height:72px}
+.countdownStrip .cardHeader{padding:9px 14px 0}
+.countdownStrip .sectionLabel{margin:0;font-size:9px}
+.countdownBody{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:7px;padding:6px 12px 11px}
+.countdownItem{display:flex;align-items:center;gap:9px;min-width:0;padding:8px 10px;border:1px solid rgba(70,101,116,.28);border-radius:10px;background:#0a151d}
+.countdownNum{font-size:22px;font-weight:950;line-height:1;color:#f6fbfd;white-space:nowrap}
+.countdownText{min-width:0}.countdownName{font-size:10px;font-weight:900;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.countdownDate{font-size:9px;color:var(--muted);margin-top:2px;white-space:nowrap}
 .hero{grid-column:span 8;height:305px}
-.rightRail{grid-column:span 4;height:305px;display:grid;grid-template-rows:1fr 1fr;gap:16px;min-width:0}.milestones,.calendarCard{height:auto;min-height:0}.milestones .cardHeader,.calendarCard .cardHeader{padding:14px 16px 7px}.milestones .milestoneBody{padding:0 16px 12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;overflow:auto}.milestone{padding:9px 10px;border:1px solid rgba(70,101,116,.28);border-radius:12px;background:#0a151d;min-width:0}.milestone:last-child{border-bottom:1px solid rgba(70,101,116,.28)}.milestoneNum{font-size:34px;font-weight:950;line-height:1}.milestoneDesc{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.25}.milestoneDate{font-size:11px;font-weight:850;margin-top:3px;line-height:1.25}.calendarCard .trioBody{height:auto;min-height:0;max-height:92px;padding:0 16px 12px;overflow:auto}.calendarCard .cardTitle{font-size:16px}.calendarCard .cardSub{font-size:10px}.calendarText{font-size:12px;color:var(--muted);line-height:1.4}
+.calendarCard{grid-column:span 4;height:305px;min-height:0}
+.calendarCard .cardHeader{padding:14px 16px 9px}
+.calendarCard .trioBody{height:238px;min-height:0;padding:0 12px 12px;overflow:auto}
+.calendarCard .cardTitle{font-size:18px}.calendarCard .cardSub{font-size:10px}
+.calendarText{display:flex;flex-direction:column;gap:8px}
+.calendarDayGroup{display:flex;flex-direction:column;gap:5px}
+.calendarDayLabel{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--cyan);font-weight:900;padding:1px 3px}
+.calendarEvent{display:grid;grid-template-columns:64px minmax(0,1fr);gap:9px;align-items:start;padding:8px 9px;border:1px solid #263f4d;border-radius:10px;background:#0a151d}
+.calendarEventTime{font-size:10px;font-weight:900;color:#d9e9f1;line-height:1.25}
+.calendarEventTitle{font-size:11px;font-weight:850;line-height:1.3;color:#f4f8fa}
+.calendarEventMeta{font-size:9px;color:var(--muted);margin-top:2px;line-height:1.25}
+.calendarEmpty{font-size:12px;color:var(--muted);padding:8px 3px}
 .heroBody{padding:0 20px 18px;height:232px;overflow:auto}
 .heroGreeting{font-size:38px;line-height:1.08;font-weight:950;letter-spacing:-.035em;margin:4px 0 10px}
 .briefList{margin:0;padding-left:20px;font-size:15px;line-height:1.55}
@@ -380,8 +398,8 @@ tr:last-child td{border-bottom:0}
 @media(max-width:900px){
  .shell{padding:12px} .topbar{height:auto;padding:10px 0;align-items:flex-start}
  .brandTitle{font-size:17px} .tagline{letter-spacing:.15em}
- .hero,.rightRail,.milestones,.calendarCard,.action,.career,.trio,.emailActionCard,.projects,.lower{grid-column:span 12}
- .hero{height:auto;min-height:275px}.rightRail{height:auto;grid-template-rows:auto auto}.milestones,.calendarCard{height:auto;min-height:150px}.milestones .milestoneBody{grid-template-columns:1fr 1fr}.calendarCard .trioBody{max-height:160px} .action,.career{height:310px}
+ .countdownStrip,.hero,.calendarCard,.action,.career,.trio,.emailActionCard,.projects,.lower{grid-column:span 12}
+ .countdownBody{grid-template-columns:repeat(2,minmax(0,1fr))}.hero{height:auto;min-height:275px}.calendarCard{height:330px;min-height:250px}.calendarCard .trioBody{height:265px;max-height:none} .action,.career{height:310px}
  .trio{height:auto;min-height:250px} .projects{height:390px}
  .lower{height:auto;min-height:290px}
 }
@@ -543,6 +561,11 @@ tr:last-child td{border-bottom:0}
 
   <main class="grid">
 
+    <section class="card countdownStrip">
+      <div class="cardHeader"><div class="sectionLabel">PROJECT COUNTDOWNS</div></div>
+      <div id="countdownItems" class="countdownBody"><div class="cardSub">Loading dated projects…</div></div>
+    </section>
+
 
     <section id="smokeSipSection" class="card dailyPleasures">
       <div class="cardHeader">
@@ -600,23 +623,13 @@ tr:last-child td{border-bottom:0}
       </div>
     </section>
 
-    <div class="rightRail">
-      <section class="card milestones">
-        <div class="cardHeader"><div><div class="sectionLabel">NEXT MAJOR MILESTONES</div></div></div>
-        <div class="milestoneBody">
-          <div class="milestone"><div id="turn50Days" class="milestoneNum">—</div><div class="milestoneDesc">The ’76s Turn 50 · event complete</div><div class="milestoneDate">October 3, 2026</div></div>
-          <div class="milestone"><div id="weddingDays" class="milestoneNum">—</div><div class="milestoneDesc">days until K / R</div><div class="milestoneDate">November 7, 2026</div></div>
-        </div>
-      </section>
-
-      <section class="card calendarCard">
-        <div class="cardHeader">
-          <div><div class="cardTitle">📅 Today / This Week</div><div class="cardSub">Google Calendar</div></div>
-          <span id="calendarBadge" class="badge">LIVE</span>
-        </div>
-        <div class="trioBody"><div id="calendarText" class="calendarText">Loading calendar snapshot…</div></div>
-      </section>
-    </div>
+    <section class="card calendarCard">
+      <div class="cardHeader">
+        <div><div class="cardTitle">📅 Today / This Week</div><div class="cardSub">Google + iCloud Calendar</div></div>
+        <span id="calendarBadge" class="badge">LIVE</span>
+      </div>
+      <div class="trioBody"><div id="calendarText" class="calendarText"><div class="calendarEmpty">Loading calendar snapshot…</div></div></div>
+    </section>
 
     <section class="card action">
       <div class="cardHeader">
@@ -1025,7 +1038,7 @@ function atRisk(t){if(t.is_done)return false;const txt=`${t.name} ${t.details||'
 function projectFor(t){return state.projects.find(p=>p.id===t.project_id)}
 function isClosedProject(p){return /^(closed|complete|completed|archived)$/i.test(String(p?.status||''))}
 function isActiveTask(t){return !t.is_done && !isClosedProject(projectFor(t))}
-function setGreeting(){const h=new Date().getHours();$('greeting').textContent=`Good ${h<12?'morning':h<18?'afternoon':'evening'}, Kay.`;$('turn50Days').textContent='DONE';$('weddingDays').textContent=daysUntil('2026-11-07')}
+function setGreeting(){const h=new Date().getHours();$('greeting').textContent=`Good ${h<12?'morning':h<18?'afternoon':'evening'}, Kay.`;}
 let authBooting=true;
 const TRUSTED_DEVICE_CODE_KEY='kay-command-device-code-v1';
 
@@ -1471,7 +1484,7 @@ function renderDailyPleasures(){
  }
 }
 
-function renderAll(){setGreeting();renderBriefs();renderActions();renderCareer();renderMoney();renderInbox();renderCalendar();renderProjects();renderSystems();bindSummaryCountBadges();renderDailyPleasures()}
+function renderAll(){setGreeting();renderCountdownStrip();renderBriefs();renderActions();renderCareer();renderMoney();renderInbox();renderCalendar();renderProjects();renderSystems();bindSummaryCountBadges();renderDailyPleasures()}
 function renderBriefs(){
  const latest=state.briefs[0];
  const raw=String(latest?.content||latest?.brief||latest?.summary||latest?.message||latest?.title||'').trim();
@@ -1988,6 +2001,28 @@ function formatCalendarEvent(e){
  const time=d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
  return day+' · '+title+' · '+time;
 }
+function renderCountdownStrip(){
+ const el=$('countdownItems');if(!el)return;
+ const now=today(),items=[],seen=new Set();
+ const add=(name,date,projectId)=>{
+   if(!date)return;
+   const iso=String(date).slice(0,10),d=new Date(iso+'T12:00:00');
+   if(d<now)return;
+   const key=String(projectId||name)+'|'+iso;
+   if(seen.has(key))return;seen.add(key);
+   items.push({name,date:iso,days:daysUntil(iso)});
+ };
+ (state.projects||[]).filter(p=>!isClosedProject(p)).forEach(p=>add(p.name||p.title,p.target_date||p.due_date||p.go_live,p.id));
+ (state.milestones||[]).filter(m=>!/complete|closed|done/i.test(String(m.status||''))).forEach(m=>{
+   const p=(state.projects||[]).find(x=>String(x.id)===String(m.project_id));
+   if(p&&isClosedProject(p))return;
+   add(p?.name||m.name,m.milestone_date,m.project_id||m.id);
+ });
+ items.sort((a,b)=>a.date.localeCompare(b.date));
+ const visible=items.slice(0,5);
+ el.innerHTML=visible.length?visible.map(x=>'<div class="countdownItem"><div class="countdownNum">'+x.days+'</div><div class="countdownText"><div class="countdownName">'+esc(x.name)+'</div><div class="countdownDate">'+fmtDate(x.date)+'</div></div></div>').join(''):'<div class="cardSub">No active projects currently have a future target date.</div>';
+}
+
 function renderCalendar(){
  const c=source('Calendar'),d=(c&&typeof c.details==='object')?c.details:{};
  const googleEvents=Array.isArray(d.events)?d.events:[];
@@ -1995,14 +2030,28 @@ function renderCalendar(){
  const seen=new Set();
  const events=combined.filter(e=>{const k=calendarEventKey(e);if(seen.has(k))return false;seen.add(k);return true})
    .sort((a,b)=>String(a.start||'').localeCompare(String(b.start||'')))
-   .slice(0,8);
- const googleLive=sourceGood(c?.status);
- const iCloudLive=state.icloudStatus==='connected';
+   .slice(0,20);
+ const googleLive=sourceGood(c?.status),iCloudLive=state.icloudStatus==='connected';
  $('calendarBadge').textContent=(googleLive||iCloudLive)?'LIVE':'CHECK';
+ const box=$('calendarText');
  if(events.length){
-   $('calendarText').textContent=events.map(formatCalendarEvent).join('\n');
+   const groups=new Map();
+   events.forEach(e=>{
+     const raw=String(e.start||''),allDay=e.all_day||/^\d{4}-\d{2}-\d{2}$/.test(raw);
+     const dt=new Date(allDay?raw+'T12:00:00':raw);
+     const dayKey=dt.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+     if(!groups.has(dayKey))groups.set(dayKey,[]);
+     groups.get(dayKey).push({e,dt,allDay});
+   });
+   box.innerHTML=[...groups.entries()].map(([day,rows])=>'<div class="calendarDayGroup"><div class="calendarDayLabel">'+esc(day)+'</div>'+rows.map(({e,dt,allDay})=>{
+     const time=allDay?'All day':dt.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+     const title=e.title||e.summary||'Untitled event';
+     const meta=[e.calendar,e.source].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i).join(' · ');
+     return '<div class="calendarEvent"><div class="calendarEventTime">'+esc(time)+'</div><div><div class="calendarEventTitle">'+esc(title)+'</div>'+(meta?'<div class="calendarEventMeta">'+esc(meta)+'</div>':'')+'</div></div>';
+   }).join('')+'</div>').join('');
  }else{
-   $('calendarText').textContent=d.summary||d.message||(state.icloudStatus==='not-connected'?'Google Calendar has no events in the synced window. iCloud is not connected yet.':'No active events in the current synced window.');
+   const fallback=d.summary||d.message||(state.icloudStatus==='not-connected'?'Google Calendar has no events in the synced window. iCloud is not connected yet.':'No active events in the current synced window.');
+   box.innerHTML='<div class="calendarEmpty">'+esc(fallback)+'</div>';
  }
 }
 function projectPlanInfo(projectId){
