@@ -2431,10 +2431,23 @@ function renderJobList(lane){
    openJob(x.dataset.job)
  });
 
- document.querySelectorAll('[data-resume]').forEach(b=>b.onclick=e=>{
+ function openTailoredResume(j){
+ const url=String(j?.tailored_resume_url||'').trim();
+ if(!url){alert('This job does not have a tailored résumé attached yet.');return;}
+ let parsed;
+ try{parsed=new URL(url,location.origin)}catch(_){alert('The résumé link is invalid. Please upload a new résumé for this job.');return;}
+ if(parsed.hostname==='chatgpt.com' && parsed.pathname.startsWith('/api/library/files/')){
+  alert('This résumé is saved in ChatGPT Library, which does not permit direct downloads from Kay Command. The document must be migrated to secure Kay Command storage before it can open here. Your existing résumé record has been preserved.');
+  return;
+ }
+ if(!['https:','http:'].includes(parsed.protocol)){alert('Unsupported résumé link.');return;}
+ window.open(parsed.href,'_blank','noopener');
+}
+
+document.querySelectorAll('[data-resume]').forEach(b=>b.onclick=e=>{
    e.stopPropagation();
    const j=state.jobs.find(x=>String(x.id)===String(b.dataset.resume));if(!j?.tailored_resume_url)return;
-   window.open(j.tailored_resume_url,'_blank','noopener');
+   openTailoredResume(j);
  });
 
  document.querySelectorAll('[data-apply]').forEach(b=>b.onclick=async e=>{
@@ -2506,7 +2519,7 @@ async function logJobAction(j,message){
 }
 $('jobResume').onclick=()=>{
  const j=state.jobs.find(x=>x.id===activeJobId);if(!j?.tailored_resume_url)return;
- window.open(j.tailored_resume_url,'_blank','noopener');
+ openTailoredResume(j);
 };
 $('jobApply').onclick=async()=>{
  const j=state.jobs.find(x=>x.id===activeJobId);if(!j)return;
