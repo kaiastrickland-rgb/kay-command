@@ -790,7 +790,7 @@ tr:last-child td{border-bottom:0}
  <div class="modalBox">
   <div class="modalTop"><div><div class="sectionLabel">CAREER COMMAND</div><div id="jobModalTitle" class="modalTitle">Jobs</div></div><button id="jobClose" class="btn">✕</button></div>
   <div id="jobModalMeta" class="modalMeta"></div>
-  <div style="padding:8px 0"><button id="resumeBulkImport" class="btn">Import tailored résumés ↑</button><input id="resumeBulkFiles" type="file" accept=".docx,.doc,.pdf" multiple style="display:none"><span class="cardSub">Choose saved files; names match each job.</span></div><div id="jobList" class="jobList"></div>
+  <div style="padding:8px 0"><button id="resumeBulkImport" class="btn">Import tailored résumés ↑</button><input id="resumeBulkFiles" type="file" accept=".zip,.docx,.doc,.pdf" multiple style="display:none"><span class="cardSub">Import the Kay Command ZIP or select individual files; names match each job.</span></div><div id="jobList" class="jobList"></div>
   <div id="jobDetail" style="display:none">
     <div id="jobDetailTitle" class="modalTitle"></div>
     <div id="jobDetailMeta" class="modalMeta"></div>
@@ -1014,6 +1014,7 @@ tr:last-child td{border-bottom:0}
  </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 const SUPABASE_URL='https://najlvczgxwvqjvpvfzji.supabase.co', SUPABASE_KEY='sb_publishable_4S9mvRol3OhFYpADykEGDw_MP-IhaZu';
@@ -1060,6 +1061,22 @@ async function storeResumeForJob(file,j){
  j.tailored_resume_url=url;j.tailored_resume_name=file.name;
 }
 async function importResumeFiles(files,jobId=null){
+ const selected=[...files];
+ if(selected.some(f=>/\.zip$/i.test(f.name))){
+  if(typeof JSZip==='undefined'){alert('ZIP importer is unavailable. Check your connection and refresh.');return;}
+  try{
+   let expanded=selected.filter(f=>!/\.zip$/i.test(f.name));
+   for(const archive of selected.filter(f=>/\.zip$/i.test(f.name))){
+    const zip=await JSZip.loadAsync(archive);
+    for(const entry of Object.values(zip.files)){
+     if(entry.dir||!/\.(docx|doc|pdf)$/i.test(entry.name))continue;
+     const bytes=await entry.async('blob');
+     expanded.push(new File([bytes],entry.name.split('/').pop(),{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}));
+    }
+   }
+   return await importResumeFiles(expanded,jobId);
+  }catch(e){alert('Could not read ZIP: '+(e.message||e));return;}
+ }
  let saved=0,unmatched=[],fail=[];
  for(const f of [...files]){
   const n=cleanResumeName(f.name);
