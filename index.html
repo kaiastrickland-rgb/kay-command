@@ -1029,10 +1029,13 @@ const supabase=createClient(SUPABASE_URL,SUPABASE_KEY,{
 const $=id=>document.getElementById(id);
 
 const RESUME_BUCKET='kay-tailored-resumes';
+function hasReadyTailoredResume(j){
+ const link=String(j?.tailored_resume_url||'').trim();
+ return link.startsWith('storage://'+RESUME_BUCKET+'/');
+}
 async function openResumeFromJob(j){
- const link=String(j?.tailored_resume_url||'');
- if(!link){alert('No tailored résumé attached.');return;}
- if(/^https:\/\/chatgpt\.com\/api\/library\/files\//i.test(link)){alert('Old ChatGPT Library download link. Use Upload résumé or Import tailored résumés to migrate your saved document.');return;}
+ const link=String(j?.tailored_resume_url||'').trim();
+ if(!hasReadyTailoredResume(j)){alert('Tailored résumé pending. Upload or import the saved résumé to attach it securely.');return;}
  if(link.startsWith('storage://'+RESUME_BUCKET+'/')){
   const popup=window.open('about:blank','_blank');
   try{
@@ -2481,7 +2484,7 @@ function renderJobList(lane){
     <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;justify-content:flex-end">
       <div class="jobStatus">${esc(j.status||'Open')}</div>
       <button class="inlineApply ${opened?'opened':''}" data-apply="${j.id}" ${j.apply_url?'':'disabled'}>${opened?'Opened ✓':'Apply ↗'}</button>
-      <button class="inlineResume" data-resume="${j.id}" ${j.tailored_resume_url?'':'disabled'}>${j.tailored_resume_url?'Tailored résumé ↗':'Résumé pending'}</button>
+      <button class="inlineResume" data-resume="${j.id}" ${hasReadyTailoredResume(j)?'':'disabled'}>${hasReadyTailoredResume(j)?'Tailored résumé ↗':'Résumé pending'}</button>
       <button class="inlineApplied" data-applied="${j.id}" ${applied?'disabled':''}>${applied?'Applied ✓':'I Applied ✓'}</button>
     </div>
    </div>
@@ -2498,7 +2501,7 @@ function renderJobList(lane){
 
 document.querySelectorAll('[data-resume]').forEach(b=>b.onclick=e=>{
    e.stopPropagation();
-   const j=state.jobs.find(x=>String(x.id)===String(b.dataset.resume));if(!j?.tailored_resume_url)return;
+   const j=state.jobs.find(x=>String(x.id)===String(b.dataset.resume));if(!hasReadyTailoredResume(j))return;
    openTailoredResume(j);
  });
 
@@ -2544,9 +2547,10 @@ function openJob(id){
  $('jobApply').disabled=!j.apply_url;
  $('jobApply').textContent=j.apply_opened_at?'Opened ✓ — open again':'Apply';
  $('jobApply').classList.toggle('opened',!!j.apply_opened_at);
- $('jobResume').disabled=!j.tailored_resume_url;
- $('jobResume').textContent=j.tailored_resume_url?'Open tailored résumé ↗':'Tailored résumé pending';
- $('jobResume').title=j.tailored_resume_url?(j.tailored_resume_name||'Open the résumé tailored for this job'):'A tailored résumé has not been attached yet.';
+ const resumeReady=hasReadyTailoredResume(j);
+ $('jobResume').disabled=!resumeReady;
+ $('jobResume').textContent=resumeReady?'Open tailored résumé ↗':'Tailored résumé pending';
+ $('jobResume').title=resumeReady?(j.tailored_resume_name||'Open the résumé tailored for this job'):'A secure tailored résumé has not been attached yet.';
  $('jobMarkApplied').disabled=/^applied$/i.test(String(j.status||''));
  $('jobMarkApplied').textContent=/^applied$/i.test(String(j.status||''))?'Applied ✓':'Mark applied';
  const statusSelect=$('jobStatusSelect');
@@ -2574,7 +2578,7 @@ $('jobResumeFile').onchange=async e=>{await importResumeFiles(e.target.files,act
 $('resumeBulkImport').onclick=()=>$('resumeBulkFiles').click();
 $('resumeBulkFiles').onchange=async e=>{await importResumeFiles(e.target.files);e.target.value='';};
 $('jobResume').onclick=()=>{
- const j=state.jobs.find(x=>x.id===activeJobId);if(!j?.tailored_resume_url)return;
+ const j=state.jobs.find(x=>x.id===activeJobId);if(!hasReadyTailoredResume(j))return;
  openTailoredResume(j);
 };
 $('jobApply').onclick=async()=>{
