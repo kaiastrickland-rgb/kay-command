@@ -83,10 +83,29 @@ async function audit(resource,action,id,previous,current){
   if(!resp.ok) console.error('Tomo audit write failed',resp.status);
  }catch(e){console.error('Tomo audit write failed',e.message);}
 }
+async function tomoAuthorized(req) {
+  const auth = req.headers.authorization || '';
+  if (auth === 'Bearer ' + process.env.TOMO_FEED_TOKEN) return true;
+  const match = /^Bearer\s+(.+)$/i.exec(auth);
+  if (!match) return false;
+  try {
+    const response = await fetch(process.env.SUPABASE_URL + '/auth/v1/user', {
+      headers: {
+        apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: 'Bearer ' + match[1]
+      }
+    });
+    if (!response.ok) return false;
+    const user = await response.json();
+    return !!user?.id && user.id === process.env.KAY_USER_ID && !!user.email_confirmed_at;
+  } catch (_) {
+    return false;
+  }
+}
 export default async function handler(req,res){
  res.setHeader('Cache-Control','no-store');
  if(requiredEnv.some(k=>!process.env[k])) return res.status(503).json({error:'Service unavailable'});
- if(req.headers.authorization!==('Bearer '+process.env.TOMO_FEED_TOKEN)) return res.status(401).json({error:'Unauthorized'});
+ if(!(await tomoAuthorized(req))) return res.status(401).json({error:'Unauthorized'});
  const resource=String(req.query?.resource||'');
  const def=RESOURCE[resource];
  if(!def) return res.status(400).json({error:'Invalid resource',allowed:Object.keys(RESOURCE)});
