@@ -41,6 +41,8 @@ textarea{min-height:85px;resize:vertical}.auth{max-width:520px;margin:60px auto;
     <div class="sub">Projects, formal plans, and live Action Center tasks — read and update without signing in.</div>
     <div id="summary" class="bar"></div>
 
+    <section class="card" id="mission" aria-label="Daily priorities"></section>
+
     <section class="card">
       <div class="projectName">➕ Create a live task</div>
       <div class="meta">New tasks go into Action Center under an existing project. Duplicate open tasks are blocked.</div>
@@ -97,10 +99,15 @@ function taskHtml(t){
 }
 function render(){
  const s=FEED.summary;
- $('summary').innerHTML=[['Projects',s.projects],['Open live tasks',s.open_live_tasks],['Open plan tasks',s.open_plan_tasks],['Overdue',s.overdue],['Due today',s.due_today]].map(([a,b])=>`<span class="pill">${a}: <b>${b}</b></span>`).join('');
- $('newProject').innerHTML=FEED.projects.map(p=>`<option value="${p.id}">${esc(p.name)}${p.workspace?' · '+esc(p.workspace):''}</option>`).join('');
+ const active=FEED.projects.filter(p=>p.status!=='Closed');
+ const archived=FEED.projects.filter(p=>p.status==='Closed');
+ const reset=active.find(p=>p.name==='Kay 2.0 — 30-Day Reset');
+ const daily=(reset?.open_live_tasks||[]).filter(t=>t.task.startsWith('DAY 2 —')).slice(0,3);
+ $('mission').innerHTML='<div class="projectName">🎯 Next three wins — Friday, Nov 13</div><div class="meta">Small, checkable actions. Complete them individually without closing your monthly milestones.</div><div class="taskList">'+(daily.length?daily.map(taskHtml).join(''):'<div class="empty">No daily actions assigned yet.</div>')+'</div>';
+ $('summary').innerHTML=[['Projects',s.projects],['Open live tasks',s.open_live_tasks],['Open plan tasks',s.open_plan_tasks],['Overdue',s.overdue],['Due today',s.due_today],['Archived',s.archived_projects||0]].map(([a,b])=>`<span class="pill">${a}: <b>${b}</b></span>`).join('');
+ $('newProject').innerHTML=active.map(p=>`<option value="${p.id}">${esc(p.name)}${p.workspace?' · '+esc(p.workspace):''}</option>`).join('');
 
- $('projects').innerHTML=FEED.projects.map(p=>`
+ const projectHtml=p=>`
   <section class="project">
    <div class="projectTop">
     <div>
@@ -111,10 +118,11 @@ function render(){
    ${p.next_move?`<div class="nextMove"><b>Next move</b><div class="meta">${esc(p.next_move)}</div></div>`:''}
    ${p.plans.length?p.plans.map(pl=>`<div class="planBox"><b>${esc(pl.name)}</b>${pl.summary?`<div class="meta">${esc(pl.summary)}</div>`:''}${pl.source_name?`<div class="meta">Source: ${esc(pl.source_name)}</div>`:''}</div>`).join(''):''}
    <div class="sectionTitle">LIVE / ACTION CENTER TASKS</div>
-   <div class="taskList">${p.open_live_tasks.length?p.open_live_tasks.map(taskHtml).join(''):'<div class="empty">No open live tasks.</div>'}</div>
+   <div class="taskList">${p.open_live_tasks.length?p.open_live_tasks.filter(t=>!t.task.startsWith('DAY 2 —')).map(taskHtml).join(''):'<div class="empty">No open live tasks.</div>'}</div>
    <div class="sectionTitle">FORMAL PROJECT PLAN — TASKS STILL TO COMPLETE</div>
    <div class="taskList">${p.open_plan_tasks.length?p.open_plan_tasks.map(taskHtml).join(''):'<div class="empty">No remaining formal plan tasks.</div>'}</div>
-  </section>`).join('');
+  </section>`;
+ $('projects').innerHTML=active.map(projectHtml).join('')+(archived.length?'<details class="card"><summary style="cursor:pointer;font-weight:800">Archived events ('+archived.length+') — click to review history</summary>'+archived.map(projectHtml).join('')+'</details>':'');
 
  document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click',()=>runAction(b.dataset.id,b.dataset.type,b.dataset.action)));
  document.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click',()=>{const [type,id]=b.dataset.edit.split(':');$(`edit-${type}-${id}`).classList.toggle('hidden')}));
