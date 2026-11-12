@@ -198,7 +198,7 @@ async function listFeed() {
   const taskUrl = makeUrl('kay_tasks','id,name,details,due_date,owner,is_done,project_id,created_at,updated_at');
   taskUrl.searchParams.set('order','is_done.asc,due_date.asc.nullslast,created_at.asc');
 
-  const projectUrl = makeUrl('kay_projects','id,name,workspace,type,target_date,next_move,sort_order,created_at,updated_at');
+  const projectUrl = makeUrl('kay_projects','id,name,workspace,type,status,target_date,next_move,sort_order,created_at,updated_at');
   projectUrl.searchParams.set('order','sort_order.asc,name.asc');
 
   const planUrl = makeUrl('kay_project_plans','id,project_id,name,source_name,source_type,summary,created_at,updated_at');
@@ -265,6 +265,7 @@ async function listFeed() {
       id:p.id,
       name:p.name,
       workspace:p.workspace || p.type || null,
+      status:p.status || 'Active',
       target_date:p.target_date || null,
       next_move:p.next_move || null,
       plans:pPlans.map(pl => ({
@@ -285,7 +286,8 @@ async function listFeed() {
     };
   });
 
-  const openAll = [...liveTasks.filter(t=>!t.is_done), ...formalTasks.filter(t=>!t.is_done)];
+  const visibleProjectIds = new Set(projectDetails.filter(p=>p.status!=='Closed').map(p=>p.id));
+  const openAll = [...liveTasks.filter(t=>!t.is_done && visibleProjectIds.has(t.project_id)), ...formalTasks.filter(t=>!t.is_done && visibleProjectIds.has(t.project_id))];
   const overdue = openAll.filter(t=>t.overdue);
   const dueToday = openAll.filter(t=>t.due_today);
   const upcoming = openAll.filter(t=>t.due_date && !t.overdue && !t.due_today);
@@ -297,14 +299,15 @@ async function listFeed() {
     access:'Tomo project + accountability view',
     permissions:['read_projects','read_project_plans','read','create_live_task','complete','reopen','reschedule','update_details'],
     summary:{
-      projects:projectDetails.length,
-      open_live_tasks:liveTasks.filter(t=>!t.is_done).length,
-      open_plan_tasks:formalTasks.filter(t=>!t.is_done).length,
+      projects:projectDetails.filter(p=>p.status!=='Closed').length,
+      archived_projects:projectDetails.filter(p=>p.status==='Closed').length,
+      open_live_tasks:liveTasks.filter(t=>!t.is_done && visibleProjectIds.has(t.project_id)).length,
+      open_plan_tasks:formalTasks.filter(t=>!t.is_done && visibleProjectIds.has(t.project_id)).length,
       overdue:overdue.length,
       due_today:dueToday.length
     },
     projects:projectDetails,
-    priority_stack:[...overdue,...dueToday,...upcoming,...unscheduled].slice(0,15)
+    priority_stack:[...dueToday,...upcoming,...overdue,...unscheduled].slice(0,15)
   };
 }
 
