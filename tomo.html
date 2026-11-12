@@ -102,8 +102,14 @@ function render(){
  const active=FEED.projects.filter(p=>p.status!=='Closed');
  const archived=FEED.projects.filter(p=>p.status==='Closed');
  const reset=active.find(p=>p.name==='Kay 2.0 — 30-Day Reset');
- const daily=(reset?.open_live_tasks||[]).filter(t=>t.task.startsWith('DAY 2 —')).slice(0,3);
- $('mission').innerHTML='<div class="projectName">🎯 Next three wins — Friday, Nov 13</div><div class="meta">Small, checkable actions. Complete them individually without closing your monthly milestones.</div><div class="taskList">'+(daily.length?daily.map(taskHtml).join(''):'<div class="empty">No daily actions assigned yet.</div>')+'</div>';
+ const daily=(reset?.open_live_tasks||[]).filter(t=>/^DAY [0-9]+ —/.test(t.task)).sort((a,b)=>{
+   const dateOrder=(a.due_date||'9999-12-31').localeCompare(b.due_date||'9999-12-31');
+   if(dateOrder) return dateOrder;
+   const rank=t=>t.task.includes('— BODY:')?0:t.task.includes('— SPACE:')?1:t.task.includes('— FUTURE:')?2:3;
+   return rank(a)-rank(b);
+ }).slice(0,3);
+ const missionDate=daily[0]?.due_date?'Target date: '+fmtDate(daily[0].due_date)+' · ':'';
+ $('mission').innerHTML='<div class="projectName">🎯 Next three wins</div><div class="meta">'+missionDate+'Small, checkable actions. Complete each without closing monthly milestones.</div><div class="taskList">'+(daily.length?daily.map(taskHtml).join(''):'<div class="empty">No daily actions assigned yet. Tomo can add the next three tasks here.</div>')+'</div>';
  $('summary').innerHTML=[['Projects',s.projects],['Open live tasks',s.open_live_tasks],['Open plan tasks',s.open_plan_tasks],['Overdue',s.overdue],['Due today',s.due_today],['Archived',s.archived_projects||0]].map(([a,b])=>`<span class="pill">${a}: <b>${b}</b></span>`).join('');
  $('newProject').innerHTML=active.map(p=>`<option value="${p.id}">${esc(p.name)}${p.workspace?' · '+esc(p.workspace):''}</option>`).join('');
 
