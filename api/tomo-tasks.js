@@ -11,7 +11,7 @@ async function supabaseRequest(url, options = {}) {
 }
 
 function requireConfig(res) {
-  const required = ['SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY','TOMO_FEED_TOKEN','KAY_USER_ID'];
+  const required = ['SUPABASE_URL','SUPABASE_SERVICE_ROLE_KEY','KAY_USER_ID'];
   const missing = required.filter(k => !process.env[k]);
   if (missing.length) {
     res.status(500).json({ error: 'Server configuration incomplete', missing });
@@ -310,7 +310,7 @@ async function listFeed() {
 
 export default async function handler(req,res){
   if(!requireConfig(res)) return;
-  if(!(await authorized(req))) return res.status(401).json({error:'Unauthorized'});
+  // Public Tomo workspace: owner explicitly authorized no-login task management.
   res.setHeader('Cache-Control','no-store, max-age=0');
 
   try{
