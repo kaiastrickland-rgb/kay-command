@@ -20,8 +20,25 @@ function requireConfig(res) {
   return true;
 }
 
-function authorized(req) {
-  return (req.headers.authorization || '') === `Bearer ${process.env.TOMO_FEED_TOKEN}`;
+async function authorized(req) {
+  const auth = req.headers.authorization || '';
+  if (auth === `Bearer ${process.env.TOMO_FEED_TOKEN}`) return true;
+  const match = /^Bearer\\s+(.+)$/i.exec(auth);
+  if (!match) return false;
+  // Authenticate a Supabase login as Kay, not just any valid Supabase user.
+  try {
+    const response = await fetch(process.env.SUPABASE_URL + '/auth/v1/user', {
+      headers: {
+        apikey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+        Authorization: 'Bearer ' + match[1]
+      }
+    });
+    if (!response.ok) return false;
+    const user = await response.json();
+    return !!user?.id && user.id === process.env.KAY_USER_ID && !!user.email_confirmed_at;
+  } catch (_) {
+    return false;
+  }
 }
 
 async function logUpdate({ taskId=null, projectId=null, actionType, message, requestedDate=null }) {
@@ -293,7 +310,7 @@ async function listFeed() {
 
 export default async function handler(req,res){
   if(!requireConfig(res)) return;
-  if(!authorized(req)) return res.status(401).json({error:'Unauthorized'});
+  if(!(await authorized(req))) return res.status(401).json({error:'Unauthorized'});
   res.setHeader('Cache-Control','no-store, max-age=0');
 
   try{
