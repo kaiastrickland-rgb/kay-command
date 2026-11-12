@@ -105,7 +105,7 @@ async function tomoAuthorized(req) {
 export default async function handler(req,res){
  res.setHeader('Cache-Control','no-store');
  if(requiredEnv.some(k=>!process.env[k])) return res.status(503).json({error:'Service unavailable'});
- if(!(await tomoAuthorized(req))) return res.status(401).json({error:'Unauthorized'});
+ // Owner authorized no-login Tomo workspace. Restrict to project/task resources listed above.
  const resource=String(req.query?.resource||'');
  const def=RESOURCE[resource];
  if(!def) return res.status(400).json({error:'Invalid resource',allowed:Object.keys(RESOURCE)});
