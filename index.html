@@ -701,6 +701,8 @@ tr:last-child td{border-bottom:0}
         <div class="bflToolbar"><label for="bflWeek">Training week</label><select id="bflWeek"></select><button class="btn" id="bflToday" type="button">Today / next workout</button></div>
         <div class="bflStats" id="bflStats"></div><div class="bflDays" id="bflDays"></div>
         <div class="bflDetail" id="bflDetail">Your gym and walk/run workouts will load with your Kay Command tasks.</div>
+        <div class="cardSub" id="bflSavedSets" role="status" style="padding:4px 0 10px">Select a workout to view saved sets.</div>
+        <div class="bflActions"><a id="bflFullTracker" class="btn primary" href="/tomo.html" style="text-decoration:none">Open full set-by-set tracker ↗</a></div>
         <div class="bflLog" id="bflLog" hidden>
           <label>Main lift weights by set (lb)<input id="bflWeights" placeholder="e.g. 10, 10, 15, 15, 10" maxlength="120"></label>
           <label>Reps completed<input id="bflReps" placeholder="e.g. 12, 10, 8, 6, 12" maxlength="120"></label>
@@ -1577,7 +1579,7 @@ function renderDailyPleasures(){
 /* Body-for-LIFE panel: reuses existing kay_tasks and authenticated Supabase client */
 let bflSelectedId=null;
 const bflStart=new Date(2026,10,16);
-const bflTasks=()=>state.tasks.filter(t=>/^BFL W\\d{2} — /.test(t.name||'')).sort((a,b)=>String(a.due_date).localeCompare(String(b.due_date)));
+const bflTasks=()=>state.tasks.filter(t=>/^BFL W\d{2} — /.test(t.name||'')).sort((a,b)=>String(a.due_date).localeCompare(String(b.due_date)));
 function bflWeekNumber(){
  const now=new Date();now.setHours(0,0,0,0);
  return Math.max(1,Math.min(12,Math.floor((now-bflStart)/604800000)+1));
@@ -1586,7 +1588,7 @@ function renderBfl(){
  const all=bflTasks(),weekSelect=$('bflWeek');
  if(!weekSelect.options.length)weekSelect.innerHTML=Array.from({length:12},(_,i)=>'<option value="'+(i+1)+'">Week '+(i+1)+'</option>').join('');
  if(!weekSelect.dataset.ready){weekSelect.value=String(bflWeekNumber());weekSelect.dataset.ready='1';}
- const week=Number(weekSelect.value)||1,rows=all.filter(t=>Number((t.name.match(/^BFL W(\\d+)/)||[])[1])===week);
+ const week=Number(weekSelect.value)||1,rows=all.filter(t=>Number((t.name.match(/^BFL W(\d+)/)||[])[1])===week);
  $('bflWeekBadge').textContent='WEEK '+week;
  const core=rows.filter(t=>!/RECOVERY/.test(t.name)),done=core.filter(t=>t.is_done).length;
  $('bflStats').innerHTML='<div class="bflStat"><strong>'+done+'/'+core.length+'</strong> primary sessions completed</div><div class="bflStat"><strong>'+all.filter(t=>t.is_done&&!/RECOVERY/.test(t.name)).length+'/60</strong> challenge workouts</div>';
@@ -1595,6 +1597,11 @@ function renderBfl(){
  const current=rows.find(t=>t.id===bflSelectedId)||rows.find(t=>!t.is_done&&!/RECOVERY/.test(t.name))||rows[0];
  if(current)bflSelectedId=current.id;
  $('bflDetail').textContent=current?current.name+'\n'+fmtDate(current.due_date)+'\n\n'+(current.details||'No instructions'):'No workouts found for this week. Check the live task sync.';
+ const fullLink=$('bflFullTracker');
+ fullLink.href=current?'/tomo.html?workout='+encodeURIComponent(current.id):'/tomo.html';
+ $('bflSavedSets').textContent=current?'Loading saved set records…':'Select a workout to view saved sets.';
+ if(current)loadBflSavedSets(current.id);
+
  $('bflLog').hidden=!current;
  $('bflSave').disabled=!current;
  $('bflComplete').disabled=!current;
@@ -1605,21 +1612,53 @@ $('bflWeek').onchange=()=>{bflSelectedId=null;$('bflMessage').textContent='';ren
 $('bflToday').onclick=()=>{
  const all=bflTasks(),todayStr=(()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')})();
  const upcoming=all.find(t=>t.due_date>=todayStr&&!t.is_done&&!/RECOVERY/.test(t.name))||all.find(t=>!t.is_done&&!/RECOVERY/.test(t.name));
- if(upcoming){$('bflWeek').value=String(Number((upcoming.name.match(/^BFL W(\\d+)/)||[])[1])||1);bflSelectedId=upcoming.id;renderBfl();}
+ if(upcoming){$('bflWeek').value=String(Number((upcoming.name.match(/^BFL W(\d+)/)||[])[1])||1);bflSelectedId=upcoming.id;renderBfl();}
 };
+async function loadBflSavedSets(taskId){
+ try{
+  const response=await fetch('/api/tomo-workouts?task_id='+encodeURIComponent(taskId),{cache:'no-store'});
+  const data=await response.json();
+  if(!response.ok)throw Error(data.error||'Workout records not available');
+  if(bflSelectedId!==taskId)return;
+  const sets=data.sets||[];
+  $('bflSavedSets').textContent=sets.length
+    ?'✓ '+sets.length+' saved set(s) · '+sets.map(x=>x.exercise+' set '+x.set_number+': '+(x.weight_lb??'—')+' lb × '+(x.reps??'—')+' reps').slice(0,7).join(' | ')
+    :'No sets recorded yet. Your entries and Tomo’s entries now appear here.';
+ }catch(e){if(bflSelectedId===taskId)$('bflSavedSets').textContent='Could not load set history: '+e.message;}
+}
 $('bflSave').onclick=async()=>{
- const t=state.tasks.find(x=>x.id===bflSelectedId);if(!t)return;
+ const t=state.tasks.find(x=>x.id===bflSelectedId);
+ if(!t)return;
  const w=$('bflWeights').value.trim(),r=$('bflReps').value.trim(),eff=$('bflEffort').value.trim(),note=$('bflNotes').value.trim();
  if(!w&&!r&&!eff&&!note){$('bflMessage').textContent='Enter at least one workout result before saving.';return;}
- if(eff&&(!Number.isInteger(Number(eff))||Number(eff)<1||Number(eff)>10)){$('bflMessage').textContent='Effort must be a whole number from 1 to 10.';return;}
- const line='\n\nWORKOUT LOG '+new Date().toLocaleString()+': '+[w?'weights (lb): '+w:'',r?'reps: '+r:'',eff?'effort: '+eff+'/10':'',note?'notes: '+note:''].filter(Boolean).join(' | ');
- $('bflSave').disabled=true;$('bflMessage').textContent='Saving to Kay Command…';
- const next=(t.details||'')+line;
- const {error}=await supabase.from('kay_tasks').update({details:next,updated_at:new Date().toISOString()}).eq('id',t.id);
- $('bflSave').disabled=false;
- if(error){$('bflMessage').textContent='Could not save: '+error.message;return;}
- t.details=next;$('bflWeights').value='';$('bflReps').value='';$('bflEffort').value='';$('bflNotes').value='';
- $('bflMessage').textContent='✓ Workout log saved to your task.';renderBfl();
+ if(eff&&(!Number.isInteger(Number(eff))||Number(eff)<1||Number(eff)>10)){$('bflMessage').textContent='Effort must be an integer from 1 to 10.';return;}
+ const box=$('bflSave');
+ box.disabled=true;$('bflMessage').textContent='Saving set records in Kay Command…';
+ try{
+  const res=await fetch('/api/tomo-workouts?task_id='+encodeURIComponent(t.id),{cache:'no-store'});
+  const doc=await res.json();if(!res.ok)throw Error(doc.error||'Workout unavailable');
+  const primary=doc.plan.exercises[0];
+  if(!primary||!primary.sets.length)throw Error('No prescribed sets found');
+  const parseList=v=>v?v.split(',').map(x=>x.trim()).filter(Boolean):[];
+  const weights=parseList(w),reps=parseList(r);
+  const count=Math.max(weights.length,reps.length,1);
+  if(count>primary.sets.length)throw Error('Too many sets entered. This workout has '+primary.sets.length+' prescribed sets.');
+  if(weights.length>1&&weights.length!==count)throw Error('Please enter one weight for each recorded set, or leave weights blank.');
+  if(reps.length>1&&reps.length!==count)throw Error('Please enter one rep value for each recorded set, or leave reps blank.');
+  for(let i=0;i<count;i++){
+   const weight=weights.length===1?weights[0]:(weights[i]||null);
+   const actualReps=reps.length===1?reps[0]:(reps[i]||null);
+   if(weight!==null&&(Number.isNaN(Number(weight))||Number(weight)<0))throw Error('Invalid weight for set '+(i+1));
+   if(actualReps!==null&&(!Number.isInteger(Number(actualReps))||Number(actualReps)<0))throw Error('Invalid reps for set '+(i+1));
+   const payload={task_id:t.id,exercise:primary.name,set_number:i+1,weight_lb:weight,reps:actualReps,rpe:eff||null,notes:note||null};
+   const saved=await fetch('/api/tomo-workouts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+   const result=await saved.json();if(!saved.ok)throw Error(result.error||'Set '+(i+1)+' failed to save');
+  }
+  for(const field of ['bflWeights','bflReps','bflEffort','bflNotes'])$(field).value='';
+  $('bflMessage').textContent='✓ '+count+' set(s) saved. Tomo will see these records too.';
+  await loadBflSavedSets(t.id);
+ }catch(e){$('bflMessage').textContent='Could not save workout: '+e.message;}
+ finally{box.disabled=false;}
 };
 $('bflComplete').onclick=async()=>{
  const t=state.tasks.find(x=>x.id===bflSelectedId);if(!t)return;
