@@ -58,7 +58,9 @@ export default async function handler(req,res){
   if(!task||!/^BFL W\d{2} — /.test(task.name))return res.status(404).json({error:'Workout not found'});
   const plan=prescription(task);
   if(req.method==='POST'){
-   const {exercise,set_number,weight_lb,reps,duration_minutes,rpe,notes}=req.body||{};
+   const {exercise,weight_lb,reps,duration_minutes,rpe,notes}=req.body||{};
+   const set_number=Number(req.body?.set_number);
+   if(!Number.isInteger(set_number))return res.status(400).json({error:'Set must be an integer'});
    if(typeof exercise!=='string'||exercise.length>120) return res.status(400).json({error:'Choose a valid exercise'});
    const ex=plan.exercises.find(x=>x.name===exercise);
    if(!ex||!ex.sets.some(x=>x.set===set_number))return res.status(400).json({error:'Exercise/set not in scheduled workout'});
@@ -68,7 +70,9 @@ export default async function handler(req,res){
    const effort=optionalNumber(rpe,'rpe',{min:1,max:10});
    const safeNotes=typeof notes==='string'?notes.trim().slice(0,1000):null;
    if(weight===null&&actualReps===null&&mins===null&&effort===null&&!safeNotes)return res.status(400).json({error:'Enter weight, reps, minutes, RPE, or notes before saving'});
-   const row={user_id,task_id,exercise,set_number,weight_lb:weight,reps:actualReps,duration_minutes:mins,rpe:effort,notes:safeNotes||null,entry_source:'tomo',updated_at:new Date().toISOString()};
+   const existing=await request('kay_workout_sets',{select:'weight_lb,reps,duration_minutes,rpe,notes',user_id:'eq.'+user_id,task_id:'eq.'+task_id,exercise:'eq.'+exercise,set_number:'eq.'+set_number,limit:'1'});
+   const prior=existing[0]||{};
+   const row={user_id,task_id,exercise,set_number,weight_lb:weight??prior.weight_lb??null,reps:actualReps??prior.reps??null,duration_minutes:mins??prior.duration_minutes??null,rpe:effort??prior.rpe??null,notes:safeNotes||prior.notes||null,entry_source:'tomo',updated_at:new Date().toISOString()};
    const result=await request('kay_workout_sets',{on_conflict:'user_id,task_id,exercise,set_number'},{method:'POST',headers:{Prefer:'resolution=merge-duplicates,return=representation'},body:JSON.stringify(row)});
    return res.status(200).json({ok:true,record:result[0],message:'Workout set saved in Kay Command'});
   }
