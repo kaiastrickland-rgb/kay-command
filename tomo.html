@@ -178,7 +178,7 @@ async function loadWorkout(taskId){
 function renderWorkout(taskId,data){
  const el=$('workout-'+taskId),p=data.plan;
  const saved=new Map(data.sets.map(x=>[x.exercise+'|'+x.set_number,x]));
- const input=(exerciseIndex,set,field,value,placeholder)=>`<div><label>${field==='weight_lb'?'Weight (lb)':field==='reps'?'Actual reps':field==='duration_minutes'?'Minutes':field==='rpe'?'RPE (1–10)':'Notes'}</label><input data-field="${field}" type="${field==='notes'?'text':'number'}" ${field==='notes'?'maxlength="1000"':'step="any" min="0"'} value="${esc(asNumber(value))}" placeholder="${esc(placeholder||'')}" aria-label="${field} for set ${set}"></div>`;
+ const input=(exerciseIndex,set,field,value,placeholder)=>`<div><label for="set-${taskId}-${exerciseIndex}-${set}-${field}">${field==='weight_lb'?'Weight (lb)':field==='reps'?'Actual reps':field==='duration_minutes'?'Minutes':field==='rpe'?'RPE (1–10)':'Notes'}</label><input id="set-${taskId}-${exerciseIndex}-${set}-${field}" data-field="${field}" type="${field==='notes'?'text':'number'}" ${field==='notes'?'maxlength="1000"':'step="any" min="0"'} value="${esc(asNumber(value))}" placeholder="${esc(placeholder||'')}" aria-label="${field} for set ${set}"></div>`;
  el.innerHTML=`<div class="meta">Week ${p.week} · ${esc(p.category)} · ${fmtDate(p.due_date)} · ${data.sets.length} saved set records</div>
  <div class="nextMove"><b>Full workout prescription (including timing and instructions)</b><div class="meta workoutLine">${esc(p.workout_details)}</div></div>
  <div class="nextMove"><b>📲 Quick text-to-log for Tomo</b><div class="meta">Paste a message like “Chest press set 1, 20 lb, 12 reps, RPE 5”. Review the detected values, then save the set. No automatic guessing.</div>
@@ -206,10 +206,10 @@ function renderWorkout(taskId,data){
  const previewButton=el.querySelector('[data-quick-preview]');
  const saveButton=el.querySelector('[data-quick-save]');
  const status=el.querySelector('[data-quick-result]');
- const input=el.querySelector('[data-quick-log]');
+ const quickInput=el.querySelector('[data-quick-log]');
  let parsed=null;
  function parseMessage(){
-  const msg=input.value.trim();
+  const msg=quickInput.value.trim();
   const norm=text=>String(text).toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
   const raw=norm(msg);
   const found=p.exercises.filter(ex=>raw.includes(norm(ex.name.replace(/\s*[—-]\s*main lift.*$/i,'')).replace(/\s*machine$/,'')));
@@ -236,7 +236,7 @@ function renderWorkout(taskId,data){
    saveButton.disabled=false;
   }catch(error){parsed=null;saveButton.disabled=true;status.textContent=error.message;}
  });
- input.addEventListener('input',()=>{parsed=null;saveButton.disabled=true;status.textContent='Preview the new message before saving.'});
+ quickInput.addEventListener('input',()=>{parsed=null;saveButton.disabled=true;status.textContent='Preview the new message before saving.'});
  saveButton.addEventListener('click',async()=>{
   if(!parsed)return;
   saveButton.disabled=true;
