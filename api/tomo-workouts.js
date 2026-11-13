@@ -21,7 +21,28 @@ function prescription(task){
  const category=gym?'strength':/RECOVERY/.test(name)?'recovery':'cardio';
  let exercises=[];
  if(gym){
-  if(/3\) Prescription:\s*EXACT SETS:/i.test(details)){
+  // Current saved Body-for-LIFE format: one shared pyramid for each named
+  // strength exercise, with the lower-body core finisher separately prescribed.
+  if(/FULL PYRAMID ON EVERY EXERCISE/i.test(details)){
+   const section=details.match(/EXERCISES IN ORDER:\s*([\s\S]*?)\s*(?:CORE:|FOR EACH LISTED WEIGHT-TRAINING EXERCISE:)/i);
+   const pyramid=details.match(/FULL 5-SET PYRAMID\s*(\d+)\s*\/\s*(\d+)\s*\/\s*(\d+)\s*\/\s*(\d+)\s*\/\s*(\d+)\s*reps/i);
+   if(!section||!pyramid)throw Error('Incomplete saved full-pyramid instructions');
+   const named=section[1].split(';').map(x=>x.trim().replace(/^\d+\)\s*/,'').replace(/[.\s]+$/,'')).filter(Boolean);
+   const expected=/\bLOWER\b/i.test(details)?5:6;
+   if(named.length!==expected)throw Error('Expected '+expected+' specified strength exercises; found '+named.length);
+   const targets=pyramid.slice(1);
+   exercises=named.map(rawName=>({
+    name:rawName.replace(/\b\w/g,c=>c.toUpperCase()),
+    optional:false,
+    sets:targets.map((target,i)=>({set:i+1,target_reps:target,rest_seconds:'45–75'}))
+   }));
+   if(expected===5){
+    const core=details.match(/CORE:\s*([^.;]+?)\s+(\d+)\s+sets?\s+of\s+(\d+)\s+per\s+side/i);
+    if(!core)throw Error('Lower-body core finisher instructions missing');
+    exercises.push({name:core[1].trim().replace(/\b\w/g,c=>c.toUpperCase()),optional:true,
+      sets:Array.from({length:Number(core[2])},(_,i)=>({set:i+1,target_reps:core[3]+' per side',rest_seconds:'45–75'}))});
+   }
+  }else if(/3\) Prescription:\s*EXACT SETS:/i.test(details)){
    const specified=details.match(/3\) Prescription:\s*EXACT SETS:\s*([\s\S]*?)These are the exact prescribed targets/i);
    if(!specified)throw Error('Exact sets prescription incomplete');
    const targets=specified[1].split(';').map(x=>x.trim()).filter(Boolean);
