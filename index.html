@@ -564,22 +564,7 @@ tr:last-child td{border-bottom:0}
 </header>
 
   <main class="grid">
-    <section id="bflSection" class="card bflPanel">
-      <div class="cardHeader"><div><div class="cardTitle">💪 BODY // Body-for-LIFE</div><div class="cardSub">12-week gym + treadmill + outdoor plan · 30–45 minutes</div></div><span class="badge" id="bflWeekBadge">WEEK 1</span></div>
-      <div class="bflBody">
-        <div class="bflToolbar"><label for="bflWeek">Training week</label><select id="bflWeek"></select><button class="btn" id="bflToday" type="button">Today / next workout</button></div>
-        <div class="bflStats" id="bflStats"></div><div class="bflDays" id="bflDays"></div>
-        <div class="bflDetail" id="bflDetail">Your gym and walk/run workouts will load with your Kay Command tasks.</div>
-        <div class="bflLog" id="bflLog" hidden>
-          <label>Main lift weights by set (lb)<input id="bflWeights" placeholder="e.g. 10, 10, 15, 15, 10" maxlength="120"></label>
-          <label>Reps completed<input id="bflReps" placeholder="e.g. 12, 10, 8, 6, 12" maxlength="120"></label>
-          <label>Effort (1–10)<input id="bflEffort" type="number" min="1" max="10" step="1" placeholder="4"></label>
-          <label style="flex-basis:100%">Notes / time / modifications<textarea id="bflNotes" maxlength="800" placeholder="What did you complete? How did it feel?"></textarea></label>
-        </div>
-        <div class="bflActions"><button id="bflSave" class="btn primary" type="button">Save workout log</button><button id="bflComplete" class="btn" type="button">✓ Mark workout complete</button></div>
-        <div id="bflMessage" class="cardSub" role="status" style="margin-top:9px"></div>
-      </div>
-    </section>
+
 
 
     <section class="card countdownStrip">
@@ -707,6 +692,23 @@ tr:last-child td{border-bottom:0}
         <div id="emailActionList" class="emailList">
           <div class="emailEmpty">Loading important unread email…</div>
         </div>
+      </div>
+    </section>
+
+    <section id="bflSection" class="card bflPanel">
+      <div class="cardHeader"><div><div class="cardTitle">💪 BODY // Body-for-LIFE</div><div class="cardSub">12-week gym + treadmill + outdoor plan · 30–45 minutes</div></div><span class="badge" id="bflWeekBadge">WEEK 1</span></div>
+      <div class="bflBody">
+        <div class="bflToolbar"><label for="bflWeek">Training week</label><select id="bflWeek"></select><button class="btn" id="bflToday" type="button">Today / next workout</button></div>
+        <div class="bflStats" id="bflStats"></div><div class="bflDays" id="bflDays"></div>
+        <div class="bflDetail" id="bflDetail">Your gym and walk/run workouts will load with your Kay Command tasks.</div>
+        <div class="bflLog" id="bflLog" hidden>
+          <label>Main lift weights by set (lb)<input id="bflWeights" placeholder="e.g. 10, 10, 15, 15, 10" maxlength="120"></label>
+          <label>Reps completed<input id="bflReps" placeholder="e.g. 12, 10, 8, 6, 12" maxlength="120"></label>
+          <label>Effort (1–10)<input id="bflEffort" type="number" min="1" max="10" step="1" placeholder="4"></label>
+          <label style="flex-basis:100%">Notes / time / modifications<textarea id="bflNotes" maxlength="800" placeholder="What did you complete? How did it feel?"></textarea></label>
+        </div>
+        <div class="bflActions"><button id="bflSave" class="btn primary" type="button">Save workout log</button><button id="bflComplete" class="btn" type="button">✓ Mark workout complete</button></div>
+        <div id="bflMessage" class="cardSub" role="status" style="margin-top:9px"></div>
       </div>
     </section>
 
