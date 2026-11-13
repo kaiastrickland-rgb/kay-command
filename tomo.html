@@ -139,6 +139,16 @@ function render(){
    <div class="taskList">${p.open_plan_tasks.length?p.open_plan_tasks.map(taskHtml).join(''):'<div class="empty">No remaining formal plan tasks.</div>'}</div>
   </section>`;
  $('projects').innerHTML=active.map(projectHtml).join('')+(archived.length?'<details class="card"><summary style="cursor:pointer;font-weight:800">Archived events ('+archived.length+') — click to review history</summary>'+archived.map(projectHtml).join('')+'</details>':'');
+ const focusId=new URLSearchParams(location.search).get('workout');
+ if(focusId && !window.__bflAutoFocused){
+  const target=document.querySelector('[data-workout-id="'+focusId.replace(/[^0-9a-f-]/gi,'')+'"]');
+  if(target){
+   window.__bflAutoFocused=true;
+   target.open=true;
+   target.scrollIntoView({block:'center',behavior:'smooth'});
+  }
+ }
+
 
  document.querySelectorAll('[data-workout-id]').forEach(el=>el.addEventListener('toggle',()=>{if(el.open&&!el.dataset.loaded){el.dataset.loaded='yes';loadWorkout(el.dataset.workoutId);}}));
  document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click',()=>runAction(b.dataset.id,b.dataset.type,b.dataset.action)));
