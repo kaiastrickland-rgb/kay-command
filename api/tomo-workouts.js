@@ -23,15 +23,40 @@ function prescription(task){
  const exerciseNames=exerciseSection?exerciseSection[1].split(';').map(x=>x.trim().replace(/^\d+\)\s*/,'').replace(/\s*[—-]\s*optional if short on time/i,'').trim()).filter(Boolean):[];
  let exercises=[];
  if(gym){
-  if(!exerciseNames.length)throw Error('Workout exercise specification missing');
-  const mainReps=week<=2?[12,10,8,6,12]:week<=4?[12,10,8]:[12,10,8,6,12];
-  const accessoryCount=week<=2?1:2;
-  const accessoryTarget=week<=4?'10–12':'8–12';
-  exercises=exerciseNames.map((name,index)=>({
-    name,optional:index===exerciseNames.length-1,
-    sets:index===0?mainReps.map((r,i)=>({set:i+1,target_reps:String(r),rest_seconds:'45–90'}))
-      :Array.from({length:accessoryCount},(_,i)=>({set:i+1,target_reps:/dead bug/i.test(name)?'6–8 per side':accessoryTarget,rest_seconds:'45–90'}))
-  }));
+  if(/CANONICAL WORKOUT FOR TOMO, KAY COMMAND AND CHATGPT/i.test(details)){
+   // The named canonical workout wins over generic week templates.
+   // Parse the actual per-exercise prescription, preserving its exact sets/reps.
+   const matcher=/(?:^|\s)([1-6])\)\s*([A-Z][A-Z ]+):\s*([\s\S]*?)(?=\s+[1-6]\)\s*[A-Z][A-Z ]+:|\s+Rest\s+\d|$)/g;
+   const blocks=[...details.matchAll(matcher)];
+   if(blocks.length!==6)throw Error('Canonical workout has incomplete exercise instructions');
+   exercises=blocks.map((block,index)=>{
+    const exercise=block[2].trim().toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());
+    const instruction=block[3];
+    let repTargets=[];
+    if(index===0){
+     const pyramid=instruction.match(/5\s+sets?\s+of\s+([\d\s/]+)\s+reps/i);
+     if(!pyramid)throw Error('Canonical main-lift pyramid missing');
+     repTargets=pyramid[1].split('/').map(x=>x.trim()).filter(Boolean);
+     if(repTargets.length!==5)throw Error('Canonical pyramid does not have five sets');
+    }else{
+     const amount=instruction.match(/(\d+)\s+sets?\s*[×x]\s*(\d+)\s+reps/i);
+     if(!amount)throw Error('Canonical accessory set prescription missing: '+exercise);
+     repTargets=Array(Number(amount[1])).fill(amount[2]);
+    }
+    return {name:exercise,optional:/optional/i.test(instruction),
+      sets:repTargets.map((reps,i)=>({set:i+1,target_reps:String(reps),rest_seconds:'45–90'}))};
+   });
+  }else{
+   if(!exerciseNames.length)throw Error('Workout exercise specification missing');
+   const mainReps=week<=2?[12,10,8,6,12]:week<=4?[12,10,8]:[12,10,8,6,12];
+   const accessoryCount=week<=2?1:2;
+   const accessoryTarget=week<=4?'10–12':'8–12';
+   exercises=exerciseNames.map((name,index)=>({
+     name,optional:index===exerciseNames.length-1,
+     sets:index===0?mainReps.map((r,i)=>({set:i+1,target_reps:String(r),rest_seconds:'45–90'}))
+       :Array.from({length:accessoryCount},(_,i)=>({set:i+1,target_reps:/dead bug/i.test(name)?'6–8 per side':accessoryTarget,rest_seconds:'45–90'}))
+   }));
+  }
  }else{
   exercises=[{name:category==='recovery'?'Recovery walk and mobility':/TREADMILL/.test(name)?'Treadmill walk/run':'Outdoor walk/run',optional:category==='recovery',
     sets:[{set:1,target_reps:'Log actual minutes, RPE and notes',rest_seconds:'As needed'}]}];
