@@ -31,6 +31,16 @@ textarea{min-height:85px;resize:vertical}.auth{max-width:520px;margin:60px auto;
 .createGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.createGrid .wide{grid-column:1/-1}
 .sectionTitle{font-size:13px;font-weight:900;letter-spacing:.08em;color:var(--cyan);margin-top:14px}
 .empty{color:var(--muted);font-size:13px;padding:8px 0}
+.workoutPanel{margin-top:12px;border:1px solid #2a5b60;background:#0c2228;border-radius:12px;padding:12px}
+.workoutPanel summary{cursor:pointer;color:var(--green);font-weight:800}
+.exercise{padding:12px 0;border-bottom:1px solid var(--line)}
+.exercise:last-child{border-bottom:0}
+.exercise h4{margin:0 0 7px;font-size:15px}.workoutLine{white-space:pre-wrap;line-height:1.5}
+.setGrid{display:grid;grid-template-columns:minmax(70px,1fr) repeat(4,minmax(60px,1fr)) auto;gap:6px;margin:7px 0;align-items:end}
+.setGrid input{padding:7px;font-size:14px;min-width:0}.setGrid label{font-size:11px;color:var(--muted)}
+.setGrid button{font-size:13px;white-space:nowrap}.savedSet{color:var(--green);font-size:12px}
+@media(max-width:650px){.setGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.setGrid>div:first-child{grid-column:1/-1}.setGrid button{grid-column:1/-1}}
+
 @media(max-width:650px){.shell{padding:12px}.projectTop,.taskHead{display:block}.taskHead button{margin-top:8px}.createGrid{grid-template-columns:1fr}}
 </style>
 </head>
@@ -88,7 +98,7 @@ function taskHtml(t){
    <div><div class="taskName">${esc(t.task)}</div><div class="meta">${tag} · ${fmtDate(t.due_date)}${t.owner?' · '+esc(t.owner):''}${t.overdue?'<span class="overdue"> · OVERDUE</span>':''}${t.phase?' · '+esc(t.phase):''}${t.priority?' · '+esc(t.priority):''}</div></div>
    <button class="primary" data-action="complete" data-type="${t.task_type}" data-id="${t.id}">✓ Complete</button>
   </div>
-  ${t.details?`<div class="meta" style="margin-top:8px">${esc(t.details)}</div>`:''}
+  ${/^BFL W\\d{2} — /.test(t.task)?`<details class="workoutPanel" data-workout-id="${t.id}"><summary>💪 Full workout • sets, reps, rests & weight log</summary><div class="workoutBody" id="workout-${t.id}"><button data-load-workout="${t.id}">Load workout and recorded sets</button></div></details>`:(t.details?`<div class="meta" style="margin-top:8px;white-space:pre-wrap">${esc(t.details)}</div>`:'')}
   <div class="actions"><button data-edit="${t.task_type}:${t.id}">Update / reschedule</button></div>
   <div id="edit-${t.task_type}-${t.id}" class="editor hidden">
    <label class="meta">Due date</label><input id="date-${t.task_type}-${t.id}" type="date" value="${t.due_date||''}">
@@ -130,10 +140,66 @@ function render(){
   </section>`;
  $('projects').innerHTML=active.map(projectHtml).join('')+(archived.length?'<details class="card"><summary style="cursor:pointer;font-weight:800">Archived events ('+archived.length+') — click to review history</summary>'+archived.map(projectHtml).join('')+'</details>':'');
 
+ document.querySelectorAll('[data-workout-id]').forEach(el=>el.addEventListener('toggle',()=>{if(el.open&&!el.dataset.loaded){el.dataset.loaded='yes';loadWorkout(el.dataset.workoutId);}}));
  document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click',()=>runAction(b.dataset.id,b.dataset.type,b.dataset.action)));
  document.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click',()=>{const [type,id]=b.dataset.edit.split(':');$(`edit-${type}-${id}`).classList.toggle('hidden')}));
  document.querySelectorAll('[data-save-date]').forEach(b=>b.addEventListener('click',()=>{const [type,id]=b.dataset.saveDate.split(':');const due=$(`date-${type}-${id}`).value;if(!due)return setStatus('Choose a due date first.');runAction(id,type,'reschedule',{due_date:due})}));
  document.querySelectorAll('[data-save-details]').forEach(b=>b.addEventListener('click',()=>{const [type,id]=b.dataset.saveDetails.split(':');runAction(id,type,'update_details',{details:$(`details-${type}-${id}`).value})}));
+}
+const WORKOUT_API='/api/tomo-workouts';
+const asNumber=v=>v===null||v===undefined?'':String(v);
+async function loadWorkout(taskId){
+ const el=$('workout-'+taskId);
+ if(!el)return;
+ el.textContent='Loading your exercise prescription and existing logs…';
+ try{
+  const r=await fetch(WORKOUT_API+'?task_id='+encodeURIComponent(taskId),{cache:'no-store'});
+  const data=await r.json();
+  if(!r.ok)throw Error(data.error||'Workout unavailable');
+  renderWorkout(taskId,data);
+ }catch(e){el.textContent=e.message;}
+}
+function renderWorkout(taskId,data){
+ const el=$('workout-'+taskId),p=data.plan;
+ const saved=new Map(data.sets.map(x=>[x.exercise+'|'+x.set_number,x]));
+ const input=(exerciseIndex,set,field,value,placeholder)=>`<div><label>${field==='weight_lb'?'Weight (lb)':field==='reps'?'Actual reps':field==='duration_minutes'?'Minutes':field==='rpe'?'RPE (1–10)':'Notes'}</label><input data-field="${field}" type="${field==='notes'?'text':'number'}" ${field==='notes'?'maxlength="1000"':'step="any" min="0"'} value="${esc(asNumber(value))}" placeholder="${esc(placeholder||'')}" aria-label="${field} for set ${set}"></div>`;
+ el.innerHTML=`<div class="meta">Week ${p.week} · ${esc(p.category)} · ${fmtDate(p.due_date)} · ${data.sets.length} saved set records</div>
+ <div class="nextMove"><b>Full workout prescription (including timing and instructions)</b><div class="meta workoutLine">${esc(p.workout_details)}</div></div>
+ <div class="meta"><b>Warm-up:</b> ${esc(p.instructions.warmup)}</div>
+ <div class="meta"><b>Between sets:</b> ${esc(p.instructions.rest)}</div>
+ <div class="meta"><b>Cool-down:</b> ${esc(p.instructions.cooldown)}</div>
+ ${p.exercises.map((ex,exIndex)=>`<div class="exercise"><h4>${exIndex+1}. ${esc(ex.name)} ${ex.optional?'<small class="meta">(optional)</small>':''}</h4>
+ ${ex.sets.map(set=>{
+ const old=saved.get(ex.name+'|'+set.set)||{};
+ return `<div class="setGrid" data-set-row="${exIndex}:${set.set}">
+ <div class="meta"><b>Set ${set.set}</b><div>Target: ${esc(set.target_reps)}</div><div>Rest: ${esc(set.rest_seconds)} sec</div></div>
+ ${input(exIndex,set.set,'weight_lb',old.weight_lb,'0')}
+ ${input(exIndex,set.set,'reps',old.reps,set.target_reps)}
+ ${input(exIndex,set.set,'duration_minutes',old.duration_minutes,'0')}
+ ${input(exIndex,set.set,'rpe',old.rpe,'1–10')}
+ <button class="primary" data-save-set="${exIndex}:${set.set}">${old.id?'Update':'Save'} set</button>
+ <div style="grid-column:1/-1">${input(exIndex,set.set,'notes',old.notes||'','Optional notes')}</div>
+ ${old.id?`<div class="savedSet" style="grid-column:1/-1">✓ Previously logged ${esc(old.updated_at||'')}</div>`:''}
+ </div>`;
+ }).join('')}</div>`).join('')}
+ <div class="meta">Log each set as you go. Saving a weight/reps entry does not automatically mark the entire workout complete; use the task's Complete button after finishing the prescribed session.</div>`;
+ el.querySelectorAll('[data-save-set]').forEach(b=>b.addEventListener('click',()=>saveWorkoutSet(taskId,p,b)));
+}
+async function saveWorkoutSet(taskId,plan,button){
+ const [exIndex,setNumber]=button.dataset.saveSet.split(':').map(Number);
+ const exercise=plan.exercises[exIndex]?.name;
+ const row=button.closest('[data-set-row]');
+ const get=f=>row.querySelector('[data-field="'+f+'"]').value.trim();
+ const body={task_id:taskId,exercise,set_number:setNumber};
+ for(const f of ['weight_lb','reps','duration_minutes','rpe','notes'])body[f]=get(f)===''?null:get(f);
+ button.disabled=true;button.textContent='Saving…';
+ try{
+  const response=await fetch(WORKOUT_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const data=await response.json();
+  if(!response.ok)throw Error(data.error||'Unable to log set');
+  setStatus('Workout set recorded in Kay Command ✓');
+  await loadWorkout(taskId);
+ }catch(e){setStatus(e.message);button.disabled=false;button.textContent='Retry saving set'}
 }
 async function load(){setStatus('Loading live project view…');FEED=await callApi();render();setStatus(`Live as of ${new Date(FEED.generated_at).toLocaleTimeString()}`)}
 async function runAction(id,type,action,extra={}){try{setStatus('Saving change…');await callApi('PATCH',{task_id:id,task_type:type,action,...extra});await load();setStatus('Saved to Kay Command ✓')}catch(e){setStatus(e.message)}}
