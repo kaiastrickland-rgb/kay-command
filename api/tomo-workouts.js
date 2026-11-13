@@ -47,14 +47,14 @@ function prescription(task){
     const instruction=block[3];
     let repTargets=[];
     if(index===0){
-     const pyramid=instruction.match(/5\s+sets?\s+of\s+([\d\s/]+)\s+reps/i);
+     const pyramid=instruction.match(/(\d+)\s+sets?\s+of\s+([\d\s/]+)\s+reps/i);
      if(!pyramid)throw Error('Canonical main-lift pyramid missing');
-     repTargets=pyramid[1].split('/').map(x=>x.trim()).filter(Boolean);
-     if(repTargets.length!==5)throw Error('Canonical pyramid does not have five sets');
+     repTargets=pyramid[2].split('/').map(x=>x.trim()).filter(Boolean);
+     if(repTargets.length!==Number(pyramid[1]))throw Error('Canonical pyramid set count does not match the rep sequence');
     }else{
-     const amount=instruction.match(/(\d+)\s+sets?\s*[×x]\s*(\d+)\s+reps/i);
+     const amount=instruction.match(/(\d+)\s+sets?\s*[×x]\s*(\d+(?:[–-]\d+)?)\s+reps(\s+per\s+side)?/i);
      if(!amount)throw Error('Canonical accessory set prescription missing: '+exercise);
-     repTargets=Array(Number(amount[1])).fill(amount[2]);
+     repTargets=Array(Number(amount[1])).fill(amount[2]+(amount[3]||''));
     }
     return {name:exercise,optional:/optional/i.test(instruction),
       sets:repTargets.map((reps,i)=>({set:i+1,target_reps:String(reps),rest_seconds:'45–90'}))};
