@@ -52,6 +52,7 @@ textarea{min-height:85px;resize:vertical}.auth{max-width:520px;margin:60px auto;
     <div id="summary" class="bar"></div>
 
     <section class="card" id="mission" aria-label="Daily priorities"></section>
+    <section class="card" id="bodyFocus" aria-label="Next scheduled workout"></section>
 
     <section class="card">
       <div class="projectName">➕ Create a live task</div>
@@ -120,6 +121,11 @@ function render(){
  }).slice(0,3);
  const missionDate=daily[0]?.due_date?'Target date: '+fmtDate(daily[0].due_date)+' · ':'';
  $('mission').innerHTML='<div class="projectName">🎯 Next three wins</div><div class="meta">'+missionDate+'Small, checkable actions. Complete each without closing monthly milestones.</div><div class="taskList">'+(daily.length?daily.map(taskHtml).join(''):'<div class="empty">No daily actions assigned yet. Tomo can add the next three tasks here.</div>')+'</div>';
+ const allWorkouts=(reset?.open_live_tasks||[]).filter(t=>/^BFL W\d{2} — /.test(t.task)).sort((a,b)=>String(a.due_date).localeCompare(String(b.due_date)));
+ const currentDate=(()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')})();
+ const nextWorkout=allWorkouts.find(t=>t.due_date>=currentDate&&!t.task.includes('RECOVERY'))||allWorkouts.find(t=>!t.task.includes('RECOVERY'));
+ $('bodyFocus').innerHTML='<div class="projectName">💪 Next BODY workout</div><div class="meta">Full exercise instructions and set-by-set weight tracking. Tomo can save the numbers you text.</div>'+(nextWorkout?taskHtml(nextWorkout):'<div class="empty">No upcoming workout assigned.</div>');
+
  $('summary').innerHTML=[['Projects',s.projects],['Open live tasks',s.open_live_tasks],['Open plan tasks',s.open_plan_tasks],['Overdue',s.overdue],['Due today',s.due_today],['Archived',s.archived_projects||0]].map(([a,b])=>`<span class="pill">${a}: <b>${b}</b></span>`).join('');
  $('newProject').innerHTML=active.map(p=>`<option value="${p.id}">${esc(p.name)}${p.workspace?' · '+esc(p.workspace):''}</option>`).join('');
 
@@ -175,6 +181,9 @@ function renderWorkout(taskId,data){
  const input=(exerciseIndex,set,field,value,placeholder)=>`<div><label>${field==='weight_lb'?'Weight (lb)':field==='reps'?'Actual reps':field==='duration_minutes'?'Minutes':field==='rpe'?'RPE (1–10)':'Notes'}</label><input data-field="${field}" type="${field==='notes'?'text':'number'}" ${field==='notes'?'maxlength="1000"':'step="any" min="0"'} value="${esc(asNumber(value))}" placeholder="${esc(placeholder||'')}" aria-label="${field} for set ${set}"></div>`;
  el.innerHTML=`<div class="meta">Week ${p.week} · ${esc(p.category)} · ${fmtDate(p.due_date)} · ${data.sets.length} saved set records</div>
  <div class="nextMove"><b>Full workout prescription (including timing and instructions)</b><div class="meta workoutLine">${esc(p.workout_details)}</div></div>
+ <div class="nextMove"><b>📲 Quick text-to-log for Tomo</b><div class="meta">Paste a message like “Chest press set 1, 20 lb, 12 reps, RPE 5”. Review the detected values, then save the set. No automatic guessing.</div>
+ <div class="createGrid" style="margin-top:8px"><div class="wide"><label class="meta">Message or workout result</label><input data-quick-log placeholder="Chest press set 1, 20 lb, 12 reps, RPE 5" aria-label="Paste a workout result"></div></div>
+ <div class="actions"><button data-quick-preview>Preview text entry</button><button class="primary" data-quick-save disabled>Save parsed set</button></div><div data-quick-result class="status">Choose an exercise and set from your message.</div></div>
  <div class="meta"><b>Warm-up:</b> ${esc(p.instructions.warmup)}</div>
  <div class="meta"><b>Between sets:</b> ${esc(p.instructions.rest)}</div>
  <div class="meta"><b>Cool-down:</b> ${esc(p.instructions.cooldown)}</div>
@@ -194,6 +203,52 @@ function renderWorkout(taskId,data){
  }).join('')}</div>`).join('')}
  <div class="meta">Log each set as you go. Saving a weight/reps entry does not automatically mark the entire workout complete; use the task's Complete button after finishing the prescribed session.</div>`;
  el.querySelectorAll('[data-save-set]').forEach(b=>b.addEventListener('click',()=>saveWorkoutSet(taskId,p,b)));
+ const previewButton=el.querySelector('[data-quick-preview]');
+ const saveButton=el.querySelector('[data-quick-save]');
+ const status=el.querySelector('[data-quick-result]');
+ const input=el.querySelector('[data-quick-log]');
+ let parsed=null;
+ function parseMessage(){
+  const msg=input.value.trim();
+  const norm=text=>String(text).toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+  const raw=norm(msg);
+  const found=p.exercises.filter(ex=>raw.includes(norm(ex.name.replace(/\s*[—-]\s*main lift.*$/i,'')).replace(/\s*machine$/,'')));
+  if(found.length!==1)throw Error('Please name exactly one exercise from this workout.');
+  const ex=found[0];
+  const setMatch=msg.match(/\bset\s*#?\s*(\d{1,2})\b/i);
+  const weightMatch=msg.match(/\b(\d+(?:\.\d+)?)\s*(?:lb|lbs|pounds?)\b/i);
+  const repsMatch=msg.match(/\b(\d{1,3})\s*(?:reps?|repetitions?)\b/i);
+  const effortMatch=msg.match(/\bRPE\s*(?:of|:|=)?\s*(\d+(?:\.\d+)?)\b/i);
+  const durationMatch=msg.match(/\b(\d+(?:\.\d+)?)\s*(?:minutes?|mins?)\b/i);
+  const set_number=setMatch?Number(setMatch[1]):1;
+  if(!ex.sets.some(x=>x.set===set_number))throw Error('This exercise does not have set '+set_number+'.');
+  if(!weightMatch&&!repsMatch&&!effortMatch&&!durationMatch)throw Error('Add weight, repetitions, RPE, or minutes.');
+  return {task_id:taskId,exercise:ex.name,set_number,
+    weight_lb:weightMatch?Number(weightMatch[1]):null,
+    reps:repsMatch?Number(repsMatch[1]):null,
+    rpe:effortMatch?Number(effortMatch[1]):null,
+    duration_minutes:durationMatch?Number(durationMatch[1]):null};
+ }
+ previewButton.addEventListener('click',()=>{
+  try{
+   parsed=parseMessage();
+   status.textContent='Confirm: '+parsed.exercise+' • Set '+parsed.set_number+' • '+(parsed.weight_lb??'—')+' lb • '+(parsed.reps??'—')+' reps • RPE '+(parsed.rpe??'—')+' • '+(parsed.duration_minutes??'—')+' min';
+   saveButton.disabled=false;
+  }catch(error){parsed=null;saveButton.disabled=true;status.textContent=error.message;}
+ });
+ input.addEventListener('input',()=>{parsed=null;saveButton.disabled=true;status.textContent='Preview the new message before saving.'});
+ saveButton.addEventListener('click',async()=>{
+  if(!parsed)return;
+  saveButton.disabled=true;
+  status.textContent='Saving confirmed entry…';
+  try{
+   const response=await fetch(WORKOUT_API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(parsed)});
+   const result=await response.json();
+   if(!response.ok)throw Error(result.error||'Unable to save set');
+   setStatus('Workout set saved to Kay Command ✓');
+   await loadWorkout(taskId);
+  }catch(error){status.textContent=error.message;saveButton.disabled=false;}
+ });
 }
 async function saveWorkoutSet(taskId,plan,button){
  const [exIndex,setNumber]=button.dataset.saveSet.split(':').map(Number);
