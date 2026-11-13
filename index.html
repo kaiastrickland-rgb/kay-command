@@ -538,6 +538,10 @@ tr:last-child td{border-bottom:0}
 .dailyPleasures.smokeSipCollapsed .cardHeader{margin-bottom:6px}
 @media(max-width:500px){.smokeSipSummary{gap:6px;padding:0 9px 10px}.smokeSipSummaryItem{padding:8px}.smokeSipSummaryItem strong{font-size:12px}.smokeSipHeaderActions{gap:5px}.smokeSipToggle{font-size:10px;padding:6px 8px}}
 .cigarBlendSource{grid-column:1/-1;display:flex;justify-content:space-between;gap:8px;align-items:center;border-top:1px solid rgba(255,255,255,.08);padding-top:5px;margin-top:3px;font-size:9px;color:#a4b9c5}.cigarBlendSource a{color:#88d8ee;text-decoration:none}.cigarBlendSource span{cursor:help}
+
+/* Body-for-LIFE mission panel */
+.bflPanel{grid-column:span 12}.bflBody{padding:0 20px 20px}.bflToolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}.bflToolbar select{background:#0b1821;color:var(--text);border:1px solid var(--line2);border-radius:10px;padding:9px;min-width:110px}.bflStats{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0 15px}.bflStat{background:#091b23;border:1px solid var(--line2);border-radius:12px;padding:10px 14px;color:var(--muted)}.bflStat strong{color:var(--green)}.bflDays{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.bflDay{border:1px solid var(--line2);background:#081820;border-radius:13px;padding:12px;text-align:left;color:var(--text);min-height:108px}.bflDay.active{border-color:var(--cyan)}.bflDay.done{border-color:var(--green)}.bflDay small{display:block;color:var(--muted);margin:5px 0}.bflDetail{border:1px solid var(--line2);background:#07151e;border-radius:13px;margin-top:13px;padding:15px;white-space:pre-wrap;line-height:1.6}.bflLog{display:flex;flex-wrap:wrap;gap:9px;margin-top:12px}.bflLog label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:5px;flex:1 1 130px}.bflLog input,.bflLog textarea{width:100%;background:#0b1821;border:1px solid var(--line2);border-radius:9px;padding:9px;color:var(--text)}.bflLog textarea{min-height:65px}.bflActions{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}.bflActions button{min-height:40px}@media(max-width:650px){.bflBody{padding:0 12px 14px}.bflDays{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
 </style>
 </head>
 <body>
@@ -560,6 +564,23 @@ tr:last-child td{border-bottom:0}
 </header>
 
   <main class="grid">
+    <section id="bflSection" class="card bflPanel">
+      <div class="cardHeader"><div><div class="cardTitle">💪 BODY // Body-for-LIFE</div><div class="cardSub">12-week gym + treadmill + outdoor plan · 30–45 minutes</div></div><span class="badge" id="bflWeekBadge">WEEK 1</span></div>
+      <div class="bflBody">
+        <div class="bflToolbar"><label for="bflWeek">Training week</label><select id="bflWeek"></select><button class="btn" id="bflToday" type="button">Today / next workout</button></div>
+        <div class="bflStats" id="bflStats"></div><div class="bflDays" id="bflDays"></div>
+        <div class="bflDetail" id="bflDetail">Your gym and walk/run workouts will load with your Kay Command tasks.</div>
+        <div class="bflLog" id="bflLog" hidden>
+          <label>Main lift weights by set (lb)<input id="bflWeights" placeholder="e.g. 10, 10, 15, 15, 10" maxlength="120"></label>
+          <label>Reps completed<input id="bflReps" placeholder="e.g. 12, 10, 8, 6, 12" maxlength="120"></label>
+          <label>Effort (1–10)<input id="bflEffort" type="number" min="1" max="10" step="1" placeholder="4"></label>
+          <label style="flex-basis:100%">Notes / time / modifications<textarea id="bflNotes" maxlength="800" placeholder="What did you complete? How did it feel?"></textarea></label>
+        </div>
+        <div class="bflActions"><button id="bflSave" class="btn primary" type="button">Save workout log</button><button id="bflComplete" class="btn" type="button">✓ Mark workout complete</button></div>
+        <div id="bflMessage" class="cardSub" role="status" style="margin-top:9px"></div>
+      </div>
+    </section>
+
 
     <section class="card countdownStrip">
       <div class="cardHeader"><div class="sectionLabel">PROJECT COUNTDOWNS</div></div>
@@ -1550,7 +1571,65 @@ function renderDailyPleasures(){
  }
 }
 
-function renderAll(){setGreeting();renderCountdownStrip();renderBriefs();renderActions();renderCareer();renderMoney();renderInbox();renderCalendar();renderProjects();renderSystems();bindSummaryCountBadges();renderDailyPleasures()}
+
+/* Body-for-LIFE panel: reuses existing kay_tasks and authenticated Supabase client */
+let bflSelectedId=null;
+const bflStart=new Date(2026,10,16);
+const bflTasks=()=>state.tasks.filter(t=>/^BFL W\\d{2} — /.test(t.name||'')).sort((a,b)=>String(a.due_date).localeCompare(String(b.due_date)));
+function bflWeekNumber(){
+ const now=new Date();now.setHours(0,0,0,0);
+ return Math.max(1,Math.min(12,Math.floor((now-bflStart)/604800000)+1));
+}
+function renderBfl(){
+ const all=bflTasks(),weekSelect=$('bflWeek');
+ if(!weekSelect.options.length)weekSelect.innerHTML=Array.from({length:12},(_,i)=>'<option value="'+(i+1)+'">Week '+(i+1)+'</option>').join('');
+ if(!weekSelect.dataset.ready){weekSelect.value=String(bflWeekNumber());weekSelect.dataset.ready='1';}
+ const week=Number(weekSelect.value)||1,rows=all.filter(t=>Number((t.name.match(/^BFL W(\\d+)/)||[])[1])===week);
+ $('bflWeekBadge').textContent='WEEK '+week;
+ const core=rows.filter(t=>!/RECOVERY/.test(t.name)),done=core.filter(t=>t.is_done).length;
+ $('bflStats').innerHTML='<div class="bflStat"><strong>'+done+'/'+core.length+'</strong> primary sessions completed</div><div class="bflStat"><strong>'+all.filter(t=>t.is_done&&!/RECOVERY/.test(t.name)).length+'/60</strong> challenge workouts</div>';
+ $('bflDays').innerHTML=rows.map(t=>'<button class="bflDay '+(t.id===bflSelectedId?'active ':'')+(t.is_done?'done':'')+'" data-bfl-id="'+esc(t.id)+'" type="button"><strong>'+esc((t.name.split(' — ')[1]||t.name))+'</strong><small>'+esc(fmtDate(t.due_date))+'</small><span>'+(t.is_done?'✓ Complete':/RECOVERY/.test(t.name)?'Optional recovery':'View instructions')+'</span></button>').join('');
+ document.querySelectorAll('[data-bfl-id]').forEach(b=>b.onclick=()=>{bflSelectedId=b.dataset.bflId;renderBfl();});
+ const current=rows.find(t=>t.id===bflSelectedId)||rows.find(t=>!t.is_done&&!/RECOVERY/.test(t.name))||rows[0];
+ if(current)bflSelectedId=current.id;
+ $('bflDetail').textContent=current?current.name+'\n'+fmtDate(current.due_date)+'\n\n'+(current.details||'No instructions'):'No workouts found for this week. Check the live task sync.';
+ $('bflLog').hidden=!current;
+ $('bflSave').disabled=!current;
+ $('bflComplete').disabled=!current;
+ $('bflComplete').textContent=current?.is_done?'↩ Reopen workout':'✓ Mark workout complete';
+ document.querySelectorAll('[data-bfl-id]').forEach(b=>b.classList.toggle('active',b.dataset.bflId===bflSelectedId));
+}
+$('bflWeek').onchange=()=>{bflSelectedId=null;$('bflMessage').textContent='';renderBfl();};
+$('bflToday').onclick=()=>{
+ const all=bflTasks(),todayStr=new Date().toLocaleDateString('en-CA');
+ const upcoming=all.find(t=>t.due_date>=todayStr&&!t.is_done&&!/RECOVERY/.test(t.name))||all.find(t=>!t.is_done&&!/RECOVERY/.test(t.name));
+ if(upcoming){$('bflWeek').value=String(Number((upcoming.name.match(/^BFL W(\\d+)/)||[])[1])||1);bflSelectedId=upcoming.id;renderBfl();}
+};
+$('bflSave').onclick=async()=>{
+ const t=state.tasks.find(x=>x.id===bflSelectedId);if(!t)return;
+ const w=$('bflWeights').value.trim(),r=$('bflReps').value.trim(),eff=$('bflEffort').value.trim(),note=$('bflNotes').value.trim();
+ if(!w&&!r&&!eff&&!note){$('bflMessage').textContent='Enter at least one workout result before saving.';return;}
+ if(eff&&(!Number.isInteger(Number(eff))||Number(eff)<1||Number(eff)>10)){$('bflMessage').textContent='Effort must be a whole number from 1 to 10.';return;}
+ const line='\\n\\nWORKOUT LOG '+new Date().toLocaleString()+': '+[w?'weights (lb): '+w:'',r?'reps: '+r:'',eff?'effort: '+eff+'/10':'',note?'notes: '+note:''].filter(Boolean).join(' | ');
+ $('bflSave').disabled=true;$('bflMessage').textContent='Saving to Kay Command…';
+ const next=(t.details||'')+line;
+ const {error}=await supabase.from('kay_tasks').update({details:next,updated_at:new Date().toISOString()}).eq('id',t.id);
+ $('bflSave').disabled=false;
+ if(error){$('bflMessage').textContent='Could not save: '+error.message;return;}
+ t.details=next;$('bflWeights').value='';$('bflReps').value='';$('bflEffort').value='';$('bflNotes').value='';
+ $('bflMessage').textContent='✓ Workout log saved to your task.';renderBfl();
+};
+$('bflComplete').onclick=async()=>{
+ const t=state.tasks.find(x=>x.id===bflSelectedId);if(!t)return;
+ const next=!t.is_done;
+ if(next&&!confirm('Mark this session complete? Only confirm if you actually performed it.'))return;
+ $('bflComplete').disabled=true;
+ const {error}=await supabase.from('kay_tasks').update({is_done:next,updated_at:new Date().toISOString()}).eq('id',t.id);
+ if(error){$('bflMessage').textContent='Could not update: '+error.message;$('bflComplete').disabled=false;return;}
+ t.is_done=next;$('bflMessage').textContent=next?'✓ Workout completed!':'Workout reopened.';renderAll();
+};
+
+function renderAll(){renderBfl();setGreeting();renderCountdownStrip();renderBriefs();renderActions();renderCareer();renderMoney();renderInbox();renderCalendar();renderProjects();renderSystems();bindSummaryCountBadges();renderDailyPleasures()}
 function renderBriefs(){
  const latest=state.briefs[0];
  const raw=String(latest?.content||latest?.brief||latest?.summary||latest?.message||latest?.title||'').trim();
