@@ -1601,7 +1601,7 @@ function renderBfl(){
 }
 $('bflWeek').onchange=()=>{bflSelectedId=null;$('bflMessage').textContent='';renderBfl();};
 $('bflToday').onclick=()=>{
- const all=bflTasks(),todayStr=new Date().toLocaleDateString('en-CA');
+ const all=bflTasks(),todayStr=(()=>{const d=new Date();return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')})();
  const upcoming=all.find(t=>t.due_date>=todayStr&&!t.is_done&&!/RECOVERY/.test(t.name))||all.find(t=>!t.is_done&&!/RECOVERY/.test(t.name));
  if(upcoming){$('bflWeek').value=String(Number((upcoming.name.match(/^BFL W(\\d+)/)||[])[1])||1);bflSelectedId=upcoming.id;renderBfl();}
 };
