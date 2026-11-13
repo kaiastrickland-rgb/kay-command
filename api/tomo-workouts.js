@@ -19,11 +19,24 @@ function prescription(task){
  if(!week||week>12)throw Error('Not a scheduled BFL workout');
  const gym=/ GYM$/.test(name);
  const category=gym?'strength':/RECOVERY/.test(name)?'recovery':'cardio';
- const exerciseSection=details.match(/2\) Exercises in order:\s*([\s\S]*?)\s*3\) Prescription:/);
- const exerciseNames=exerciseSection?exerciseSection[1].split(';').map(x=>x.trim().replace(/^\d+\)\s*/,'').replace(/\s*[—-]\s*optional if short on time/i,'').trim()).filter(Boolean):[];
  let exercises=[];
  if(gym){
-  if(/CANONICAL WORKOUT FOR TOMO, KAY COMMAND AND CHATGPT/i.test(details)){
+  if(/3\) Prescription:\s*EXACT SETS:/i.test(details)){
+   const specified=details.match(/3\) Prescription:\s*EXACT SETS:\s*([\s\S]*?)These are the exact prescribed targets/i);
+   if(!specified)throw Error('Exact sets prescription incomplete');
+   const targets=specified[1].split(';').map(x=>x.trim()).filter(Boolean);
+   exercises=targets.map(item=>{
+     const match=item.match(/^([^=]+?)\s*=\s*([\s\S]+)$/);
+     if(!match)throw Error('Unrecognized exact exercise prescription: '+item);
+     const exerciseName=match[1].trim();
+     const optional=/\(optional\)/i.test(match[2]);
+     const repsText=match[2].replace(/\(optional\)/ig,'').replace(/[.\s]+$/g,'').trim();
+     const repTargets=repsText.split('/').map(x=>x.trim()).filter(Boolean);
+     if(!exerciseName||!repTargets.length||repTargets.some(x=>!/^\d+(?:\s+per side)?$/i.test(x)))throw Error('Invalid exact reps for '+exerciseName);
+     return {name:exerciseName,optional,sets:repTargets.map((target,i)=>({set:i+1,target_reps:target,rest_seconds:'45–90'}))};
+   });
+   if(exercises.length!==6)throw Error('Exactly six prescribed exercises required');
+  }else if(/CANONICAL WORKOUT FOR TOMO, KAY COMMAND AND CHATGPT/i.test(details)){
    // The named canonical workout wins over generic week templates.
    // Parse the actual per-exercise prescription, preserving its exact sets/reps.
    const matcher=/(?:^|\s)([1-6])\)\s*([A-Z][A-Z ]+):\s*([\s\S]*?)(?=\s+[1-6]\)\s*[A-Z][A-Z ]+:|\s+Rest\s+\d|$)/g;
@@ -47,15 +60,9 @@ function prescription(task){
       sets:repTargets.map((reps,i)=>({set:i+1,target_reps:String(reps),rest_seconds:'45–90'}))};
    });
   }else{
-   if(!exerciseNames.length)throw Error('Workout exercise specification missing');
-   const mainReps=week<=2?[12,10,8,6,12]:week<=4?[12,10,8]:[12,10,8,6,12];
-   const accessoryCount=week<=2?1:2;
-   const accessoryTarget=week<=4?'10–12':'8–12';
-   exercises=exerciseNames.map((name,index)=>({
-     name,optional:index===exerciseNames.length-1,
-     sets:index===0?mainReps.map((r,i)=>({set:i+1,target_reps:String(r),rest_seconds:'45–90'}))
-       :Array.from({length:accessoryCount},(_,i)=>({set:i+1,target_reps:/dead bug/i.test(name)?'6–8 per side':accessoryTarget,rest_seconds:'45–90'}))
-   }));
+   // Deliberately fail closed. Never invent sets from the week number.
+   // One source of truth: exact prescription stored with this dated task.
+   throw Error('This workout has no exact set-by-set prescription. Please correct the saved Kay Command task.');
   }
  }else{
   exercises=[{name:category==='recovery'?'Recovery walk and mobility':/TREADMILL/.test(name)?'Treadmill walk/run':'Outdoor walk/run',optional:category==='recovery',
