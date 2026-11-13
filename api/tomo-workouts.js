@@ -82,6 +82,22 @@ export default async function handler(req,res){
  res.setHeader('X-Content-Type-Options','nosniff');
  if(!['GET','POST'].includes(req.method))return res.status(405).json({error:'Use GET to read or POST to save a set'});
  try{
+  if(req.method==='GET'&&req.query.audit==='1'){
+   const user_id=config().KAY_USER_ID;
+   const tasks=await request('kay_tasks',{select:'id,name,due_date,details,is_done,project_id',user_id:'eq.'+user_id,project_id:'eq.'+PROJECT_ID,name:'like.BFL W%',order:'due_date.asc',limit:'100'});
+   const invalid=[],categories={strength:0,cardio:0,recovery:0},weeks=new Set();
+   for(const task of tasks){
+    try{
+     const p=prescription(task);
+     categories[p.category]++;
+     weeks.add(p.week);
+     if(!p.exercises.length||p.exercises.some(x=>!x.sets.length))throw Error('Missing set or exercise');
+     if(p.category==='strength'&&p.exercises.length!==6)throw Error('Expected six gym exercises');
+    }catch(e){invalid.push({task:task.name,due_date:task.due_date,issue:e.message});}
+   }
+   const expected=tasks.length===72&&weeks.size===12&&categories.strength===36&&categories.cardio===24&&categories.recovery===12;
+   return res.status(expected&&invalid.length===0?200:409).json({ok:expected&&invalid.length===0,checked:tasks.length,weeks:weeks.size,categories,invalid});
+  }
   const task_id=req.method==='GET'?req.query.task_id:req.body?.task_id;
   if(typeof task_id!=='string'||!(/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(task_id)))return res.status(400).json({error:'Valid task_id required'});
   const user_id=config().KAY_USER_ID;
