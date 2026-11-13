@@ -140,7 +140,7 @@ function render(){
    ${p.next_move?`<div class="nextMove"><b>Next move</b><div class="meta">${esc(p.next_move)}</div></div>`:''}
    ${p.plans.length?p.plans.map(pl=>`<div class="planBox"><b>${esc(pl.name)}</b>${pl.summary?`<div class="meta">${esc(pl.summary)}</div>`:''}${pl.source_name?`<div class="meta">Source: ${esc(pl.source_name)}</div>`:''}</div>`).join(''):''}
    <div class="sectionTitle">LIVE / ACTION CENTER TASKS</div>
-   <div class="taskList">${p.open_live_tasks.length?p.open_live_tasks.filter(t=>!t.task.startsWith('DAY 2 —')).map(taskHtml).join(''):'<div class="empty">No open live tasks.</div>'}</div>
+   <div class="taskList">${p.open_live_tasks.length?p.open_live_tasks.filter(t=>!t.task.startsWith('DAY 2 —') && t.id!==nextWorkout?.id).map(taskHtml).join(''):'<div class="empty">No open live tasks.</div>'}</div>
    <div class="sectionTitle">FORMAL PROJECT PLAN — TASKS STILL TO COMPLETE</div>
    <div class="taskList">${p.open_plan_tasks.length?p.open_plan_tasks.map(taskHtml).join(''):'<div class="empty">No remaining formal plan tasks.</div>'}</div>
   </section>`;
