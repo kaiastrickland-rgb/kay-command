@@ -98,7 +98,7 @@ function taskHtml(t){
    <div><div class="taskName">${esc(t.task)}</div><div class="meta">${tag} · ${fmtDate(t.due_date)}${t.owner?' · '+esc(t.owner):''}${t.overdue?'<span class="overdue"> · OVERDUE</span>':''}${t.phase?' · '+esc(t.phase):''}${t.priority?' · '+esc(t.priority):''}</div></div>
    <button class="primary" data-action="complete" data-type="${t.task_type}" data-id="${t.id}">✓ Complete</button>
   </div>
-  ${/^BFL W\\d{2} — /.test(t.task)?`<details class="workoutPanel" data-workout-id="${t.id}"><summary>💪 Full workout • sets, reps, rests & weight log</summary><div class="workoutBody" id="workout-${t.id}"><button data-load-workout="${t.id}">Load workout and recorded sets</button></div></details>`:(t.details?`<div class="meta" style="margin-top:8px;white-space:pre-wrap">${esc(t.details)}</div>`:'')}
+  ${/^BFL W\d{2} — /.test(t.task)?`<details class="workoutPanel" data-workout-id="${t.id}"><summary>💪 Full workout • sets, reps, rests & weight log</summary><div class="workoutBody" id="workout-${t.id}"><button data-load-workout="${t.id}">Load workout and recorded sets</button></div></details>`:(t.details?`<div class="meta" style="margin-top:8px;white-space:pre-wrap">${esc(t.details)}</div>`:'')}
   <div class="actions"><button data-edit="${t.task_type}:${t.id}">Update / reschedule</button></div>
   <div id="edit-${t.task_type}-${t.id}" class="editor hidden">
    <label class="meta">Due date</label><input id="date-${t.task_type}-${t.id}" type="date" value="${t.due_date||''}">
