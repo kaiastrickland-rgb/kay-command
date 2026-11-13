@@ -1610,7 +1610,7 @@ $('bflSave').onclick=async()=>{
  const w=$('bflWeights').value.trim(),r=$('bflReps').value.trim(),eff=$('bflEffort').value.trim(),note=$('bflNotes').value.trim();
  if(!w&&!r&&!eff&&!note){$('bflMessage').textContent='Enter at least one workout result before saving.';return;}
  if(eff&&(!Number.isInteger(Number(eff))||Number(eff)<1||Number(eff)>10)){$('bflMessage').textContent='Effort must be a whole number from 1 to 10.';return;}
- const line='\\n\\nWORKOUT LOG '+new Date().toLocaleString()+': '+[w?'weights (lb): '+w:'',r?'reps: '+r:'',eff?'effort: '+eff+'/10':'',note?'notes: '+note:''].filter(Boolean).join(' | ');
+ const line='\n\nWORKOUT LOG '+new Date().toLocaleString()+': '+[w?'weights (lb): '+w:'',r?'reps: '+r:'',eff?'effort: '+eff+'/10':'',note?'notes: '+note:''].filter(Boolean).join(' | ');
  $('bflSave').disabled=true;$('bflMessage').textContent='Saving to Kay Command…';
  const next=(t.details||'')+line;
  const {error}=await supabase.from('kay_tasks').update({details:next,updated_at:new Date().toISOString()}).eq('id',t.id);
