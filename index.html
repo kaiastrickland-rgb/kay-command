@@ -701,6 +701,7 @@ tr:last-child td{border-bottom:0}
         <div class="bflToolbar"><label for="bflWeek">Training week</label><select id="bflWeek"></select><button class="btn" id="bflToday" type="button">Today / next workout</button></div>
         <div class="bflStats" id="bflStats"></div><div class="bflDays" id="bflDays"></div>
         <div class="bflDetail" id="bflDetail">Your gym and walk/run workouts will load with your Kay Command tasks.</div>
+        <div class="cardSub" id="bflPrescription" style="padding:8px 0 12px">Exact prescribed sets and reps will appear here for the selected workout.</div>
         <div class="cardSub" id="bflSavedSets" role="status" style="padding:4px 0 10px">Select a workout to view saved sets.</div>
         <div class="bflActions"><a id="bflFullTracker" class="btn primary" href="/tomo.html" style="text-decoration:none">Open full set-by-set tracker ↗</a></div>
         <div class="bflLog" id="bflLog" hidden>
@@ -1600,6 +1601,7 @@ function renderBfl(){
  const fullLink=$('bflFullTracker');
  fullLink.href=current?'/tomo.html?workout='+encodeURIComponent(current.id):'/tomo.html';
  $('bflSavedSets').textContent=current?'Loading saved set records…':'Select a workout to view saved sets.';
+ $('bflPrescription').textContent=current?'Loading exact exercise sets and reps…':'Choose a session.';
  if(current)loadBflSavedSets(current.id);
 
  $('bflLog').hidden=!current;
@@ -1621,10 +1623,13 @@ async function loadBflSavedSets(taskId){
   if(!response.ok)throw Error(data.error||'Workout records not available');
   if(bflSelectedId!==taskId)return;
   const sets=data.sets||[];
+  const plan=data.plan;
+  const prescription=plan.exercises.map((ex,i)=>'<div style="border:1px solid #294957;border-radius:9px;padding:8px 10px;margin:5px 0;background:#08151d"><b>'+esc((i+1)+'. '+ex.name)+'</b>'+(ex.optional?' <span style="color:#94a8b5">(optional)</span>':'')+'<div style="font-size:12px;margin-top:3px">Set targets: '+esc(ex.sets.map(set=>set.target_reps).join(' / '))+' · Rest: '+esc(plan.instructions.rest)+'</div></div>').join('');
+  $('bflPrescription').innerHTML='<b>Exact session prescription · '+esc(plan.name)+'</b>'+prescription;
   $('bflSavedSets').textContent=sets.length
     ?'✓ '+sets.length+' saved set(s) · '+sets.map(x=>x.exercise+' set '+x.set_number+': '+(x.weight_lb??'—')+' lb × '+(x.reps??'—')+' reps').slice(0,7).join(' | ')
     :'No sets recorded yet. Your entries and Tomo’s entries now appear here.';
- }catch(e){if(bflSelectedId===taskId)$('bflSavedSets').textContent='Could not load set history: '+e.message;}
+ }catch(e){if(bflSelectedId===taskId){$('bflSavedSets').textContent='Could not load set history: '+e.message;$('bflPrescription').textContent='Workout prescription unavailable: '+e.message;}}
 }
 $('bflSave').onclick=async()=>{
  const t=state.tasks.find(x=>x.id===bflSelectedId);
