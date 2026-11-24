@@ -1224,6 +1224,7 @@ body.resumeTileOpen{overflow:hidden}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://unpkg.com/docx@9/dist/index.iife.js"></script>
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 const SUPABASE_URL='https://najlvczgxwvqjvpvfzji.supabase.co', SUPABASE_KEY='sb_publishable_4S9mvRol3OhFYpADykEGDw_MP-IhaZu';
@@ -1304,121 +1305,211 @@ async function importResumeFiles(files,jobId=null){
 let state={tasks:[],projects:[],briefs:[],sources:[],jobs:[],resumeDocs:[],plans:[],planTasks:[],milestones:[],risks:[],decisions:[],financePayments:[],financeAccounts:[],financeAlerts:[],emailActions:[],creditGoals:[],creditAccounts:[],creditSnapshots:[],cigars:[],wines:[],icloudEvents:[],icloudStatus:'',user:null},activeTaskId=null,activeJobId=null,currentJobLane=null,activeProjectId=null,activeFinancePaymentId=null,activeCreditAccountId=null;
 const esc=(v='')=>String(v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
-/* Private, user-owned Resume Vault. Job-specific filenames are not proof a file exists. */
-
-let expandedResumeTile=null;
-function closeResumeTile(){
- if(!expandedResumeTile)return;
- const tile=expandedResumeTile;expandedResumeTile=null;
- tile.classList.remove('resumeTileExpanded');
- tile.querySelector('[data-vault-tile-close]')?.remove();
- document.body.classList.remove('resumeTileOpen');
- const focus=tile.querySelector('[data-vault-job-open],[data-vault-master]');
- if(focus)focus.focus({preventScroll:true});
-}
-function expandResumeTile(tile){
- if(!tile)return;
- if(expandedResumeTile===tile){closeResumeTile();return;}
- if(expandedResumeTile)closeResumeTile();
- expandedResumeTile=tile;
- tile.classList.add('resumeTileExpanded');
- document.body.classList.add('resumeTileOpen');
- const close=document.createElement('button');
- close.type='button';close.className='resumeTileDismiss';close.dataset.vaultTileClose='1';
- close.textContent='✕ Close';
- close.setAttribute('aria-label','Close enlarged résumé card');
- tile.appendChild(close);
- close.focus({preventScroll:true});
- tile.scrollTop=0;
-}
-document.addEventListener('keydown',e=>{
- if(e.key==='Escape'&&expandedResumeTile&&!document.querySelector('.modal.show')){e.preventDefault();closeResumeTile();}
-});
-
-let masterResumeRecord=null, resumeVaultSearchTerm='',resumeMasterLoadError='';
-async function loadMasterResume(){
- masterResumeRecord=null;resumeMasterLoadError='';
- if(!state.user?.id){renderResumeVault();return;}
- const folder=state.user.id+'/master';
- const {data,error}=await supabase.storage.from(RESUME_BUCKET).list(folder,{limit:75,sortBy:{column:'created_at',order:'desc'}});
- if(error){resumeMasterLoadError=error.message;renderResumeVault();return;}
- const found=(data||[]).filter(x=>/\.(docx|doc|pdf)$/i.test(x.name||'')).sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')))[0];
- if(found)masterResumeRecord={...found,path:folder+'/'+found.name};
- renderResumeVault();
-}
-async function uploadMasterResume(file){
- if(!state.user?.id)throw Error('Sign in to Kay Command first.');
- if(!/\.(docx|doc|pdf)$/i.test(file.name||''))throw Error('Choose a Word or PDF résumé.');
- if(file.size>10485760)throw Error('10 MB maximum.');
- const path=state.user.id+'/master/'+Date.now()+'_'+file.name.replace(/[^a-zA-Z0-9_.-]/g,'_');
- const mime=/\.pdf$/i.test(file.name)?'application/pdf':/\.doc$/i.test(file.name)?'application/msword':'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
- const {error}=await supabase.storage.from(RESUME_BUCKET).upload(path,file,{contentType:mime,upsert:false});
- if(error)throw error;
- await loadMasterResume();
-}
-function renderResumeVault(){
- if(expandedResumeTile)closeResumeTile();
- const body=$('resumeVaultBody');
- if(!body)return;
- const jobs=[...(state.jobs||[])].filter(j=>String(j.tailored_resume_name||'').trim());
- const linked=jobs.filter(hasReadyTailoredResume).length;
- const full=$('resumeVaultPanel').classList.contains('cardExpanded');
- const needle=resumeVaultSearchTerm.toLowerCase();
- const matches=jobs.filter(j=>[j.title,j.employer,j.tailored_resume_name].some(x=>String(x||'').toLowerCase().includes(needle)))
-   .sort((a,b)=>Number(hasReadyTailoredResume(b))-Number(hasReadyTailoredResume(a))||String(b.created_at||'').localeCompare(String(a.created_at||'')));
- const view=full?matches:matches.slice(0,3);
- $('resumeVaultCount').textContent=linked+'/'+jobs.length+' TAILORED READY';
- $('resumeVaultStatus').textContent=linked+' of '+jobs.length+' tailored résumé files linked · '+(masterResumeRecord?'Master résumé available':'Master résumé not uploaded to Kay Command')+(resumeMasterLoadError?' · Storage check: '+resumeMasterLoadError:'');
- const masterName=masterResumeRecord?.name?.replace(/^\d+_/,'')||'Kaia Strickland · Master Résumé 2026';
- const master=`<article class="resumeTile" role="button" tabindex="0" aria-label="Expand master résumé card"><div><div class="resumeTileTitle">★ Master Résumé</div><div class="resumeTileMeta">${esc(masterName)}<br>Source for all future tailored versions</div><div class="resumeTileStatus ${masterResumeRecord?'ready':''}">${masterResumeRecord?'✓ READY TO DOWNLOAD':'NOT YET UPLOADED TO THIS APP'}</div><div class="resumeTileButtons"><button class="btn" data-vault-master ${masterResumeRecord?'':'disabled'}>${masterResumeRecord?'Open / download':'Upload required'}</button><button class="btn" data-vault-master-upload>↑ Upload</button></div></div><div class="resumeDocArt" aria-label="Document placeholder, not a rendered document preview"><div class="resumeDocIcon">📄</div><div class="resumeDocType">MASTER</div><div class="resumeDocState">${masterResumeRecord?'Stored privately':'No file linked'}</div></div></article>`;
- const tiles=view.map(j=>{
-  const ready=hasReadyTailoredResume(j);
-  const name=String(j.tailored_resume_name||'');
-  const kind=name.split('.').pop().toUpperCase();
-  return `<article class="resumeTile" role="button" tabindex="0" data-vault-job="${esc(j.id)}" aria-label="Review résumé for ${esc(j.title||'role')} at ${esc(j.employer||'employer')}"><div><div class="resumeTileTitle">${esc(j.title||'Job-specific résumé')}</div><div class="resumeTileMeta">${esc(j.employer||'Employer not recorded')}<br>${esc(name)}</div><div class="resumeTileStatus ${ready?'ready':''}">${ready?'✓ READY TO DOWNLOAD':'FILE NOT UPLOADED'}</div><div class="resumeTileButtons"><button class="btn" data-vault-job-open="${esc(j.id)}">View job</button><button class="btn" data-vault-download="${esc(j.id)}" ${ready?'':'disabled'}>${ready?'Open résumé':'Upload pending'}</button></div></div><div class="resumeDocArt" aria-label="Document placeholder, not a rendered résumé preview"><div class="resumeDocIcon">📑</div><div class="resumeDocType">${esc(kind||'DOC')}</div><div class="resumeDocState">${ready?'Private file':'Expected filename only'}</div></div></article>`;
+/* Kay Résumés: actual saved document contents, not one filename per job. */
+let activeResumeId=null, resumeEditorDirty=false, resumeIsEditing=false, resumeVaultSearchTerm='';
+function resumeLines(text){return String(text||'').replace(/\r/g,'').split('\n').map(x=>x.replace(/[\uF0B7\u2022\uF0A7]/g,'•'));}
+function resumeIsHeading(text){const s=String(text||'').trim();return !!s&&s.length<85&&/[A-Z]{3}/.test(s)&&s===s.toUpperCase()&&!s.includes('@')&&!/^\d/.test(s)&&!/^[•-]/.test(s);}
+function renderResumePaper(text){
+ const lines=resumeLines(text);let first=true;
+ return lines.map((line,i)=>{
+  const v=line.trim();if(!v)return '<div style="height:7px"></div>';
+  const cls=i===0?'resumePaperName':i===1?'resumePaperContact':resumeIsHeading(v)?'resumePaperHeading':/^[•\uF0B7*-]/.test(v)?'resumePaperLine resumePaperBullet':'resumePaperLine';
+  return '<div class="'+cls+'">'+esc(v.replace(/^[\uF0B7]/,'•'))+'</div>';
  }).join('');
- const more=!full&&matches.length>view.length?`<div class="resumeVaultFooter">+${matches.length-view.length} more job-specific résumés. Choose “View all” above to review every record.</div>`:'';
- body.innerHTML=master+tiles+more+(full&&matches.length===0?'<div class="resumeVaultFooter">No résumés match this search.</div>':'');
 }
-function openVaultJob(id){
- const j=state.jobs.find(x=>String(x.id)===String(id));if(!j)return;
- currentJobLane='All Active & In Progress';
- $('jobModalTitle').textContent='Career Command · Résumé';
- $('jobModalMeta').textContent='Job details and corresponding résumé';
- $('jobModal').classList.add('show');
- openJob(j.id);
+/* The card image is rasterized from the REAL current document text (first-page thumbnail). */
+function resumeThumbnail(text){
+ const c=document.createElement('canvas');c.width=560;c.height=740;
+ const cx=c.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,560,740);
+ cx.fillStyle='#1d3141';cx.strokeStyle='#a2b9c7';cx.lineWidth=2;
+ const lines=resumeLines(text);let y=50;
+ for(let i=0;i<lines.length&&y<690;i++){
+  let line=lines[i].trim();if(!line){y+=9;continue;}
+  const title=i===0,heading=resumeIsHeading(line);
+  cx.font=title?'bold 28px Arial':heading?'bold 17px Arial':'14px Arial';
+  cx.fillStyle=title?'#12354b':heading?'#0b587e':'#243848';
+  let words=line.split(/\s+/),current='';
+  const maxW=470;
+  for(const word of words){
+   const next=current?current+' '+word:word;
+   if(cx.measureText(next).width>maxW&&current){cx.fillText(current,44,y);y+=heading?24:21;current=word;if(y>690)break;}else current=next;
+  }
+  if(y>690)break;
+  if(current){cx.fillText(current,44,y);y+=title?37:heading?28:21;}
+  if(heading){cx.beginPath();cx.moveTo(44,y-11);cx.lineTo(516,y-11);cx.stroke();}
+ }
+ cx.fillStyle='#a3b2bc';cx.font='12px Arial';cx.fillText('Document content preview · saved résumé',44,718);
+ return c.toDataURL('image/jpeg',.79);
 }
-$('resumeVaultBody').addEventListener('click',e=>{
- const master=e.target.closest('[data-vault-master]');
- if(master){if(masterResumeRecord)openResumeFromJob({tailored_resume_url:'storage://'+RESUME_BUCKET+'/'+masterResumeRecord.path,tailored_resume_name:masterResumeRecord.name});return;}
- if(e.target.closest('[data-vault-master-upload]')){$('resumeMasterFile').click();return;}
- const dl=e.target.closest('[data-vault-download]');
- if(dl){const j=state.jobs.find(x=>String(x.id)===dl.dataset.vaultDownload);if(j&&hasReadyTailoredResume(j))openResumeFromJob(j);return;}
- if(e.target.closest('[data-vault-tile-close]')){closeResumeTile();return;}
- const jobButton=e.target.closest('[data-vault-job-open]');
- if(jobButton){openVaultJob(jobButton.dataset.vaultJobOpen);return;}
- const tile=e.target.closest('.resumeTile');
- if(tile)expandResumeTile(tile);
-});
-$('resumeVaultBody').addEventListener('keydown',e=>{
- if((e.target.matches('[data-vault-job]')||e.target.matches('.resumeTile'))&&(e.key==='Enter'||e.key===' ')){e.preventDefault();expandResumeTile(e.target);}
-});
+function currentResumeDoc(){return state.resumeDocs.find(d=>d.id===activeResumeId)||null;}
+function renderResumeVault(){
+ const area=$('resumeVaultBody');if(!area)return;
+ const docs=(state.resumeDocs||[]).filter(x=>[x.title,x.target_role,x.employer].some(y=>String(y||'').toLowerCase().includes(resumeVaultSearchTerm.toLowerCase())))
+  .sort((x,y)=>(x.kind==='master'?-1:0)-(y.kind==='master'?-1:0)||String(y.updated_at||'').localeCompare(String(x.updated_at||'')));
+ $('resumeVaultCount').textContent=(state.resumeDocs||[]).length+' DOCUMENT'+((state.resumeDocs||[]).length===1?'':'S');
+ $('resumeVaultStatus').textContent=(state.resumeDocs||[]).length
+   ?'Real saved résumés · synced across devices · '+(state.resumeDocs||[]).filter(x=>x.status==='Approved').length+' approved'
+   :'No saved documents found. Refresh the dashboard or check your account.';
+ const expanded=$('resumeVaultPanel').classList.contains('cardExpanded');
+ const visible=expanded?docs:docs.slice(0,4);
+ area.innerHTML=visible.map(d=>'<article class="resumeDocTile" data-doc-id="'+esc(d.id)+'" role="button" tabindex="0" aria-label="View and edit '+esc(d.title)+'">'+
+ '<img class="resumeDocThumb" src="'+resumeThumbnail(d.content_text)+'" alt="Actual first-page content of '+esc(d.title)+'">'+
+ '<div class="resumeDocInfo"><strong>'+esc(d.title)+'</strong><small>'+esc(d.target_role||d.employer||'Master experience')+'<br>Revised '+new Date(d.updated_at).toLocaleDateString()+'</small>'+
+ '<span class="resumeDocBadge '+(d.status==='Approved'?'approved':'')+'">'+esc(d.status||'Draft')+'</span>'+
+ '<div><button class="btn" data-open-doc="'+esc(d.id)+'" type="button">Preview · Edit · Download</button></div></div></article>').join('')+
+ (!expanded&&docs.length>visible.length?'<div class="resumeVaultFooter">+'+(docs.length-visible.length)+' more documents · tap the card to view all.</div>':'');
+}
+function openResumeEditor(id){
+ const d=state.resumeDocs.find(x=>String(x.id)===String(id));if(!d)return;
+ if(activeResumeId&&activeResumeId!==d.id&&resumeEditorDirty){if(!confirm('Discard unsaved changes?'))return;}
+ activeResumeId=d.id;resumeEditorDirty=false;resumeIsEditing=false;
+ $('resumeEditorTitle').textContent=d.title;
+ $('resumeEditorMeta').textContent=(d.target_role||d.employer||'')+' · '+d.status+' · Revision '+d.revision;
+ $('resumeEditText').value=d.content_text||'';
+ $('resumeEditorPaper').innerHTML=renderResumePaper(d.content_text);
+ $('resumeEditorPanels').classList.remove('editing');
+ $('resumeEditColumn').hidden=true;$('resumeSave').hidden=true;
+ $('resumeEdit').textContent='✏ Edit';
+ $('resumeEditorStatus').textContent='This is the saved document. Edits and approval are stored in Kay Command for your other devices.';
+ $('resumeEditorModal').classList.add('show');
+}
+function closeResumeEditor(){
+ if(resumeEditorDirty&&!confirm('You have unsaved résumé edits. Close without saving?'))return;
+ $('resumeEditorModal').classList.remove('show');activeResumeId=null;resumeEditorDirty=false;resumeIsEditing=false;
+}
+$('resumeEditorClose').onclick=closeResumeEditor;
+$('resumeEditorModal').onclick=e=>{if(e.target===$('resumeEditorModal'))closeResumeEditor()};
+$('resumeVaultBody').addEventListener('click',e=>{const x=e.target.closest('[data-doc-id]');if(x)openResumeEditor(x.dataset.docId)});
+$('resumeVaultBody').addEventListener('keydown',e=>{const x=e.target.closest('[data-doc-id]');if(x&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openResumeEditor(x.dataset.docId);}});
 $('resumeVaultSearch').addEventListener('input',e=>{resumeVaultSearchTerm=e.target.value.trim();renderResumeVault();});
-$('resumeVaultViewAll').onclick=()=>{if(expandedDashboardCard!==$('resumeVaultPanel'))expandDashboardCard($('resumeVaultPanel'));};
-$('resumeMasterUpload').onclick=()=>$('resumeMasterFile').click();
-$('resumeMasterFile').onchange=async e=>{
- const file=e.target.files?.[0];e.target.value='';if(!file)return;
- $('resumeVaultStatus').textContent='Saving master résumé to private storage…';
- try{await uploadMasterResume(file);}
- catch(error){$('resumeVaultStatus').textContent='Master résumé upload failed: '+(error.message||error);}
+$('resumeEdit').onclick=()=>{
+ if(!currentResumeDoc())return;
+ resumeIsEditing=!resumeIsEditing;
+ $('resumeEditorPanels').classList.toggle('editing',resumeIsEditing);
+ $('resumeEditColumn').hidden=!resumeIsEditing;
+ $('resumeSave').hidden=!resumeIsEditing;
+ $('resumeEdit').textContent=resumeIsEditing?'👁 Preview only':'✏ Edit';
+ if(resumeIsEditing)$('resumeEditText').focus();
 };
-$('resumeVaultImport').onclick=()=>$('resumeVaultFiles').click();
-$('resumeVaultFiles').onchange=async e=>{
- const files=Array.from(e.target.files||[]);e.target.value='';if(!files.length)return;
- $('resumeVaultStatus').textContent='Importing job-specific résumé files…';
- await importResumeFiles(files);
+$('resumeEditText').addEventListener('input',()=>{
+ resumeEditorDirty=true;
+ $('resumeEditorPaper').innerHTML=renderResumePaper($('resumeEditText').value);
+ $('resumeEditorStatus').textContent='Unsaved edits. Save Draft before leaving this screen.';
+});
+async function saveResumeEditor(){
+ const original=currentResumeDoc();if(!original)throw Error('Choose a résumé first.');
+ const value=$('resumeEditText').value.trim();if(!value)throw Error('Résumé content cannot be blank.');
+ if(!resumeEditorDirty)return original;
+ const nextRev=(Number(original.revision)||1)+1;
+ const {data,error}=await supabase.from('kay_resume_documents')
+  .update({content_text:value,status:'Draft',revision:nextRev,updated_at:new Date().toISOString()})
+  .eq('id',original.id).eq('user_id',state.user.id).eq('revision',original.revision).select('*').maybeSingle();
+ if(error)throw error;
+ if(!data)throw Error('This résumé changed in another session. Refresh Kay Command to avoid overwriting it.');
+ state.resumeDocs=state.resumeDocs.map(x=>x.id===data.id?data:x);
+ resumeEditorDirty=false;renderResumeVault();
+ $('resumeEditorMeta').textContent=(data.target_role||data.employer||'')+' · Draft · Revision '+data.revision;
+ $('resumeEditorStatus').textContent='Draft saved across devices. You can approve it when ready.';
+ return data;
+}
+$('resumeSave').onclick=async()=>{
+ const b=$('resumeSave');b.disabled=true;
+ try{await saveResumeEditor();}catch(e){$('resumeEditorStatus').textContent='Save failed: '+(e.message||e);}
+ finally{b.disabled=false;}
+};
+$('resumeApprove').onclick=async()=>{
+ const b=$('resumeApprove');b.disabled=true;
+ try{
+  let d=await saveResumeEditor();
+  const {data,error}=await supabase.from('kay_resume_documents')
+   .update({status:'Approved',approved_content:d.content_text,approved_at:new Date().toISOString(),updated_at:new Date().toISOString(),revision:d.revision+1})
+   .eq('id',d.id).eq('user_id',state.user.id).eq('revision',d.revision).select('*').maybeSingle();
+  if(error)throw error;if(!data)throw Error('Another device updated this résumé. Refresh before approving.');
+  state.resumeDocs=state.resumeDocs.map(x=>x.id===data.id?data:x);
+  resumeEditorDirty=false;renderResumeVault();
+  $('resumeEditorMeta').textContent=(data.target_role||data.employer||'')+' · Approved · Revision '+data.revision;
+  $('resumeEditorStatus').textContent='✓ Approved résumé saved. You can download it from any signed-in device.';
+ }catch(e){$('resumeEditorStatus').textContent='Approval failed: '+(e.message||e);}
+ finally{b.disabled=false;}
+};
+async function downloadResumeDoc(doc){
+ if(resumeEditorDirty)throw Error('Save your edits before downloading, so the file matches the saved résumé.');
+ if(!window.docx?.Document||!window.docx?.Packer)throw Error('Word file generator is not loaded. Check your connection and try again.');
+ const lib=window.docx;
+ const lines=resumeLines(doc.content_text);
+ const children=lines.map((line,i)=>{
+  const t=line.trim(),heading=resumeIsHeading(t);
+  const bullet=/^[•\uF0B7]/.test(t);
+  return new lib.Paragraph({
+   children:[new lib.TextRun({text:bullet?t.replace(/^[•\uF0B7]\s*/,''):t,bold:i===0||heading,
+     size:i===0?28:heading?22:19,color:i===0||heading?'173951':'233747'})],
+   alignment:i<2?lib.AlignmentType.CENTER:lib.AlignmentType.LEFT,
+   bullet:bullet?{level:0}:undefined,
+   spacing:{after:i===0?80:heading?95:line.trim()?35:75},
+   keepWithNext:heading
+  });
+ });
+ const word=new lib.Document({sections:[{properties:{page:{margin:{top:900,right:900,bottom:900,left:900}}},children}]});
+ const blob=await lib.Packer.toBlob(word);
+ const label=String(doc.title||'Resume').replace(/[^a-z0-9-_ ]/gi,'').replace(/\s+/g,'_');
+ const filename='Kaia_Strickland_'+label+'.docx';
+ const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),20000);
+ return filename;
+}
+$('resumeDownload').onclick=async()=>{
+ const d=currentResumeDoc();if(!d)return;
+ $('resumeDownload').disabled=true;
+ try{const name=await downloadResumeDoc(d);$('resumeEditorStatus').textContent='Downloaded '+name+' · generated from your saved résumé content.';}
+ catch(e){$('resumeEditorStatus').textContent='Download failed: '+(e.message||e);}
+ finally{$('resumeDownload').disabled=false;}
+};
+function matchedResumeForJob(j){return(state.resumeDocs||[]).find(d=>String(d.linked_job_id)===String(j.id))||null;}
+function buildJobTailoredResume(master,job){
+ const role=String(job.title||'Position').trim(),description=[job.title,job.job_description||job.fit_note||''].join('\n');
+ const ignore=new Set(['with','from','that','this','their','your','will','have','ability','experience','years','company','work','working','strong','skills','role','team','teams','job','required','preferred','qualified','the','and','for','are','into','you','our','within','across','business','program','project']);
+ const tokens=Array.from(new Set((description.toLowerCase().match(/[a-z]{4,}/g)||[]).filter(w=>!ignore.has(w))));
+ const src=String(master.content_text||'');
+ const bullets=resumeLines(src).filter(line=>/^[•\uF0B7]/.test(line.trim()));
+ const ranked=bullets.map(line=>{
+   const low=line.toLowerCase(),score=tokens.reduce((n,w)=>n+(low.includes(w)?1:0),0);
+   return {line,score};
+ }).sort((a,b)=>b.score-a.score);
+ const chosen=ranked.filter(x=>x.score>0).slice(0,5).map(x=>x.line);
+ if(!chosen.length)chosen.push(...bullets.slice(0,4));
+ const heading='JOB-ALIGNED EXPERIENCE FOR '+role.toUpperCase();
+ const block=heading+'\n'+chosen.join('\n')+'\n';
+ const found=src.match(/EXECUTIVE IMPACT\s*\n[\s\S]*?(?=EXECUTIVE SUMMARY)/);
+ let result=found?src.replace(found[0],block+'\n'):src.slice(0,200)+'\n'+block+'\n'+src.slice(200);
+ const parts=result.split('\n');
+ parts.splice(2,0,'TARGET APPLICATION: '+role+' | '+String(job.employer||'').trim());
+ result=parts.join('\n');
+ return {content:result,usedFullRequirements:!!String(job.job_description||'').trim(),matched:chosen.length};
+}
+async function tailorResumeForJob(job){
+ if(!job)return;
+ const found=matchedResumeForJob(job);if(found){openResumeEditor(found.id);return;}
+ const master=(state.resumeDocs||[]).find(d=>d.kind==='master');if(!master){alert('Master résumé not loaded. Refresh Kay Command.');return;}
+ const r=$('jobRequirementText');
+ const requirements=String(r?.value||'').trim();
+ if(requirements&&requirements!==String(job.job_description||'').trim()){
+  const {error}=await supabase.from('kay_jobs').update({job_description:requirements,updated_at:new Date().toISOString()}).eq('id',job.id).eq('user_id',state.user.id);
+  if(error)throw error;job.job_description=requirements;
+ }
+ const result=buildJobTailoredResume(master,job);
+ const label='Tailored · '+job.title;
+ const payload={user_id:state.user.id,kind:'tailored',title:label,
+   employer:job.employer||null,target_role:job.title,linked_job_id:job.id,
+   source_filename:'Kaia_Strickland_'+String(job.title||'Role').replace(/[^a-z0-9_ ]/gi,'').replace(/\s+/g,'_')+'.docx',
+   content_text:result.content,status:'Ready for Review',revision:1};
+ const {data,error}=await supabase.from('kay_resume_documents').insert(payload).select('*').single();
+ if(error)throw error;
+ state.resumeDocs.unshift(data);
  renderResumeVault();
-};
+ openResumeEditor(data.id);
+ $('resumeEditorStatus').textContent=result.usedFullRequirements
+   ?'ATS-aligned review draft created from your master and the saved job requirements. Only real experience was used. Please review and approve.'
+   :'Draft created using the job title and saved fit notes, NOT the full job requirements. For a stronger ATS match, add the full requirements in Job Details and tailor again.';
+}
 
 const fmtDate=v=>{if(!v)return '—';const d=new Date(v+'T12:00:00');return d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})};
 const daysUntil=v=>{const a=new Date();a.setHours(0,0,0,0);const b=new Date(v+'T12:00:00');return Math.max(0,Math.ceil((b-a)/86400000))};
