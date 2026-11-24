@@ -805,6 +805,7 @@ body.resumeTileOpen{overflow:hidden}
         </div>
       </div>
       <div id="actionList" class="actionBody scroll"><div class="cardSub">Loading actions…</div></div>
+      <div id="fieldyActionPipeline" class="cardSub" style="padding:8px 18px 12px;font-size:11px;color:#acc9d6" role="status">Checking meeting action processing…</div>
     </section>
 
     <section class="card career">
@@ -1318,7 +1319,7 @@ async function importResumeFiles(files,jobId=null){
  alert('Uploaded '+saved+' résumé(s).'+(unmatched.length?'\nUnmatched: '+unmatched.slice(0,6).join(', '):'')+(fail.length?'\nErrors: '+fail.slice(0,6).join('; '):''));
 }
 
-let state={tasks:[],projects:[],briefs:[],sources:[],jobs:[],resumeDocs:[],plans:[],planTasks:[],milestones:[],risks:[],decisions:[],financePayments:[],financeAccounts:[],financeAlerts:[],emailActions:[],creditGoals:[],creditAccounts:[],creditSnapshots:[],cigars:[],wines:[],icloudEvents:[],icloudStatus:'',user:null},activeTaskId=null,activeJobId=null,currentJobLane=null,activeProjectId=null,activeFinancePaymentId=null,activeCreditAccountId=null;
+let state={tasks:[],fieldyQueue:[],projects:[],briefs:[],sources:[],jobs:[],resumeDocs:[],plans:[],planTasks:[],milestones:[],risks:[],decisions:[],financePayments:[],financeAccounts:[],financeAlerts:[],emailActions:[],creditGoals:[],creditAccounts:[],creditSnapshots:[],cigars:[],wines:[],icloudEvents:[],icloudStatus:'',user:null},activeTaskId=null,activeJobId=null,currentJobLane=null,activeProjectId=null,activeFinancePaymentId=null,activeCreditAccountId=null;
 const esc=(v='')=>String(v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
 /* Kay Résumés: actual saved document contents, not one filename per job. */
@@ -1755,7 +1756,7 @@ function startRealtimeSync(){
 async function loadAll(){
  if(!await ensureAuth())return;
  $('liveBar').textContent='● Syncing live data…';
- const [p,t,b,s,j,pl,pt,ms,rs,ds,fp,fa,fal,ea,cg,ca,cs,ci,wi,rd]=await Promise.all([
+ const [p,t,b,s,j,pl,pt,ms,rs,ds,fp,fa,fal,ea,cg,ca,cs,ci,wi,rd,fq]=await Promise.all([
   supabase.from('kay_projects').select('*').order('created_at',{ascending:true}),
   supabase.from('kay_tasks').select('*').order('is_done',{ascending:true}).order('due_date',{ascending:true,nullsFirst:false}),
   supabase.from('kay_briefs').select('*').order('created_at',{ascending:false}).limit(8),
@@ -1775,10 +1776,11 @@ async function loadAll(){
   supabase.from('kay_credit_score_snapshots').select('*').order('report_date',{ascending:false}),
   supabase.from('kay_cigars').select('*').eq('is_active',true).order('sort_order',{ascending:true}),
   supabase.from('kay_wines').select('*').eq('is_active',true).order('sort_order',{ascending:true}),
-   supabase.from('kay_resume_documents').select('*').order('updated_at',{ascending:false})
+   supabase.from('kay_resume_documents').select('*').order('updated_at',{ascending:false}),
+   supabase.from('kay_fieldy_events').select('status').in('status',['received','needs_review'])
  ]);
  if(p.error||t.error||b.error){$('liveBar').textContent='● Data load error';throw new Error(p.error?.message||t.error?.message||b.error?.message)}
- state.projects=p.data||[];state.tasks=t.data||[];state.briefs=b.data||[];state.sources=s.error?[]:(s.data||[]);state.jobs=j?.error?[]:(j?.data||[]);state.resumeDocs=rd?.error?[]:(rd?.data||[]);state.plans=pl?.error?[]:(pl?.data||[]);state.planTasks=pt?.error?[]:(pt?.data||[]);state.milestones=ms?.error?[]:(ms?.data||[]);state.risks=rs?.error?[]:(rs?.data||[]);state.decisions=ds?.error?[]:(ds?.data||[]);state.financePayments=fp?.error?[]:(fp?.data||[]);state.financeAccounts=fa?.error?[]:(fa?.data||[]);state.financeAlerts=fal?.error?[]:(fal?.data||[]);state.emailActions=ea?.error?[]:(ea?.data||[]);state.creditGoals=cg?.error?[]:(cg?.data||[]);state.creditAccounts=ca?.error?[]:(ca?.data||[]);state.creditSnapshots=cs?.error?[]:(cs?.data||[]);state.cigars=ci?.error?[]:(ci?.data||[]);state.wines=wi?.error?[]:(wi?.data||[]);
+ state.projects=p.data||[];state.tasks=t.data||[];state.briefs=b.data||[];state.sources=s.error?[]:(s.data||[]);state.jobs=j?.error?[]:(j?.data||[]);state.resumeDocs=rd?.error?[]:(rd?.data||[]);state.fieldyQueue=fq?.error?[]:(fq?.data||[]);state.plans=pl?.error?[]:(pl?.data||[]);state.planTasks=pt?.error?[]:(pt?.data||[]);state.milestones=ms?.error?[]:(ms?.data||[]);state.risks=rs?.error?[]:(rs?.data||[]);state.decisions=ds?.error?[]:(ds?.data||[]);state.financePayments=fp?.error?[]:(fp?.data||[]);state.financeAccounts=fa?.error?[]:(fa?.data||[]);state.financeAlerts=fal?.error?[]:(fal?.data||[]);state.emailActions=ea?.error?[]:(ea?.data||[]);state.creditGoals=cg?.error?[]:(cg?.data||[]);state.creditAccounts=ca?.error?[]:(ca?.data||[]);state.creditSnapshots=cs?.error?[]:(cs?.data||[]);state.cigars=ci?.error?[]:(ci?.data||[]);state.wines=wi?.error?[]:(wi?.data||[]);
  await loadICloudEvents();
  const renderFailures=renderAll();
  renderSyncHealth();
@@ -2249,6 +2251,11 @@ function renderActions(){
  const rows=state.tasks.filter(isActiveTask);$('openCount').textContent=`${rows.length} OPEN`;
  $('actionList').innerHTML=rows.length?rows.map(t=>{const p=projectFor(t);return `<div class="actionRow" data-id="${t.id}"><div class="pin">📌</div><div><div class="actionName">${esc(t.name)}</div><div class="actionMeta">${esc(p?.name||p?.title||'Kay')}${t.due_date?` · due ${fmtDate(t.due_date)}`:''}</div></div></div>`}).join(''):'<div class="cardSub">No open actions.</div>';
  document.querySelectorAll('.actionRow').forEach(x=>x.onclick=()=>openTask(x.dataset.id));
+ const queued=(state.fieldyQueue||[]).filter(x=>x.status==='received').length, review=(state.fieldyQueue||[]).filter(x=>x.status==='needs_review').length;
+ const caption=$('fieldyActionPipeline');
+ if(caption)caption.textContent=queued||review
+  ?'Fieldy meeting pipeline: '+queued+' new recording'+(queued===1?'':'s')+' awaiting classification · '+review+' awaiting review. These are NOT yet confirmed tasks.'
+  :'Fieldy: no unprocessed recordings in the current database view.';
 }
 function careerStatusGroup(j){
  const status=String(j?.status||'Open').trim().toLowerCase();
