@@ -582,6 +582,17 @@ body.cardExpansionOpen{overflow:hidden}
 .cardExpanded .resumeVaultStatus{padding-top:5px}
 @media(max-width:620px){.resumeVaultToolbar{padding:0 12px 12px}.resumeVaultGrid{grid-template-columns:1fr!important;padding:0 12px 12px}.resumeVaultStatus{padding:0 12px 12px}.resumeVaultFooter{padding:0 12px 12px}.resumeTile{grid-template-columns:minmax(0,1fr) 82px;padding:11px}}
 
+
+/* Individual résumé tiles can also take over the screen on click. */
+body.resumeTileOpen{overflow:hidden}
+.resumeTile.resumeTileExpanded{position:fixed!important;inset:0!important;z-index:48!important;width:100vw!important;height:100dvh!important;max-width:none!important;max-height:100dvh!important;grid-template-columns:minmax(0,1fr) minmax(155px,27%)!important;align-items:start!important;gap:clamp(14px,3vw,40px);padding:clamp(18px,4vw,48px)!important;overflow-y:auto!important;border:0!important;border-radius:0!important;background:#071923!important;box-shadow:0 0 0 100vmax rgba(0,0,0,.9)}
+.resumeTileExpanded .resumeTileTitle{font-size:clamp(24px,3vw,39px);max-width:25ch}
+.resumeTileExpanded .resumeTileMeta{font-size:clamp(13px,1.3vw,16px);line-height:1.6}
+.resumeTileExpanded .resumeDocArt{height:min(72vh,760px);max-width:460px;font-size:22px}
+.resumeTileExpanded .resumeDocIcon{font-size:64px}
+.resumeTileDismiss{position:fixed;right:16px;top:12px;z-index:49;border:1px solid #4b97ae;border-radius:10px;background:#123545;color:#fff;padding:10px 14px;font-weight:900}
+.resumeTileExpanded .resumeTileButtons{margin-top:24px}
+@media(max-width:620px){.resumeTile.resumeTileExpanded{grid-template-columns:1fr!important;padding:64px 18px 20px!important}.resumeTileExpanded .resumeDocArt{height:210px;max-width:none}}
 </style>
 </head>
 <body>
@@ -1181,6 +1192,36 @@ let state={tasks:[],projects:[],briefs:[],sources:[],jobs:[],plans:[],planTasks:
 const esc=(v='')=>String(v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
 /* Private, user-owned Resume Vault. Job-specific filenames are not proof a file exists. */
+
+let expandedResumeTile=null;
+function closeResumeTile(){
+ if(!expandedResumeTile)return;
+ const tile=expandedResumeTile;expandedResumeTile=null;
+ tile.classList.remove('resumeTileExpanded');
+ tile.querySelector('[data-vault-tile-close]')?.remove();
+ document.body.classList.remove('resumeTileOpen');
+ const focus=tile.querySelector('[data-vault-job-open],[data-vault-master]');
+ if(focus)focus.focus({preventScroll:true});
+}
+function expandResumeTile(tile){
+ if(!tile)return;
+ if(expandedResumeTile===tile){closeResumeTile();return;}
+ if(expandedResumeTile)closeResumeTile();
+ expandedResumeTile=tile;
+ tile.classList.add('resumeTileExpanded');
+ document.body.classList.add('resumeTileOpen');
+ const close=document.createElement('button');
+ close.type='button';close.className='resumeTileDismiss';close.dataset.vaultTileClose='1';
+ close.textContent='↙ Close résumé card';
+ close.setAttribute('aria-label','Close full-screen résumé card');
+ tile.appendChild(close);
+ close.focus({preventScroll:true});
+ tile.scrollTop=0;
+}
+document.addEventListener('keydown',e=>{
+ if(e.key==='Escape'&&expandedResumeTile&&!document.querySelector('.modal.show')){e.preventDefault();closeResumeTile();}
+});
+
 let masterResumeRecord=null, resumeVaultSearchTerm='',resumeMasterLoadError='';
 async function loadMasterResume(){
  masterResumeRecord=null;resumeMasterLoadError='';
@@ -1203,6 +1244,7 @@ async function uploadMasterResume(file){
  await loadMasterResume();
 }
 function renderResumeVault(){
+ if(expandedResumeTile)closeResumeTile();
  const body=$('resumeVaultBody');
  if(!body)return;
  const jobs=[...(state.jobs||[])].filter(j=>String(j.tailored_resume_name||'').trim());
@@ -1215,7 +1257,7 @@ function renderResumeVault(){
  $('resumeVaultCount').textContent=linked+'/'+jobs.length+' TAILORED READY';
  $('resumeVaultStatus').textContent=linked+' of '+jobs.length+' tailored résumé files linked · '+(masterResumeRecord?'Master résumé available':'Master résumé not uploaded to Kay Command')+(resumeMasterLoadError?' · Storage check: '+resumeMasterLoadError:'');
  const masterName=masterResumeRecord?.name?.replace(/^\d+_/,'')||'Kaia Strickland · Master Résumé 2026';
- const master=`<article class="resumeTile"><div><div class="resumeTileTitle">★ Master Résumé</div><div class="resumeTileMeta">${esc(masterName)}<br>Source for all future tailored versions</div><div class="resumeTileStatus ${masterResumeRecord?'ready':''}">${masterResumeRecord?'✓ READY TO DOWNLOAD':'NOT YET UPLOADED TO THIS APP'}</div><div class="resumeTileButtons"><button class="btn" data-vault-master ${masterResumeRecord?'':'disabled'}>${masterResumeRecord?'Open / download':'Upload required'}</button><button class="btn" data-vault-master-upload>↑ Upload</button></div></div><div class="resumeDocArt" aria-label="Document placeholder, not a rendered document preview"><div class="resumeDocIcon">📄</div><div class="resumeDocType">MASTER</div><div class="resumeDocState">${masterResumeRecord?'Stored privately':'No file linked'}</div></div></article>`;
+ const master=`<article class="resumeTile" role="button" tabindex="0" aria-label="Expand master résumé card"><div><div class="resumeTileTitle">★ Master Résumé</div><div class="resumeTileMeta">${esc(masterName)}<br>Source for all future tailored versions</div><div class="resumeTileStatus ${masterResumeRecord?'ready':''}">${masterResumeRecord?'✓ READY TO DOWNLOAD':'NOT YET UPLOADED TO THIS APP'}</div><div class="resumeTileButtons"><button class="btn" data-vault-master ${masterResumeRecord?'':'disabled'}>${masterResumeRecord?'Open / download':'Upload required'}</button><button class="btn" data-vault-master-upload>↑ Upload</button></div></div><div class="resumeDocArt" aria-label="Document placeholder, not a rendered document preview"><div class="resumeDocIcon">📄</div><div class="resumeDocType">MASTER</div><div class="resumeDocState">${masterResumeRecord?'Stored privately':'No file linked'}</div></div></article>`;
  const tiles=view.map(j=>{
   const ready=hasReadyTailoredResume(j);
   const name=String(j.tailored_resume_name||'');
@@ -1239,11 +1281,14 @@ $('resumeVaultBody').addEventListener('click',e=>{
  if(e.target.closest('[data-vault-master-upload]')){$('resumeMasterFile').click();return;}
  const dl=e.target.closest('[data-vault-download]');
  if(dl){const j=state.jobs.find(x=>String(x.id)===dl.dataset.vaultDownload);if(j&&hasReadyTailoredResume(j))openResumeFromJob(j);return;}
- const job=e.target.closest('[data-vault-job-open],[data-vault-job]');
- if(job)openVaultJob(job.dataset.vaultJobOpen||job.dataset.vaultJob);
+ if(e.target.closest('[data-vault-tile-close]')){closeResumeTile();return;}
+ const jobButton=e.target.closest('[data-vault-job-open]');
+ if(jobButton){openVaultJob(jobButton.dataset.vaultJobOpen);return;}
+ const tile=e.target.closest('.resumeTile');
+ if(tile)expandResumeTile(tile);
 });
 $('resumeVaultBody').addEventListener('keydown',e=>{
- if(e.target.matches('[data-vault-job]')&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openVaultJob(e.target.dataset.vaultJob);}
+ if((e.target.matches('[data-vault-job]')||e.target.matches('.resumeTile'))&&(e.key==='Enter'||e.key===' ')){e.preventDefault();expandResumeTile(e.target);}
 });
 $('resumeVaultSearch').addEventListener('input',e=>{resumeVaultSearchTerm=e.target.value.trim();renderResumeVault();});
 $('resumeVaultViewAll').onclick=()=>expandDashboardCard($('resumeVaultPanel'));
