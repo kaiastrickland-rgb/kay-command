@@ -658,6 +658,38 @@ body.resumeTileOpen{overflow:hidden}
 .jobRequirementBox textarea{display:block;width:100%;min-height:100px;margin-top:9px;border:1px solid #33566b;background:#07131b;color:#f1f9fc;padding:10px;border-radius:10px}
 @media(max-width:700px){.jobTop{flex-direction:column}.jobActionColumn{justify-content:flex-start;width:100%}.jobActionColumn .jobStatus{width:auto;text-align:left;margin-right:auto}.jobTailorRow{justify-content:flex-start}.jobDetailsActions>button{width:calc(50% - 5px);flex:1 1 145px}}
 
+
+/* Live résumé thumbnails render actual saved résumé content as a white page image. */
+.resumeVaultPanel .resumeVaultSearch{display:block!important;flex:1;max-width:400px}
+.resumeVaultGrid{grid-template-columns:repeat(auto-fit,minmax(270px,1fr))}
+.resumeDocTile{border:1px solid #34586a;background:#0b1b26;border-radius:15px;padding:12px;display:flex;gap:13px;align-items:flex-start;cursor:pointer;min-width:0}
+.resumeDocTile:hover,.resumeDocTile:focus-visible{border-color:#63d8fc;outline:none}
+.resumeDocThumb{width:112px;min-width:112px;height:148px;object-fit:cover;object-position:top;border:1px solid #d4dde2;border-radius:3px;box-shadow:0 7px 18px rgba(0,0,0,.3);background:#fff}
+.resumeDocInfo{min-width:0;flex:1}
+.resumeDocInfo strong{font-size:14px;line-height:1.3;display:block}
+.resumeDocInfo small{display:block;font-size:11px;color:#b4c8d2;line-height:1.4;margin-top:8px}
+.resumeDocInfo .resumeDocBadge{display:inline-block;padding:4px 8px;margin-top:8px;border-radius:7px;font-size:10px;font-weight:850;color:#ffd995;border:1px solid #776445}
+.resumeDocInfo .resumeDocBadge.approved{color:#72f4b9;border-color:#2b8869}
+.resumeDocInfo button{font-size:11px;margin-top:11px}
+#resumeEditorModal{z-index:80}
+.resumeEditorBox{width:min(1200px,96vw);height:min(92dvh,980px);max-height:92dvh;display:flex;flex-direction:column;overflow:hidden;padding:22px}
+.resumeEditorToolbar{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
+.resumeEditorToolbar button{min-width:125px}
+.resumeEditorPanels{display:grid;grid-template-columns:1fr;gap:12px;flex:1;min-height:0;overflow:hidden}
+.resumeEditorPanels.editing{grid-template-columns:1.05fr 1fr}
+.resumePaperScroll{overflow:auto;background:#182b36;padding:18px;border-radius:12px;min-height:0}
+.resumePagePaper{width:min(100%,820px);min-height:100%;background:white;color:#15212b;margin:auto;padding:clamp(22px,5%,52px);font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:1.45;overflow-wrap:anywhere;box-shadow:0 4px 22px rgba(0,0,0,.28)}
+.resumePagePaper .resumePaperHeading{font-weight:800;color:#123d57;border-bottom:1px solid #9daeb9;font-size:14px;letter-spacing:.03em;margin:14px 0 7px;padding-bottom:3px}
+.resumePagePaper .resumePaperName{font-size:24px;font-weight:900;text-align:center;margin:2px 0}
+.resumePagePaper .resumePaperContact{text-align:center;color:#465767;font-size:11px;margin:0 0 12px}
+.resumePagePaper .resumePaperLine{margin:2px 0;white-space:pre-wrap}
+.resumePagePaper .resumePaperBullet{padding-left:16px;text-indent:-12px}
+.resumeEditColumn{display:flex;flex-direction:column;min-height:0;gap:8px}
+.resumeEditColumn[hidden]{display:none}
+.resumeEditColumn label{font-size:12px;color:#b9ced9}
+.resumeEditColumn textarea{width:100%;flex:1;min-height:200px;background:#08151e;border:1px solid #35617a;border-radius:11px;color:white;padding:15px;line-height:1.5;resize:none;font-size:13px}
+@media(max-width:750px){.resumeEditorBox{width:97vw;height:94dvh;max-height:94dvh;padding:12px}.resumeEditorPanels.editing{grid-template-columns:1fr;grid-template-rows:1fr 1fr}.resumePaperScroll{padding:8px}.resumeDocThumb{width:96px;min-width:96px;height:130px}.resumeEditorToolbar button{min-width:0;flex:1 1 42%;font-size:12px}}
+
 </style>
 </head>
 <body>
@@ -780,20 +812,13 @@ body.resumeTileOpen{overflow:hidden}
 
     <section id="resumeVaultPanel" class="card resumeVaultPanel">
       <div class="cardHeader">
-        <div><div class="cardTitle">📄 My Résumé Vault</div><div class="cardSub">Master résumé + job-specific versions · tap a card to review · expand for every document</div></div>
+        <div><div class="cardTitle">📄 My Résumés</div><div class="cardSub">Master and reusable versions · tap a real document to preview, edit, approve, or download</div></div>
         <span id="resumeVaultCount" class="badge">LOADING</span>
       </div>
-      <div class="resumeVaultToolbar">
-        <button id="resumeMasterUpload" class="btn" type="button">↑ Add master résumé</button>
-        <input id="resumeMasterFile" type="file" accept=".docx,.doc,.pdf" hidden>
-        <button id="resumeVaultImport" class="btn primary" type="button">↑ Import tailored résumés / ZIP</button>
-        <input id="resumeVaultFiles" type="file" accept=".zip,.docx,.doc,.pdf" multiple hidden>
-        <input id="resumeVaultSearch" class="resumeVaultSearch" type="search" placeholder="Search résumé, company, or job" aria-label="Search resume vault">
-        <button id="resumeVaultViewAll" class="btn" type="button">↗ View all</button>
-      </div>
-      <div id="resumeVaultStatus" class="resumeVaultStatus" role="status">Checking private résumé storage…</div>
+      <div class="resumeVaultToolbar"><input id="resumeVaultSearch" class="resumeVaultSearch" type="search" placeholder="Search your résumés" aria-label="Search your resumes"></div>
+      <div id="resumeVaultStatus" class="resumeVaultStatus" role="status">Loading actual résumé documents…</div>
       <div id="resumeVaultBody" class="resumeVaultGrid"></div>
-      <div class="resumeVaultFooter">The app only labels a résumé <strong>Ready</strong> when its actual file is linked in private storage. Missing uploads are never shown as downloadable files.</div>
+      <div class="resumeVaultFooter">Job-specific drafts appear here only when you click Tailor My Résumé on a job. Your master stays unchanged.</div>
     </section>
 
     <section id="moneySnapshotCard" class="card trio financeEntry" title="Open Financial Command Center">
@@ -991,6 +1016,29 @@ body.resumeTileOpen{overflow:hidden}
 </div>
 
 
+
+<div id="resumeEditorModal" class="modal" role="dialog" aria-modal="true" aria-label="Résumé preview and editor">
+  <div class="modalBox resumeEditorBox">
+    <div class="modalTop">
+      <div><div class="sectionLabel">MY RÉSUMÉS · SAVED TO KAY COMMAND</div><div id="resumeEditorTitle" class="modalTitle">Résumé</div><div id="resumeEditorMeta" class="modalMeta"></div></div>
+      <button id="resumeEditorClose" class="btn" type="button" aria-label="Close résumé editor">✕ Close</button>
+    </div>
+    <div class="resumeEditorToolbar">
+      <button id="resumeEdit" class="btn" type="button">✏ Edit</button>
+      <button id="resumeSave" class="btn primary" type="button" hidden>💾 Save draft</button>
+      <button id="resumeApprove" class="btn" type="button">✓ Approve</button>
+      <button id="resumeDownload" class="btn" type="button">⬇ Download Word</button>
+    </div>
+    <div id="resumeEditorStatus" class="resumeVaultStatus" role="status"></div>
+    <div id="resumeEditorPanels" class="resumeEditorPanels">
+      <div class="resumePaperScroll"><div id="resumeEditorPaper" class="resumePagePaper"></div></div>
+      <div class="resumeEditColumn" id="resumeEditColumn" hidden>
+        <label for="resumeEditText">Edit actual résumé content below. Preview updates as you type.</label>
+        <textarea id="resumeEditText" spellcheck="true"></textarea>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div id="financeModal" class="modal">
  <div class="modalBox financeModalBox">
@@ -1253,7 +1301,7 @@ async function importResumeFiles(files,jobId=null){
  alert('Uploaded '+saved+' résumé(s).'+(unmatched.length?'\nUnmatched: '+unmatched.slice(0,6).join(', '):'')+(fail.length?'\nErrors: '+fail.slice(0,6).join('; '):''));
 }
 
-let state={tasks:[],projects:[],briefs:[],sources:[],jobs:[],plans:[],planTasks:[],milestones:[],risks:[],decisions:[],financePayments:[],financeAccounts:[],financeAlerts:[],emailActions:[],creditGoals:[],creditAccounts:[],creditSnapshots:[],cigars:[],wines:[],icloudEvents:[],icloudStatus:'',user:null},activeTaskId=null,activeJobId=null,currentJobLane=null,activeProjectId=null,activeFinancePaymentId=null,activeCreditAccountId=null;
+let state={tasks:[],projects:[],briefs:[],sources:[],jobs:[],resumeDocs:[],plans:[],planTasks:[],milestones:[],risks:[],decisions:[],financePayments:[],financeAccounts:[],financeAlerts:[],emailActions:[],creditGoals:[],creditAccounts:[],creditSnapshots:[],cigars:[],wines:[],icloudEvents:[],icloudStatus:'',user:null},activeTaskId=null,activeJobId=null,currentJobLane=null,activeProjectId=null,activeFinancePaymentId=null,activeCreditAccountId=null;
 const esc=(v='')=>String(v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
 /* Private, user-owned Resume Vault. Job-specific filenames are not proof a file exists. */
@@ -1574,7 +1622,7 @@ function startRealtimeSync(){
 async function loadAll(){
  if(!await ensureAuth())return;
  $('liveBar').textContent='● Syncing live data…';
- const [p,t,b,s,j,pl,pt,ms,rs,ds,fp,fa,fal,ea,cg,ca,cs,ci,wi]=await Promise.all([
+ const [p,t,b,s,j,pl,pt,ms,rs,ds,fp,fa,fal,ea,cg,ca,cs,ci,wi,rd]=await Promise.all([
   supabase.from('kay_projects').select('*').order('created_at',{ascending:true}),
   supabase.from('kay_tasks').select('*').order('is_done',{ascending:true}).order('due_date',{ascending:true,nullsFirst:false}),
   supabase.from('kay_briefs').select('*').order('created_at',{ascending:false}).limit(8),
@@ -1593,12 +1641,13 @@ async function loadAll(){
   supabase.from('kay_credit_accounts').select('*').order('priority',{ascending:true,nullsFirst:false}).order('creditor',{ascending:true}),
   supabase.from('kay_credit_score_snapshots').select('*').order('report_date',{ascending:false}),
   supabase.from('kay_cigars').select('*').eq('is_active',true).order('sort_order',{ascending:true}),
-  supabase.from('kay_wines').select('*').eq('is_active',true).order('sort_order',{ascending:true})
+  supabase.from('kay_wines').select('*').eq('is_active',true).order('sort_order',{ascending:true}),
+   supabase.from('kay_resume_documents').select('*').order('updated_at',{ascending:false})
  ]);
  if(p.error||t.error||b.error){$('liveBar').textContent='● Data sync error';appendChat('assistant',p.error?.message||t.error?.message||b.error?.message);return}
- state.projects=p.data||[];state.tasks=t.data||[];state.briefs=b.data||[];state.sources=s.error?[]:(s.data||[]);state.jobs=j?.error?[]:(j?.data||[]);state.plans=pl?.error?[]:(pl?.data||[]);state.planTasks=pt?.error?[]:(pt?.data||[]);state.milestones=ms?.error?[]:(ms?.data||[]);state.risks=rs?.error?[]:(rs?.data||[]);state.decisions=ds?.error?[]:(ds?.data||[]);state.financePayments=fp?.error?[]:(fp?.data||[]);state.financeAccounts=fa?.error?[]:(fa?.data||[]);state.financeAlerts=fal?.error?[]:(fal?.data||[]);state.emailActions=ea?.error?[]:(ea?.data||[]);state.creditGoals=cg?.error?[]:(cg?.data||[]);state.creditAccounts=ca?.error?[]:(ca?.data||[]);state.creditSnapshots=cs?.error?[]:(cs?.data||[]);state.cigars=ci?.error?[]:(ci?.data||[]);state.wines=wi?.error?[]:(wi?.data||[]);
+ state.projects=p.data||[];state.tasks=t.data||[];state.briefs=b.data||[];state.sources=s.error?[]:(s.data||[]);state.jobs=j?.error?[]:(j?.data||[]);state.resumeDocs=rd?.error?[]:(rd?.data||[]);state.plans=pl?.error?[]:(pl?.data||[]);state.planTasks=pt?.error?[]:(pt?.data||[]);state.milestones=ms?.error?[]:(ms?.data||[]);state.risks=rs?.error?[]:(rs?.data||[]);state.decisions=ds?.error?[]:(ds?.data||[]);state.financePayments=fp?.error?[]:(fp?.data||[]);state.financeAccounts=fa?.error?[]:(fa?.data||[]);state.financeAlerts=fal?.error?[]:(fal?.data||[]);state.emailActions=ea?.error?[]:(ea?.data||[]);state.creditGoals=cg?.error?[]:(cg?.data||[]);state.creditAccounts=ca?.error?[]:(ca?.data||[]);state.creditSnapshots=cs?.error?[]:(cs?.data||[]);state.cigars=ci?.error?[]:(ci?.data||[]);state.wines=wi?.error?[]:(wi?.data||[]);
  await loadICloudEvents();
- renderAll();await loadMasterResume();$('liveBar').textContent='● Live data loaded';
+ renderAll();$('liveBar').textContent='● Live data loaded';
  startRealtimeSync();
 }
 
