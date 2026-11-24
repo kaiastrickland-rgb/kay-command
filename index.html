@@ -3345,28 +3345,50 @@ $('speakBtn').onclick=()=>{
 };
 
 
+/* One UI action: reload all available snapshots and request upstream connector sync.
+   Some upstream connections require the automation worker; never claim instantly synced. */
+async function requestUnifiedRefresh(){
+ if(!state.user?.id)throw new Error('Please sign in to Kay Command first.');
+ const at=new Date().toISOString();
+ const details={requested_at:at,requested_by:'dashboard_refresh_all',
+   components:['Gmail inbox and action email','All Google and iCloud calendars','Finances balances','Fieldy meeting action queue','Action Center and tasks','Body-for-LIFE','Active projects'],
+   job_discovery:'Separate daily Kay + Mello + Kaiden search; load its latest stored results only',
+   note:'Request received, not yet proof of completed upstream refresh'};
+ const {error}=await supabase.from('kay_source_status').upsert({
+   user_id:state.user.id,source:'Unified Refresh',status:'requested',details
+  },{onConflict:'user_id,source'});
+ if(error)throw new Error('Upstream refresh request was not saved: '+error.message);
+ return at;
+}
 $('refreshBtn').onclick=async()=>{
- const btn=$('refreshBtn');
- if(btn.disabled)return;
- const original=btn.textContent;
- btn.disabled=true;
- btn.textContent='↻ Refreshing…';
+ const button=$('refreshBtn');if(button.disabled)return;
+ const original=button.textContent;
+ button.disabled=true;button.textContent='↻ Loading everything…';
+ let queued=false,requestError='';
+ try{await requestUnifiedRefresh();queued=true;}
+ catch(e){requestError=e.message||String(e);console.warn('Unable to queue upstream source refresh',e);}
  try{
-   await loadAll();
-   btn.textContent='✓ Refreshed';
-   const now=new Date();
-   $('liveBar').textContent=`● Live data refreshed ${now.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}`;
+   const result=await loadAll();
+   if(result?.renderFailures?.length)throw new Error('Some panels could not render: '+result.renderFailures.join(', '));
+   button.textContent=queued?'✓ Latest loaded':'✓ Saved data loaded';
+   $('liveBar').textContent=queued
+    ?'● Latest saved records loaded · upstream connector refresh REQUESTED; source timestamps below show what is current'
+    :'⚠ Saved records loaded, but upstream source refresh could not be requested: '+requestError;
+   renderSyncHealth();
  }catch(e){
-   console.error('Manual refresh failed',e);
-   btn.textContent='⚠ Refresh failed';
-   $('liveBar').textContent='● Refresh failed — tap again';
+   console.error('Dashboard data refresh failed',e);
+   button.textContent='⚠ Refresh incomplete';
+   $('liveBar').textContent='⚠ Could not reload all dashboard data: '+(e.message||e)+(queued?' · upstream refresh request queued':'');
  }finally{
-   setTimeout(()=>{
-     btn.disabled=false;
-     btn.textContent=original;
-   },1400);
+   setTimeout(()=>{button.disabled=false;button.textContent=original;},1600);
  }
 };
+/* Light fallback for browsers where websocket push delivery is unavailable.
+   This reads existing records only. It does not create another upstream sync job. */
+setInterval(()=>{
+ if(!state.user||document.hidden||document.querySelector('.modal.show'))return;
+ loadAll().catch(e=>{console.warn('Passive Kay Command refresh failed',e);});
+},300000);
 supabase.auth.onAuthStateChange((event,session)=>{
  if(session && ['SIGNED_IN','TOKEN_REFRESHED','INITIAL_SESSION','USER_UPDATED'].includes(event)){
    const first=!state.user;
