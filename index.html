@@ -1256,7 +1256,7 @@ $('resumeMasterFile').onchange=async e=>{
 };
 $('resumeVaultImport').onclick=()=>$('resumeVaultFiles').click();
 $('resumeVaultFiles').onchange=async e=>{
- const files=e.target.files;e.target.value='';if(!files?.length)return;
+ const files=Array.from(e.target.files||[]);e.target.value='';if(!files.length)return;
  $('resumeVaultStatus').textContent='Importing job-specific résumé files…';
  await importResumeFiles(files);
  renderResumeVault();
