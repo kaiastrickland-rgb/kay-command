@@ -50,12 +50,12 @@ function parse(text) {
    continue;
   }
   if(section==="EXECUTIVE COMPETENCIES"||section==="CORE COMPETENCIES"){
-   if(SKILL_GROUPS.has(line) && !(line==="Leadership"&&/Change\s*$/.test(buffer))){flush();skillGroup={label:line,items:[]};data.competencies.push(skillGroup);continue;}
+   if((SKILL_GROUPS.has(line)||(line.length<64&&!/[•|]/.test(line)&&/[•|]/.test(lines[i+1]||''))) && !(line==="Leadership"&&/Change\s*$/.test(buffer))){flush();skillGroup={label:line,items:[]};data.competencies.push(skillGroup);continue;}
    if(!skillGroup){skillGroup={label:"Executive Capabilities",items:[]};data.competencies.push(skillGroup);}
    buffer+=(buffer?" ":"")+line;continue;
   }
   if(section==="PLATFORMS & TOOLS"||section==="PLATFORMS AND TOOLS"){
-   if(SKILL_GROUPS.has(line)){flush();toolGroup={label:line,items:[]};data.tools.push(toolGroup);continue;}
+   if(SKILL_GROUPS.has(line)||(line.length<64&&!/[•|]/.test(line)&&/[•|]/.test(lines[i+1]||''))){flush();toolGroup={label:line,items:[]};data.tools.push(toolGroup);continue;}
    if(!toolGroup){toolGroup={label:"Tools",items:[]};data.tools.push(toolGroup);}
    buffer+=(buffer?" ":"")+line;continue;
   }
