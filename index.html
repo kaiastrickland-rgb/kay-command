@@ -542,6 +542,21 @@ tr:last-child td{border-bottom:0}
 /* Body-for-LIFE mission panel */
 .bflPanel{grid-column:span 12}.bflBody{padding:0 20px 20px}.bflToolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}.bflToolbar select{background:#0b1821;color:var(--text);border:1px solid var(--line2);border-radius:10px;padding:9px;min-width:110px}.bflStats{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0 15px}.bflStat{background:#091b23;border:1px solid var(--line2);border-radius:12px;padding:10px 14px;color:var(--muted)}.bflStat strong{color:var(--green)}.bflDays{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.bflDay{border:1px solid var(--line2);background:#081820;border-radius:13px;padding:12px;text-align:left;color:var(--text);min-height:108px}.bflDay.active{border-color:var(--cyan)}.bflDay.done{border-color:var(--green)}.bflDay small{display:block;color:var(--muted);margin:5px 0}.bflDetail{border:1px solid var(--line2);background:#07151e;border-radius:13px;margin-top:13px;padding:15px;white-space:pre-wrap;line-height:1.6}.bflLog{display:flex;flex-wrap:wrap;gap:9px;margin-top:12px}.bflLog label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:5px;flex:1 1 130px}.bflLog input,.bflLog textarea{width:100%;background:#0b1821;border:1px solid var(--line2);border-radius:9px;padding:9px;color:var(--text)}.bflLog textarea{min-height:65px}.bflActions{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}.bflActions button{min-height:40px}@media(max-width:650px){.bflBody{padding:0 12px 14px}.bflDays{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
+
+/* Full-screen dashboard card mode. Keep the ORIGINAL card DOM so every control keeps working. */
+.cardExpandBtn{border:1px solid #31586b;border-radius:10px;background:#102936;color:#d4f3ff;padding:8px 10px;font-size:11px;font-weight:850;flex-shrink:0;cursor:pointer;white-space:nowrap}
+.cardExpandBtn:hover,.cardExpandBtn:focus-visible{border-color:var(--cyan);outline:2px solid #247b9a;outline-offset:1px}
+body.cardExpansionOpen{overflow:hidden}
+.card.cardExpanded{position:fixed!important;inset:0!important;z-index:45!important;grid-column:1/-1!important;width:100vw!important;height:100dvh!important;max-width:none!important;max-height:100dvh!important;min-height:0!important;overflow-x:hidden!important;overflow-y:auto!important;border-radius:0!important;border:0!important;box-shadow:0 0 0 100vmax rgba(0,0,0,.72)!important}
+.card.cardExpanded>.cardHeader{position:sticky;top:0;z-index:5;background:#0c1d28;border-bottom:1px solid #2b5061;padding:16px 20px;align-items:center}
+.card.cardExpanded :is(.heroBody,.actionBody,.careerBody,.trioBody,.tableWrap,.bflBody,.dailyPleasuresBody,.emailList){height:auto!important;max-height:none!important;overflow:visible!important}
+.card.cardExpanded.emailActionCard .trioBody{display:block!important}
+.card.cardExpanded .tableWrap{overflow-x:auto!important}
+.card.cardExpanded .briefList{max-width:95ch}
+.card.cardExpanded .careerBody,.card.cardExpanded .actionBody{min-height:35vh}
+.card.cardExpanded .pleasureGrid{max-width:1380px}
+.card.cardExpanded .systemGrid{max-height:none!important}
+@media(max-width:600px){.card.cardExpanded>.cardHeader{padding:12px;gap:8px}.card.cardExpanded .cardTitle{font-size:18px}.cardExpandBtn{font-size:10px;padding:8px}}
 </style>
 </head>
 <body>
@@ -2930,6 +2945,57 @@ supabase.auth.onAuthStateChange((event,session)=>{
    if(!authBooting)$('authModal').classList.add('show');
  }
 });
+
+/* Click a card or its expand control to use the full screen without cloning its live controls. */
+let expandedDashboardCard=null, expandedDashboardReturnFocus=null, expandedDashboardScroll=0;
+function closeDashboardCard(){
+ if(!expandedDashboardCard)return;
+ const card=expandedDashboardCard;
+ card.classList.remove('cardExpanded');
+ const toggle=card.querySelector(':scope > .cardHeader .cardExpandBtn');
+ if(toggle){toggle.textContent='⛶ Expand';toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-label','Expand '+(card.querySelector('.cardTitle')?.textContent||'card'));}
+ document.body.classList.remove('cardExpansionOpen');
+ expandedDashboardCard=null;
+ if(card.id==='resumeVaultPanel')renderResumeVault();
+ window.scrollTo(0,expandedDashboardScroll);
+ if(expandedDashboardReturnFocus?.isConnected)expandedDashboardReturnFocus.focus({preventScroll:true});
+}
+function expandDashboardCard(card){
+ if(!card)return;
+ if(expandedDashboardCard===card){closeDashboardCard();return;}
+ if(expandedDashboardCard)closeDashboardCard();
+ expandedDashboardScroll=window.scrollY;
+ expandedDashboardReturnFocus=card.querySelector(':scope > .cardHeader .cardExpandBtn');
+ expandedDashboardCard=card;
+ card.classList.add('cardExpanded');
+ document.body.classList.add('cardExpansionOpen');
+ const toggle=expandedDashboardReturnFocus;
+ if(toggle){toggle.textContent='↙ Close';toggle.setAttribute('aria-expanded','true');toggle.setAttribute('aria-label','Close full-screen card');toggle.focus({preventScroll:true});}
+ card.scrollTop=0;
+ if(card.id==='resumeVaultPanel')renderResumeVault();
+}
+function installDashboardCardExpansion(){
+ document.querySelectorAll('main .card').forEach(card=>{
+  const header=card.querySelector(':scope > .cardHeader');
+  if(!header||header.querySelector('.cardExpandBtn'))return;
+  const btn=document.createElement('button');
+  btn.type='button';btn.className='cardExpandBtn';btn.textContent='⛶ Expand';
+  btn.setAttribute('aria-expanded','false');
+  btn.setAttribute('aria-label','Expand '+(card.querySelector('.cardTitle')?.textContent||'dashboard card'));
+  header.appendChild(btn);
+  btn.addEventListener('click',e=>{e.stopPropagation();expandDashboardCard(card);});
+  card.addEventListener('click',e=>{
+   if(expandedDashboardCard||card.id==='moneySnapshotCard')return;
+   if(e.target.closest('button,a,input,select,textarea,[role="button"],[contenteditable],.actionRow,.careerRow,.jobItem,.projectRowClickable,.financePayRow,.emailRow,.bflDay'))return;
+   expandDashboardCard(card);
+  });
+ });
+ document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&expandedDashboardCard&&!document.querySelector('.modal.show')){e.preventDefault();closeDashboardCard();}
+ });
+}
+installDashboardCardExpansion();
+
 setGreeting();
 initializeApp();
 </script>
