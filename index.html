@@ -3130,8 +3130,8 @@ function jobProgressState(j){
 }
 async function saveJobProgress(j,progress){
  const before=jobProgressState(j).value;
+ if(progress==='more'){openJob(j.id);$('jobStatusSelect')?.focus();return;}
  if(progress===before)return;
- if(progress==='other'){openJob(j.id);$('jobStatusSelect')?.focus();return;}
  if(before==='other'||before==='applied'){
   if(progress!=='applied'&&!confirm('This job is already marked '+(j.status||'Applied')+'. Reset it to '+(progress==='viewed'?'Viewed':'Not Viewed')+'?'))return;
  }
@@ -3186,7 +3186,7 @@ function renderJobList(lane){
       '<option value="viewed" '+(progress.value==='viewed'?'selected':'')+'>Viewed</option>'+
       '<option value="applied" '+(progress.value==='applied'?'selected':'')+'>Applied</option>'+
       more+
-      '<option value="other">More stages…</option>'+
+      '<option value="more">More stages…</option>'+
      '</select>'+
      '<div class="jobPrimaryActions">'+
       '<button class="jobPrimaryBtn jobApplyButton" type="button" data-apply="'+esc(j.id)+'" '+(j.apply_url?'':'disabled')+'>Apply</button>'+
