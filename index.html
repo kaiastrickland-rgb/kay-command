@@ -772,6 +772,9 @@ body.resumeTileOpen{overflow:hidden}
  .jobDetailsActions{grid-template-columns:repeat(2,minmax(0,1fr))!important}
 }
 
+
+.resumeRetargetBtn{margin-top:8px!important;border:1px solid #477b9a!important;border-radius:10px!important;background:#142e3c!important;color:#cee7f5!important;padding:9px 13px!important;font-size:12px!important;font-weight:800}
+
 </style>
 </head>
 <body>
@@ -1449,7 +1452,9 @@ function renderResumeAnalysis(doc){
  const gaps=report.gaps.map(x=>'<li>'+esc(x)+'</li>').join('')||'<li>No specific gaps identified in saved requirements</li>';
  el.innerHTML='<details><summary><strong>Job-fit analysis</strong> · '+(report.hasFullRequirements?'Job requirements available':'Full job requirements not saved')+' · Click to review</summary>'+
  '<div class="resumeAnalysisGrid"><div><b>Documented strengths</b><ul>'+matches+'</ul></div><div><b>Gaps / check before applying</b><ul>'+gaps+'</ul></div></div>'+
- '<p>This is a fit review, not text that belongs on your résumé. The résumé uses only documented experience.</p></details>';
+ '<p>This is a fit review, not text that belongs on your résumé. The résumé uses only documented experience.</p>'+
+ '<button class="btn resumeRetargetBtn" type="button" data-resume-retarget="1">↻ Re-tailor with AI</button>'+
+ '</details>';
 }
 function openResumeEditor(id){
  const d=state.resumeDocs.find(x=>String(x.id)===String(id));if(!d)return;
@@ -1474,6 +1479,19 @@ $('resumeEditorClose').onclick=closeResumeEditor;
 $('resumeEditorModal').onclick=e=>{if(e.target===$('resumeEditorModal'))closeResumeEditor()};
 $('resumeVaultBody').addEventListener('click',e=>{const x=e.target.closest('[data-doc-id]');if(x)openResumeEditor(x.dataset.docId)});
 $('resumeVaultBody').addEventListener('keydown',e=>{const x=e.target.closest('[data-doc-id]');if(x&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openResumeEditor(x.dataset.docId);}});
+$('resumeTailoringAnalysis').addEventListener('click',async e=>{
+ const button=e.target.closest('[data-resume-retarget]');
+ if(!button)return;
+ const doc=currentResumeDoc();
+ const job=state.jobs.find(j=>String(j.id)===String(doc?.linked_job_id));
+ if(!job)return;
+ if(resumeEditorDirty){alert('Save or discard your résumé edits before regenerating.');return;}
+ if(!confirm('Generate a new AI-tailored draft for '+job.title+'? This replaces the current draft and resets its approval status.'))return;
+ button.disabled=true;button.textContent='Analyzing full job requirements…';
+ try{await tailorResumeForJob(job,{force:true});}
+ catch(err){$('resumeEditorStatus').textContent='AI re-tailoring unavailable: '+(err.message||err);}
+ finally{button.disabled=false;button.textContent='↻ Re-tailor with AI';}
+});
 $('resumeVaultSearch').addEventListener('input',e=>{resumeVaultSearchTerm=e.target.value.trim();renderResumeVault();});
 $('resumeEdit').onclick=()=>{
  if(!currentResumeDoc())return;
