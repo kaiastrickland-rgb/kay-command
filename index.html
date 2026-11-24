@@ -745,6 +745,33 @@ body.resumeTileOpen{overflow:hidden}
 .resumeEditorToolbar .btn[hidden]{display:none!important}
 @media(max-width:630px){.resumeEditorToolbar .btn{min-width:0!important;max-width:none!important;width:calc(50% - 5px)!important;flex:1 1 calc(50% - 5px)!important}}
 
+
+/* Career Command: exactly two equal-size action buttons, and one editable status selector.
+   No duplicated I Applied button. */
+#jobList .jobItem{padding:15px 18px}
+#jobList .jobTop{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(300px,356px)!important;column-gap:20px;align-items:center}
+#jobList .jobCopy{min-width:0}
+#jobList .jobCompensation{margin-top:18px;line-height:1.5}
+#jobList .jobRight{display:flex;flex-direction:column;gap:10px;width:100%;align-items:stretch;min-width:0}
+#jobList .jobProgressLabel{font-size:10px;color:#b7cbd5;font-weight:800;letter-spacing:.055em;text-transform:uppercase;text-align:right}
+#jobList .jobProgressSelect{align-self:flex-end;min-width:140px;max-width:240px;width:auto;background:#102f40!important;color:#e1eff6!important;border:1px solid #3e6b80!important;border-radius:8px!important;height:36px!important;padding:5px 27px 5px 12px!important;font-size:12px!important;font-weight:750;cursor:pointer}
+#jobList .jobPrimaryActions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;width:100%!important}
+#jobList .jobPrimaryBtn{box-sizing:border-box;display:inline-flex!important;justify-content:center!important;align-items:center!important;width:100%!important;min-width:0!important;max-width:none!important;min-height:44px!important;height:44px!important;padding:8px 10px!important;margin:0!important;border-radius:10px!important;font-size:12px!important;font-weight:850!important;line-height:1.2!important;white-space:normal!important;text-align:center!important;cursor:pointer}
+#jobList .jobApplyButton{border:1px solid #2686a5;background:#103747;color:#f3fbff}
+#jobList .jobTailorButton{border:1px solid #987dea;background:rgba(142,111,232,.14);color:#e1d7ff}
+#jobList .jobPrimaryBtn:hover{filter:brightness(1.18)}
+#jobList .jobPrimaryBtn[disabled]{opacity:.45;cursor:default}
+.jobDetailsActions #jobMarkApplied{display:none!important}
+.jobDetailsActions{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:10px!important}
+.jobDetailsActions #jobBack,.jobDetailsActions #jobApply,.jobDetailsActions #jobResume{width:100%!important;min-width:0!important;max-width:none!important;min-height:44px!important;height:44px!important;margin:0!important;padding:8px 10px!important;border-radius:10px!important;font-size:12px!important;flex:none!important}
+@media(max-width:760px){
+ #jobList .jobTop{grid-template-columns:minmax(0,1fr)!important;row-gap:12px}
+ #jobList .jobRight{max-width:none;width:100%}
+ #jobList .jobProgressLabel{text-align:left}
+ #jobList .jobProgressSelect{align-self:flex-start}
+ .jobDetailsActions{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+
 </style>
 </head>
 <body>
@@ -1041,7 +1068,7 @@ body.resumeTileOpen{overflow:hidden}
     <div class="jobActions jobDetailsActions">
       <button id="jobBack" class="btn" type="button">← Back to jobs</button>
       <button id="jobApply" class="btn primary" type="button">Apply</button>
-      <button id="jobMarkApplied" class="btn" type="button">I Applied ✓</button>
+      <button id="jobMarkApplied" class="btn" type="button" hidden aria-hidden="true" tabindex="-1">Mark Applied</button>
       <button id="jobResume" class="btn inlineResume jobTailorBtn" type="button">Tailor My Résumé</button>
     </div>
     <details class="jobRequirementBox"><summary>Job requirements used to tailor my résumé</summary>
@@ -3094,54 +3121,106 @@ function openJobLane(lane){
 function hasAppliedForJob(j){
  return Boolean(j?.applied_at)||/^(applied|interview|assessment|offer|recruiter submission)$/i.test(String(j?.status||''));
 }
+function jobProgressState(j){
+ const status=String(j.status||'Open');
+ if(/recruiter|interview|assessment|offer|rejected|withdrawn|closed|expired|follow-up/i.test(status))return {value:'other',label:status};
+ if(hasAppliedForJob(j))return {value:'applied',label:'Applied'};
+ if(j.apply_opened_at)return {value:'viewed',label:'Viewed'};
+ return {value:'not-viewed',label:'Not Viewed'};
+}
+async function saveJobProgress(j,progress){
+ const before=jobProgressState(j).value;
+ if(progress===before)return;
+ if(progress==='other'){openJob(j.id);$('jobStatusSelect')?.focus();return;}
+ if(before==='other'||before==='applied'){
+  if(progress!=='applied'&&!confirm('This job is already marked '+(j.status||'Applied')+'. Reset it to '+(progress==='viewed'?'Viewed':'Not Viewed')+'?'))return;
+ }
+ const now=new Date().toISOString(), patch={updated_at:now};
+ if(progress==='applied'){
+  patch.status='Applied';
+  patch.applied_at=j.applied_at||now;
+  patch.keep_in_lane_until_next_scan=true;
+ }else if(progress==='viewed'){
+  patch.status='Open';
+  patch.apply_opened_at=j.apply_opened_at||now;
+  if(hasAppliedForJob(j)){patch.applied_at=null;patch.keep_in_lane_until_next_scan=false;}
+ }else if(progress==='not-viewed'){
+  patch.status='Open';patch.apply_opened_at=null;
+  if(hasAppliedForJob(j)){patch.applied_at=null;patch.keep_in_lane_until_next_scan=false;}
+ }
+ const {error}=await supabase.from('kay_jobs').update(patch).eq('id',j.id).eq('user_id',state.user.id);
+ if(error)throw error;
+ Object.assign(j,patch);
+ await logJobAction(j,'Application tracking changed to '+progress+' for '+j.title+' at '+j.employer);
+ renderCareer();renderJobList(currentJobLane);
+}
+async function visitJobPosting(j){
+ if(!j?.apply_url)return;
+ window.open(j.apply_url,'_blank','noopener');
+ if(j.apply_opened_at)return; // Keep the first real visit timestamp.
+ const now=new Date().toISOString();
+ const {error}=await supabase.from('kay_jobs').update({apply_opened_at:now,updated_at:now})
+  .eq('id',j.id).eq('user_id',state.user.id);
+ if(error)throw error;
+ j.apply_opened_at=now;j.updated_at=now;
+ await logJobAction(j,'Opened application page for '+j.title+' at '+j.employer+'; visit recorded, NOT marked applied.');
+ renderCareer();renderJobList(currentJobLane);
+}
 function renderJobList(lane){
  const jobs=jobsForLane(lane);
  $('jobList').innerHTML=jobs.length?jobs.map(j=>{
-  const applied=hasAppliedForJob(j);
-  const saved=matchedResumeForJob(j);
-  const held=j.keep_in_lane_until_next_scan===true;
-  return `<div class="jobItem ${applied&&held?'appliedHold':''}" data-job="${esc(j.id)}">
-   <div class="jobTop">
-     <div><div class="jobTitle">${esc(j.title||'Untitled role')}</div><div class="jobMeta">${[j.employer,j.category,j.lane,j.location,j.work_arrangement].filter(Boolean).map(esc).join(' · ')}</div></div>
-     <div class="jobActionColumn">
-       <div class="jobStatus">${esc(j.status||'Open')}</div>
-       <button class="inlineApply" data-apply="${esc(j.id)}" ${j.apply_url?'':'disabled'}>${applied?'Open':'Apply'}</button>
-       ${applied?'':`<button class="inlineApplied" data-applied="${esc(j.id)}">I Applied ✓</button>`}
-     </div>
-   </div>
-   <div class="jobMeta">${esc(j.compensation||'Compensation not listed')} · ${applied&&j.applied_at?'Applied '+new Date(j.applied_at).toLocaleDateString():jobFreshnessLabel(j)}</div>
-   <div class="jobTailorRow"><button class="inlineResume" data-tailor="${esc(j.id)}">${saved?'View / Edit Tailored Résumé':'Tailor My Résumé'}</button></div>
-  </div>`;
+  const progress=jobProgressState(j),saved=matchedResumeForJob(j);
+  const applied=hasAppliedForJob(j),held=j.keep_in_lane_until_next_scan===true;
+  const more=progress.value==='other'?'<option value="other" selected>'+esc(progress.label)+'</option>':'';
+  return '<article class="jobItem '+(applied&&held?'appliedHold':'')+'" data-job="'+esc(j.id)+'">'+
+   '<div class="jobTop">'+
+    '<div class="jobCopy">'+
+     '<div class="jobTitle">'+esc(j.title||'Untitled role')+'</div>'+
+     '<div class="jobMeta">'+[j.employer,j.category,j.lane,j.location,j.work_arrangement].filter(Boolean).map(esc).join(' · ')+'</div>'+
+     '<div class="jobMeta jobCompensation">'+esc(j.compensation||'Compensation not listed')+' · '+(applied&&j.applied_at?'Applied '+new Date(j.applied_at).toLocaleDateString():jobFreshnessLabel(j))+'</div>'+
+    '</div>'+
+    '<div class="jobRight">'+
+     '<label class="jobProgressLabel" for="progress-'+esc(j.id)+'">Application status</label>'+
+     '<select class="jobProgressSelect" id="progress-'+esc(j.id)+'" data-progress="'+esc(j.id)+'" aria-label="Application status for '+esc(j.title||'job')+'">'+
+      '<option value="not-viewed" '+(progress.value==='not-viewed'?'selected':'')+'>Not Viewed</option>'+
+      '<option value="viewed" '+(progress.value==='viewed'?'selected':'')+'>Viewed</option>'+
+      '<option value="applied" '+(progress.value==='applied'?'selected':'')+'>Applied</option>'+
+      more+
+      '<option value="other">More stages…</option>'+
+     '</select>'+
+     '<div class="jobPrimaryActions">'+
+      '<button class="jobPrimaryBtn jobApplyButton" type="button" data-apply="'+esc(j.id)+'" '+(j.apply_url?'':'disabled')+'>Apply</button>'+
+      '<button class="jobPrimaryBtn jobTailorButton" type="button" data-tailor="'+esc(j.id)+'" title="'+(saved?'Open your saved tailored résumé':'Create a tailored résumé for this role')+'">Tailor My Résumé</button>'+
+     '</div>'+
+    '</div>'+
+   '</div>'+
+  '</article>';
  }).join(''):'<div class="cardSub">No jobs in this category yet.</div>';
- document.querySelectorAll('.jobItem').forEach(item=>item.onclick=e=>{
-  if(e.target.closest('button'))return;
+ document.querySelectorAll('#jobList .jobItem').forEach(item=>item.onclick=e=>{
+  if(e.target.closest('button,select,label'))return;
   openJob(item.dataset.job);
  });
- document.querySelectorAll('#jobList [data-tailor]').forEach(button=>button.onclick=async e=>{
-  e.stopPropagation();const job=state.jobs.find(x=>String(x.id)===String(button.dataset.tailor));if(!job)return;
-  button.disabled=true;button.textContent='Preparing résumé…';
-  try{await tailorResumeForJob(job);}
-  catch(err){alert('Could not tailor résumé: '+(err.message||err));}
-  finally{button.disabled=false;renderJobList(lane);}
- });
  document.querySelectorAll('#jobList [data-apply]').forEach(button=>button.onclick=async e=>{
-  e.stopPropagation();const j=state.jobs.find(x=>String(x.id)===String(button.dataset.apply));if(!j||!j.apply_url)return;
-  window.open(j.apply_url,'_blank','noopener');
-  const now=new Date().toISOString();
-  const {error}=await supabase.from('kay_jobs').update({apply_opened_at:now,updated_at:now}).eq('id',j.id).eq('user_id',state.user.id);
-  if(error){alert('Opened listing, but could not save visit: '+error.message);return;}
-  j.apply_opened_at=now;
-  await logJobAction(j,'Opened application page for '+j.title+' at '+j.employer+'; application not marked submitted.');
+  e.stopPropagation();const j=state.jobs.find(x=>String(x.id)===String(button.dataset.apply));
+  if(!j)return;
+  try{await visitJobPosting(j);}
+  catch(err){alert('The posting opened but its Viewed status could not be saved: '+(err.message||err));}
  });
- document.querySelectorAll('#jobList [data-applied]').forEach(button=>button.onclick=async e=>{
-  e.stopPropagation();const j=state.jobs.find(x=>String(x.id)===String(button.dataset.applied));if(!j)return;
-  const now=new Date().toISOString();
-  const {error}=await supabase.from('kay_jobs').update({status:'Applied',applied_at:now,keep_in_lane_until_next_scan:true,updated_at:now})
-   .eq('id',j.id).eq('user_id',state.user.id);
-  if(error){alert('Could not save application status: '+error.message);return;}
-  j.status='Applied';j.applied_at=now;j.keep_in_lane_until_next_scan=true;
-  await logJobAction(j,'Marked '+j.title+' at '+j.employer+' as Applied.');
-  renderCareer();renderJobList(lane);
+ document.querySelectorAll('#jobList [data-progress]').forEach(select=>select.onchange=async e=>{
+  e.stopPropagation();const j=state.jobs.find(x=>String(x.id)===String(select.dataset.progress));
+  if(!j)return;
+  select.disabled=true;
+  try{await saveJobProgress(j,select.value);}
+  catch(err){alert('Could not update application status: '+(err.message||err));}
+  finally{select.disabled=false;renderJobList(lane);}
+ });
+ document.querySelectorAll('#jobList [data-tailor]').forEach(button=>button.onclick=async e=>{
+  e.stopPropagation();const j=state.jobs.find(x=>String(x.id)===String(button.dataset.tailor));
+  if(!j)return;
+  button.disabled=true;button.textContent='Preparing résumé…';
+  try{await tailorResumeForJob(j);}
+  catch(err){alert('Résumé tailoring unavailable: '+(err.message||err));}
+  finally{button.disabled=false;renderJobList(lane);}
  });
 }
 function openJob(id){
@@ -3152,7 +3231,7 @@ function openJob(id){
  $('jobDetailText').textContent=j.fit_note||'No additional fit notes are saved for this role.';
  $('jobApply').disabled=!j.apply_url;
  const applied=hasAppliedForJob(j);
- $('jobApply').textContent=applied?'Open':'Apply';
+ $('jobApply').textContent='Apply';
  $('jobApply').classList.remove('opened');
  $('jobResume').disabled=false;
  $('jobResume').textContent=matchedResumeForJob(j)?'View / Edit Tailored Résumé':'Tailor My Résumé';
@@ -3194,14 +3273,8 @@ $('jobResume').onclick=async()=>{
 };
 $('jobApply').onclick=async()=>{
  const j=state.jobs.find(x=>x.id===activeJobId);if(!j)return;
- if(j.apply_url) window.open(j.apply_url,'_blank','noopener');
- const now=new Date().toISOString();
- const {error}=await supabase.from('kay_jobs').update({apply_opened_at:now,updated_at:now}).eq('id',j.id);
- if(error)return alert(error.message);
- j.apply_opened_at=now;
- await logJobAction(j,`Opened application page for ${j.title} at ${j.employer}; status not changed until Kay confirms Mark applied.`);
- openJob(j.id);
- renderJobList(currentJobLane);
+ try{await visitJobPosting(j);openJob(j.id);}
+ catch(e){alert('Could not record Viewed status: '+(e.message||e));}
 };
 $('jobMarkApplied').onclick=async()=>{
  const j=state.jobs.find(x=>x.id===activeJobId);if(!j)return;
