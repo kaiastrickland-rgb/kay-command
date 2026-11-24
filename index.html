@@ -631,6 +631,33 @@ body.resumeTileOpen{overflow:hidden}
 .resumeTileDismiss{position:absolute!important;top:14px!important;right:14px!important;left:auto!important;float:none!important;margin:0!important}
 .resumeTile.resumeTileExpanded{padding-top:70px!important}
 @media(max-width:620px){.resumeTile.resumeTileExpanded{padding-top:64px!important}}
+
+/* Card controls: click the card for a large pop-up; use only a small caret to collapse. */
+.cardExpandBtn{display:none!important}
+.cardCollapseCaret{border:0!important;background:transparent!important;color:#9adbee!important;font-size:23px!important;font-weight:700;line-height:1;padding:5px 10px!important;border-radius:8px;cursor:pointer;flex-shrink:0;margin-left:auto}
+.cardCollapseCaret:hover,.cardCollapseCaret:focus-visible{background:#173947!important;outline:2px solid #3389a6}
+.card.cardCollapsed{height:auto!important;max-height:none!important;min-height:0!important;overflow:hidden!important}
+.card.cardCollapsed>:not(.cardHeader){display:none!important}
+.card.cardCollapsed>.cardHeader{padding-top:12px!important;padding-bottom:12px!important;position:relative!important}
+.card.cardCollapsed .cardCollapseCaret{transform:none}
+.card.cardExpanded .cardCollapseCaret{z-index:8;font-size:20px!important}
+@media(max-width:620px){.cardCollapseCaret{font-size:21px!important;padding:6px 9px!important}}
+/* Job actions: uniform widths and horizontal arrangement; separate tailoring action. */
+.jobActionColumn{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap;min-width:180px}
+.jobActionColumn button{width:110px;min-height:40px;flex:0 0 110px;white-space:normal!important;text-align:center}
+.jobTailorRow{display:flex;justify-content:flex-end;margin-top:10px;gap:9px}
+.jobTailorRow button{width:228px;max-width:100%;min-height:40px}
+.jobActionColumn .jobStatus{width:100%;text-align:right}
+.jobItem .jobTop>div:first-child{flex:1;min-width:0}
+.jobItem .inlineResume[disabled]{opacity:1}
+.jobDetailsActions{display:flex!important;justify-content:flex-end;align-items:center;gap:10px;flex-wrap:wrap}
+.jobDetailsActions>button{width:150px;min-height:42px;flex:0 0 150px}
+.jobDetailsActions .jobTailorBtn{width:230px;flex-basis:230px}
+.jobRequirementBox{margin-top:12px;padding:11px;border:1px solid #2c5264;border-radius:12px;background:#081922}
+.jobRequirementBox summary{font-size:12px;color:#bde7f2;cursor:pointer;font-weight:850}
+.jobRequirementBox textarea{display:block;width:100%;min-height:100px;margin-top:9px;border:1px solid #33566b;background:#07131b;color:#f1f9fc;padding:10px;border-radius:10px}
+@media(max-width:700px){.jobTop{flex-direction:column}.jobActionColumn{justify-content:flex-start;width:100%}.jobActionColumn .jobStatus{width:auto;text-align:left;margin-right:auto}.jobTailorRow{justify-content:flex-start}.jobDetailsActions>button{width:calc(50% - 5px);flex:1 1 145px}}
+
 </style>
 </head>
 <body>
@@ -3157,51 +3184,61 @@ supabase.auth.onAuthStateChange((event,session)=>{
 });
 
 /* Click a card or its expand control to use the large pop-up without cloning its live controls. */
-let expandedDashboardCard=null, expandedDashboardReturnFocus=null, expandedDashboardScroll=0;
+let expandedDashboardCard=null, expandedDashboardScroll=0;
 function closeDashboardCard(){
  if(!expandedDashboardCard)return;
- const card=expandedDashboardCard;
+ const card=expandedDashboardCard;expandedDashboardCard=null;
  card.classList.remove('cardExpanded');
- const toggle=card.querySelector(':scope > .cardHeader .cardExpandBtn');
- if(toggle){toggle.textContent='↗ Enlarge';toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-label','Expand '+(card.querySelector('.cardTitle')?.textContent||'card'));}
  document.body.classList.remove('cardExpansionOpen');
- expandedDashboardCard=null;
+ const caret=card.querySelector(':scope > .cardHeader .cardCollapseCaret');
+ if(caret){caret.textContent='⌃';caret.setAttribute('aria-label','Collapse card');caret.setAttribute('aria-expanded','true');}
  if(card.id==='resumeVaultPanel')renderResumeVault();
  window.scrollTo(0,expandedDashboardScroll);
- if(expandedDashboardReturnFocus?.isConnected)expandedDashboardReturnFocus.focus({preventScroll:true});
+ caret?.focus({preventScroll:true});
 }
 function expandDashboardCard(card){
- if(!card)return;
+ if(!card||card.classList.contains('cardCollapsed'))return;
  if(expandedDashboardCard===card){closeDashboardCard();return;}
  if(expandedDashboardCard)closeDashboardCard();
- expandedDashboardScroll=window.scrollY;
- expandedDashboardReturnFocus=card.querySelector(':scope > .cardHeader .cardExpandBtn');
- expandedDashboardCard=card;
+ expandedDashboardScroll=window.scrollY;expandedDashboardCard=card;
  card.classList.add('cardExpanded');
  document.body.classList.add('cardExpansionOpen');
- const toggle=expandedDashboardReturnFocus;
- if(toggle){toggle.textContent='↙ Close';toggle.setAttribute('aria-expanded','true');toggle.setAttribute('aria-label','Close enlarged card');toggle.focus({preventScroll:true});}
+ const caret=card.querySelector(':scope > .cardHeader .cardCollapseCaret');
+ if(caret){caret.textContent='✕';caret.setAttribute('aria-label','Close enlarged card');caret.focus({preventScroll:true});}
  card.scrollTop=0;
  if(card.id==='resumeVaultPanel')renderResumeVault();
 }
 function installDashboardCardExpansion(){
  document.querySelectorAll('main .card').forEach(card=>{
   const header=card.querySelector(':scope > .cardHeader');
-  if(!header||header.querySelector('.cardExpandBtn'))return;
-  const btn=document.createElement('button');
-  btn.type='button';btn.className='cardExpandBtn';btn.textContent='↗ Enlarge';
-  btn.setAttribute('aria-expanded','false');
-  btn.setAttribute('aria-label','Expand '+(card.querySelector('.cardTitle')?.textContent||'dashboard card'));
-  header.appendChild(btn);
-  btn.addEventListener('click',e=>{e.stopPropagation();expandDashboardCard(card);});
+  if(!header)return;
+  header.querySelectorAll('.cardExpandBtn').forEach(x=>x.remove());
+  if(header.querySelector('.cardCollapseCaret'))return;
+  const caret=document.createElement('button');
+  caret.type='button';caret.className='cardCollapseCaret';caret.textContent='⌃';
+  caret.setAttribute('aria-label','Collapse '+(card.querySelector('.cardTitle')?.textContent||'card'));
+  caret.setAttribute('aria-expanded','true');
+  caret.title='Collapse or expand card';
+  header.appendChild(caret);
+  caret.addEventListener('click',e=>{
+   e.stopPropagation();
+   if(expandedDashboardCard===card){closeDashboardCard();return;}
+   const collapsed=card.classList.toggle('cardCollapsed');
+   caret.textContent=collapsed?'⌄':'⌃';
+   caret.setAttribute('aria-expanded',String(!collapsed));
+   caret.setAttribute('aria-label',(collapsed?'Expand ':'Collapse ')+(card.querySelector('.cardTitle')?.textContent||'card'));
+  });
   card.addEventListener('click',e=>{
-   if(expandedDashboardCard||card.id==='moneySnapshotCard')return;
-   if(e.target.closest('button,a,input,select,textarea,[role="button"],[contenteditable],.actionRow,.careerRow,.jobItem,.projectRowClickable,.financePayRow,.emailRow,.bflDay'))return;
+   if(expandedDashboardCard||card.classList.contains('cardCollapsed')||card.id==='moneySnapshotCard')return;
+   if(e.target.closest('button,a,input,select,textarea,summary,[role="button"],[contenteditable],.actionRow,.careerRow,.jobItem,.projectRowClickable,.financePayRow,.emailRow,.bflDay,.resumeTile'))return;
    expandDashboardCard(card);
   });
  });
  document.addEventListener('keydown',e=>{
   if(e.key==='Escape'&&expandedDashboardCard&&!document.querySelector('.modal.show')){e.preventDefault();closeDashboardCard();}
+ });
+ document.addEventListener('click',e=>{
+  if(expandedDashboardCard&&!expandedDashboardCard.contains(e.target)&&!e.target.closest('.modal.show,.resumeTileExpanded'))closeDashboardCard();
  });
 }
 installDashboardCardExpansion();
