@@ -626,6 +626,11 @@ body.resumeTileOpen{overflow:hidden}
  .resumeTileDismiss{margin:-48px -5px 6px 0}
 }
 
+
+/* Place the résumé close control INSIDE the floating document panel. */
+.resumeTileDismiss{position:absolute!important;top:14px!important;right:14px!important;left:auto!important;float:none!important;margin:0!important}
+.resumeTile.resumeTileExpanded{padding-top:70px!important}
+@media(max-width:620px){.resumeTile.resumeTileExpanded{padding-top:64px!important}}
 </style>
 </head>
 <body>
@@ -1324,7 +1329,7 @@ $('resumeVaultBody').addEventListener('keydown',e=>{
  if((e.target.matches('[data-vault-job]')||e.target.matches('.resumeTile'))&&(e.key==='Enter'||e.key===' ')){e.preventDefault();expandResumeTile(e.target);}
 });
 $('resumeVaultSearch').addEventListener('input',e=>{resumeVaultSearchTerm=e.target.value.trim();renderResumeVault();});
-$('resumeVaultViewAll').onclick=()=>expandDashboardCard($('resumeVaultPanel'));
+$('resumeVaultViewAll').onclick=()=>{if(expandedDashboardCard!==$('resumeVaultPanel'))expandDashboardCard($('resumeVaultPanel'));};
 $('resumeMasterUpload').onclick=()=>$('resumeMasterFile').click();
 $('resumeMasterFile').onchange=async e=>{
  const file=e.target.files?.[0];e.target.value='';if(!file)return;
