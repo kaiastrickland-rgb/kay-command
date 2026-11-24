@@ -1708,6 +1708,7 @@ function startRealtimeSync(){
    'kay_source_status',
    'kay_tasks',
    'kay_jobs',
+   'kay_resume_documents',
    'kay_finance_account_snapshot',
    'kay_finance_alerts',
    'kay_briefs'
@@ -3004,10 +3005,13 @@ function openJobLane(lane){
  $('jobDetail').style.display='none';$('jobList').style.display='flex';
  renderJobList(lane);$('jobModal').classList.add('show');
 }
+function hasAppliedForJob(j){
+ return Boolean(j?.applied_at)||/^(applied|interview|assessment|offer|recruiter submission)$/i.test(String(j?.status||''));
+}
 function renderJobList(lane){
  const jobs=jobsForLane(lane);
  $('jobList').innerHTML=jobs.length?jobs.map(j=>{
-  const applied=/^applied$/i.test(String(j.status||''));
+  const applied=hasAppliedForJob(j);
   const saved=matchedResumeForJob(j);
   const held=j.keep_in_lane_until_next_scan===true;
   return `<div class="jobItem ${applied&&held?'appliedHold':''}" data-job="${esc(j.id)}">
@@ -3061,7 +3065,7 @@ function openJob(id){
  $('jobDetailMeta').textContent=[j.employer,j.category,j.lane,j.location,j.work_arrangement,j.compensation,j.status].filter(Boolean).join(' · ');
  $('jobDetailText').textContent=j.fit_note||'No additional fit notes are saved for this role.';
  $('jobApply').disabled=!j.apply_url;
- const applied=/^applied$/i.test(String(j.status||''));
+ const applied=hasAppliedForJob(j);
  $('jobApply').textContent=applied?'Open':'Apply';
  $('jobApply').classList.remove('opened');
  $('jobResume').disabled=false;
