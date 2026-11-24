@@ -690,6 +690,16 @@ body.resumeTileOpen{overflow:hidden}
 .resumeEditColumn textarea{width:100%;flex:1;min-height:200px;background:#08151e;border:1px solid #35617a;border-radius:11px;color:white;padding:15px;line-height:1.5;resize:none;font-size:13px}
 @media(max-width:750px){.resumeEditorBox{width:97vw;height:94dvh;max-height:94dvh;padding:12px}.resumeEditorPanels.editing{grid-template-columns:1fr;grid-template-rows:1fr 1fr}.resumePaperScroll{padding:8px}.resumeDocThumb{width:96px;min-width:96px;height:130px}.resumeEditorToolbar button{min-width:0;flex:1 1 42%;font-size:12px}}
 
+
+#jobModal .modalBox{width:min(1080px,97vw);max-height:92dvh}
+#jobModal .jobList{gap:12px}
+.jobItem .jobTop{align-items:flex-start}
+.jobItem .jobTailorRow{margin-top:10px}
+.jobItem .jobActionColumn button{width:108px}
+.jobItem .jobActionColumn .jobStatus{color:#bce3ef}
+.jobDetailsActions #jobResume{border-color:#8c78d0}
+.jobActionColumn button[disabled]{opacity:.48}
+
 </style>
 </head>
 <body>
@@ -976,17 +986,22 @@ body.resumeTileOpen{overflow:hidden}
  <div class="modalBox">
   <div class="modalTop"><div><div class="sectionLabel">CAREER COMMAND</div><div id="jobModalTitle" class="modalTitle">Jobs</div></div><button id="jobClose" class="btn">✕</button></div>
   <div id="jobModalMeta" class="modalMeta"></div>
-  <div style="padding:8px 0"><button id="resumeBulkImport" class="btn">Import tailored résumés ↑</button><input id="resumeBulkFiles" type="file" accept=".zip,.docx,.doc,.pdf" multiple style="display:none"><span class="cardSub">Import the Kay Command ZIP or select individual files; names match each job.</span></div><div id="jobList" class="jobList"></div>
+  <div id="jobList" class="jobList"></div>
   <div id="jobDetail" style="display:none">
     <div id="jobDetailTitle" class="modalTitle"></div>
     <div id="jobDetailMeta" class="modalMeta"></div>
     <div id="jobDetailText" class="modalDetails"></div>
-    <div class="jobActions">
-      <button id="jobBack" class="btn">← Back to jobs</button>
-      <button id="jobApply" class="btn primary">Apply</button>
-      <button id="jobResume" class="btn inlineResume">Tailored résumé</button><button id="jobResumeUpload" class="btn">Upload résumé ↑</button><input id="jobResumeFile" type="file" accept=".docx,.doc,.pdf" style="display:none">
-      <button id="jobMarkApplied" class="btn">Mark applied</button>
+    <div class="jobActions jobDetailsActions">
+      <button id="jobBack" class="btn" type="button">← Back to jobs</button>
+      <button id="jobApply" class="btn primary" type="button">Apply</button>
+      <button id="jobMarkApplied" class="btn" type="button">I Applied ✓</button>
+      <button id="jobResume" class="btn inlineResume jobTailorBtn" type="button">Tailor My Résumé</button>
     </div>
+    <details class="jobRequirementBox"><summary>Job requirements used to tailor my résumé</summary>
+      <div class="cardSub" style="margin-top:7px">Paste the full requirements for a stronger ATS match. Otherwise, the draft uses the role title and saved fit notes.</div>
+      <textarea id="jobRequirementText" placeholder="Paste job description and requirements here…"></textarea>
+    </details>
+    <div id="jobTailorMsg" class="cardSub" role="status" style="padding:8px 0"></div>
     <div class="jobStatusEditor">
       <label for="jobStatusSelect">Update job status</label>
       <div class="jobStatusEditorRow">
