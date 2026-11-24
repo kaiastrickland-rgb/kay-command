@@ -50,7 +50,7 @@ function parse(text) {
    continue;
   }
   if(section==="EXECUTIVE COMPETENCIES"||section==="CORE COMPETENCIES"){
-   if(SKILL_GROUPS.has(line)){flush();skillGroup={label:line,items:[]};data.competencies.push(skillGroup);continue;}
+   if(SKILL_GROUPS.has(line) && !(line==="Leadership"&&/Change\s*$/.test(buffer))){flush();skillGroup={label:line,items:[]};data.competencies.push(skillGroup);continue;}
    if(!skillGroup){skillGroup={label:"Executive Capabilities",items:[]};data.competencies.push(skillGroup);}
    buffer+=(buffer?" ":"")+line;continue;
   }
