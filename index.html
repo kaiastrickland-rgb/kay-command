@@ -700,6 +700,44 @@ body.resumeTileOpen{overflow:hidden}
 .jobDetailsActions #jobResume{border-color:#8c78d0}
 .jobActionColumn button[disabled]{opacity:.48}
 
+
+/* Executive résumé preview and Word export follow the same semantic section hierarchy */
+.resumeEditorToolbar{gap:9px;margin-top:14px;margin-bottom:6px;align-items:center}
+.resumeEditorToolbar .btn{height:43px!important;min-height:43px!important;min-width:160px!important;padding:10px 16px!important;border-radius:10px!important;font-size:13px!important;font-weight:800;flex:0 1 175px;line-height:1.2!important;white-space:nowrap}
+.resumeEditorToolbar #resumeApprove{border:1px solid #286d59!important;color:#c5f9e6;background:#10332d}
+.resumeEditorToolbar #resumeDownload{border:1px solid #477b9a!important;background:#123043;color:#def5ff}
+.resumeEditorToolbar #resumeEdit{border:1px solid #477b9a!important;background:#133247;color:#e7f3fa}
+.resumeEditorToolbar #resumeSave{border:1px solid #477b9a!important;background:#075c92;color:#fff}
+.resumeEditorBox{width:min(1170px,96vw);height:min(94dvh,1010px);max-height:94dvh;padding:22px}
+.resumePagePaper{width:min(100%,815px);min-height:100%;padding:clamp(20px,4.4vw,56px);font-family:Arial,Helvetica,sans-serif;font-size:12.4px;line-height:1.42;box-sizing:border-box}
+.resumePagePaper .xrPaper{color:#253443}
+.resumePagePaper .xrHeader{text-align:center;border-bottom:2px solid #214f70;padding-bottom:12px;margin-bottom:16px}
+.resumePagePaper .xrHeader h1{font-size:27px;text-transform:uppercase;letter-spacing:.07em;color:#173d58;line-height:1.15;margin:0 0 6px;font-weight:850}
+.resumePagePaper .xrContact{font-size:11px;color:#4f606d;margin:0 0 7px}
+.resumePagePaper .xrHeadline{font-size:11px;line-height:1.35;color:#245a79;font-weight:750;letter-spacing:.035em;margin:0}
+.resumePagePaper .xrSection{margin:0 0 17px}
+.resumePagePaper .xrSection h2{font-size:12px;letter-spacing:.07em;color:#173d58;font-weight:850;border-bottom:1px solid #92b5c8;padding-bottom:5px;margin:0 0 9px}
+.resumePagePaper .xrSummary{margin:0;text-align:left;line-height:1.52}
+.resumePagePaper .xrBullets{padding:0 0 0 18px;margin:5px 0 0}
+.resumePagePaper .xrBullets li{margin:0 0 5px;padding-left:2px;line-height:1.44}
+.resumePagePaper .xrSkillRow{display:grid;grid-template-columns:minmax(155px,30%) minmax(0,1fr);gap:15px;align-items:start;padding:3px 0 6px;border-bottom:1px solid #eef1f4}
+.resumePagePaper .xrSkillLabel{font-weight:800;color:#1b4762;font-size:11.5px}
+.resumePagePaper .xrSkillValues{color:#334653;line-height:1.45}
+.resumePagePaper .xrJob{margin:0 0 13px;break-inside:avoid-page}
+.resumePagePaper .xrJobHead{display:flex;gap:14px;align-items:baseline;justify-content:space-between;flex-wrap:wrap;margin-bottom:2px}
+.resumePagePaper .xrJobHead strong{font-size:13px;color:#153d57;font-weight:900}
+.resumePagePaper .xrDates{font-size:11px;white-space:nowrap;color:#465968;font-weight:700}
+.resumePagePaper .xrRole{font-size:12px;color:#345b76;font-weight:750;margin:0 0 6px}
+.resumePagePaper .xrEdu{margin:0 0 4px}
+.resumeAnalysis{padding:5px 0 11px;font-size:12px;color:#c8dce8}
+.resumeAnalysis details{border:1px solid #34586a;border-radius:10px;padding:10px 13px;background:#0c202b}
+.resumeAnalysis summary{cursor:pointer;font-size:12px;color:#cfecf6}
+.resumeAnalysisGrid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:12px}
+.resumeAnalysisGrid ul{padding-left:17px}
+.resumeAnalysisGrid li{margin:5px 0}
+.resumeAnalysis p{font-size:11px;opacity:.8}
+@media(max-width:760px){.resumeEditorToolbar .btn{flex:1 1 calc(50% - 8px);min-width:0!important;font-size:11px!important}.resumePagePaper{padding:18px;font-size:11px}.resumePagePaper .xrHeader h1{font-size:22px}.resumePagePaper .xrSkillRow{display:block}.resumePagePaper .xrSkillLabel{margin-bottom:3px}.resumeAnalysisGrid{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -1047,6 +1085,7 @@ body.resumeTileOpen{overflow:hidden}
       <button id="resumeDownload" class="btn" type="button">⬇ Download Word</button>
     </div>
     <div id="resumeEditorStatus" class="resumeVaultStatus" role="status"></div>
+    <div id="resumeTailoringAnalysis" class="resumeAnalysis" hidden></div>
     <div id="resumeEditorPanels" class="resumeEditorPanels">
       <div class="resumePaperScroll"><div id="resumeEditorPaper" class="resumePagePaper"></div></div>
       <div class="resumeEditColumn" id="resumeEditColumn" hidden>
@@ -1242,6 +1281,7 @@ body.resumeTileOpen{overflow:hidden}
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://unpkg.com/docx@9/dist/index.iife.js"></script>
+<script src="/resume-engine.js"></script>
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
 const SUPABASE_URL='https://najlvczgxwvqjvpvfzji.supabase.co', SUPABASE_KEY='sb_publishable_4S9mvRol3OhFYpADykEGDw_MP-IhaZu';
@@ -1324,39 +1364,12 @@ const esc=(v='')=>String(v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'
 
 /* Kay Résumés: actual saved document contents, not one filename per job. */
 let activeResumeId=null, resumeEditorDirty=false, resumeIsEditing=false, resumeVaultSearchTerm='';
-function resumeLines(text){return String(text||'').replace(/\r/g,'').split('\n').map(x=>x.replace(/[\uF0B7\u2022\uF0A7]/g,'•'));}
-function resumeIsHeading(text){const s=String(text||'').trim();return !!s&&s.length<85&&/[A-Z]{3}/.test(s)&&s===s.toUpperCase()&&!s.includes('@')&&!/^\d/.test(s)&&!/^[•-]/.test(s);}
+function resumeLines(text){return String(text||'').replace(/\r/g,'').split('\n').map(x=>x.replace(/\uF0B7/g,'•'));}
 function renderResumePaper(text){
- const lines=resumeLines(text);let first=true;
- return lines.map((line,i)=>{
-  const v=line.trim();if(!v)return '<div style="height:7px"></div>';
-  const cls=i===0?'resumePaperName':i===1?'resumePaperContact':resumeIsHeading(v)?'resumePaperHeading':/^[•\uF0B7*-]/.test(v)?'resumePaperLine resumePaperBullet':'resumePaperLine';
-  return '<div class="'+cls+'">'+esc(v.replace(/^[\uF0B7]/,'•'))+'</div>';
- }).join('');
+ return window.KayResumeEngine.render(text);
 }
-/* The card image is rasterized from the REAL current document text (first-page thumbnail). */
 function resumeThumbnail(text){
- const c=document.createElement('canvas');c.width=560;c.height=740;
- const cx=c.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,560,740);
- cx.fillStyle='#1d3141';cx.strokeStyle='#a2b9c7';cx.lineWidth=2;
- const lines=resumeLines(text);let y=50;
- for(let i=0;i<lines.length&&y<690;i++){
-  let line=lines[i].trim();if(!line){y+=9;continue;}
-  const title=i===0,heading=resumeIsHeading(line);
-  cx.font=title?'bold 28px Arial':heading?'bold 17px Arial':'14px Arial';
-  cx.fillStyle=title?'#12354b':heading?'#0b587e':'#243848';
-  let words=line.split(/\s+/),current='';
-  const maxW=470;
-  for(const word of words){
-   const next=current?current+' '+word:word;
-   if(cx.measureText(next).width>maxW&&current){cx.fillText(current,44,y);y+=heading?24:21;current=word;if(y>690)break;}else current=next;
-  }
-  if(y>690)break;
-  if(current){cx.fillText(current,44,y);y+=title?37:heading?28:21;}
-  if(heading){cx.beginPath();cx.moveTo(44,y-11);cx.lineTo(516,y-11);cx.stroke();}
- }
- cx.fillStyle='#a3b2bc';cx.font='12px Arial';cx.fillText('Document content preview · saved résumé',44,718);
- return c.toDataURL('image/jpeg',.79);
+ return window.KayResumeEngine.thumbnail(text);
 }
 function currentResumeDoc(){return state.resumeDocs.find(d=>d.id===activeResumeId)||null;}
 function renderResumeVault(){
@@ -1376,18 +1389,32 @@ function renderResumeVault(){
  '<div><button class="btn" data-open-doc="'+esc(d.id)+'" type="button">Preview · Edit · Download</button></div></div></article>').join('')+
  (!expanded&&docs.length>visible.length?'<div class="resumeVaultFooter">+'+(docs.length-visible.length)+' more documents · tap the card to view all.</div>':'');
 }
+function renderResumeAnalysis(doc){
+ const el=$('resumeTailoringAnalysis');if(!el)return;
+ const job=state.jobs.find(j=>String(j.id)===String(doc?.linked_job_id));
+ if(!job){el.hidden=true;el.innerHTML='';return;}
+ const master=state.resumeDocs.find(x=>x.kind==='master');
+ const report=window.KayResumeEngine.analyze(master?.content_text||doc.content_text,job);
+ el.hidden=false;
+ const matches=report.matched.map(x=>'<li>'+esc(x)+'</li>').join('')||'<li>Not enough verified evidence to score yet</li>';
+ const gaps=report.gaps.map(x=>'<li>'+esc(x)+'</li>').join('')||'<li>No specific gaps identified in saved requirements</li>';
+ el.innerHTML='<details><summary><strong>Job-fit analysis</strong> · '+(report.hasFullRequirements?'Job requirements available':'Full job requirements not saved')+' · Click to review</summary>'+
+ '<div class="resumeAnalysisGrid"><div><b>Documented strengths</b><ul>'+matches+'</ul></div><div><b>Gaps / check before applying</b><ul>'+gaps+'</ul></div></div>'+
+ '<p>This is a fit review, not text that belongs on your résumé. The résumé uses only documented experience.</p></details>';
+}
 function openResumeEditor(id){
  const d=state.resumeDocs.find(x=>String(x.id)===String(id));if(!d)return;
  if(activeResumeId&&activeResumeId!==d.id&&resumeEditorDirty){if(!confirm('Discard unsaved changes?'))return;}
  activeResumeId=d.id;resumeEditorDirty=false;resumeIsEditing=false;
  $('resumeEditorTitle').textContent=d.title;
  $('resumeEditorMeta').textContent=(d.target_role||d.employer||'')+' · '+d.status+' · Revision '+d.revision;
- $('resumeEditText').value=d.content_text||'';
+ $('resumeEditText').value=window.KayResumeEngine.serialize(window.KayResumeEngine.parse(d.content_text||''));
  $('resumeEditorPaper').innerHTML=renderResumePaper(d.content_text);
+ renderResumeAnalysis(d);
  $('resumeEditorPanels').classList.remove('editing');
  $('resumeEditColumn').hidden=true;$('resumeSave').hidden=true;
  $('resumeEdit').textContent='✏ Edit';
- $('resumeEditorStatus').textContent='This is the saved document. Edits and approval are stored in Kay Command for your other devices.';
+ $('resumeEditorStatus').textContent='Structured executive résumé preview. Changes are saved centrally; review the content before approval.';
  $('resumeEditorModal').classList.add('show');
 }
 function closeResumeEditor(){
@@ -1450,57 +1477,20 @@ $('resumeApprove').onclick=async()=>{
  finally{b.disabled=false;}
 };
 async function downloadResumeDoc(doc){
- if(resumeEditorDirty)throw Error('Save your edits before downloading, so the file matches the saved résumé.');
- if(!window.docx?.Document||!window.docx?.Packer)throw Error('Word file generator is not loaded. Check your connection and try again.');
- const lib=window.docx;
- const lines=resumeLines(doc.content_text);
- const children=lines.map((line,i)=>{
-  const t=line.trim(),heading=resumeIsHeading(t);
-  const bullet=/^[•\uF0B7]/.test(t);
-  return new lib.Paragraph({
-   children:[new lib.TextRun({text:bullet?t.replace(/^[•\uF0B7]\s*/,''):t,bold:i===0||heading,
-     size:i===0?28:heading?22:19,color:i===0||heading?'173951':'233747'})],
-   alignment:i<2?lib.AlignmentType.CENTER:lib.AlignmentType.LEFT,
-   bullet:bullet?{level:0}:undefined,
-   spacing:{after:i===0?80:heading?95:line.trim()?35:75},
-   keepWithNext:heading
-  });
- });
- const word=new lib.Document({sections:[{properties:{page:{margin:{top:900,right:900,bottom:900,left:900}}},children}]});
- const blob=await lib.Packer.toBlob(word);
+ if(resumeEditorDirty)throw Error('Save your edits before downloading, so the Word file matches your reviewed résumé.');
  const label=String(doc.title||'Resume').replace(/[^a-z0-9-_ ]/gi,'').replace(/\s+/g,'_');
- const filename='Kaia_Strickland_'+label+'.docx';
- const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),20000);
- return filename;
+ return await window.KayResumeEngine.toWord(doc.content_text,'Kaia_Strickland_'+label+'.docx');
 }
 $('resumeDownload').onclick=async()=>{
  const d=currentResumeDoc();if(!d)return;
  $('resumeDownload').disabled=true;
- try{const name=await downloadResumeDoc(d);$('resumeEditorStatus').textContent='Downloaded '+name+' · generated from your saved résumé content.';}
+ try{const name=await downloadResumeDoc(d);$('resumeEditorStatus').textContent='Downloaded '+name+' with the same sections, hierarchy, and job headings as the preview.';}
  catch(e){$('resumeEditorStatus').textContent='Download failed: '+(e.message||e);}
  finally{$('resumeDownload').disabled=false;}
 };
 function matchedResumeForJob(j){return(state.resumeDocs||[]).find(d=>String(d.linked_job_id)===String(j.id))||null;}
 function buildJobTailoredResume(master,job){
- const role=String(job.title||'Position').trim(),description=[job.title,job.job_description||job.fit_note||''].join('\n');
- const ignore=new Set(['with','from','that','this','their','your','will','have','ability','experience','years','company','work','working','strong','skills','role','team','teams','job','required','preferred','qualified','the','and','for','are','into','you','our','within','across','business','program','project']);
- const tokens=Array.from(new Set((description.toLowerCase().match(/[a-z]{4,}/g)||[]).filter(w=>!ignore.has(w))));
- const src=String(master.content_text||'');
- const bullets=resumeLines(src).filter(line=>/^[•\uF0B7]/.test(line.trim()));
- const ranked=bullets.map(line=>{
-   const low=line.toLowerCase(),score=tokens.reduce((n,w)=>n+(low.includes(w)?1:0),0);
-   return {line,score};
- }).sort((a,b)=>b.score-a.score);
- const chosen=ranked.filter(x=>x.score>0).slice(0,5).map(x=>x.line);
- if(!chosen.length)chosen.push(...bullets.slice(0,4));
- const heading='JOB-ALIGNED EXPERIENCE FOR '+role.toUpperCase();
- const block=heading+'\n'+chosen.join('\n')+'\n';
- const found=src.match(/EXECUTIVE IMPACT\s*\n[\s\S]*?(?=EXECUTIVE SUMMARY)/);
- let result=found?src.replace(found[0],block+'\n'):src.slice(0,200)+'\n'+block+'\n'+src.slice(200);
- const parts=result.split('\n');
- parts.splice(2,0,'TARGET APPLICATION: '+role+' | '+String(job.employer||'').trim());
- result=parts.join('\n');
- return {content:result,usedFullRequirements:!!String(job.job_description||'').trim(),matched:chosen.length};
+ return window.KayResumeEngine.align(master.content_text,job);
 }
 async function tailorResumeForJob(job){
  if(!job)return;
@@ -1517,15 +1507,15 @@ async function tailorResumeForJob(job){
  const payload={user_id:state.user.id,kind:'tailored',title:label,
    employer:job.employer||null,target_role:job.title,linked_job_id:job.id,
    source_filename:'Kaia_Strickland_'+String(job.title||'Role').replace(/[^a-z0-9_ ]/gi,'').replace(/\s+/g,'_')+'.docx',
-   content_text:result.content,status:'Ready for Review',revision:1};
+   content_text:result.content,tailoring_analysis:result.analysis,tailoring_method:'structured_first_pass',status:'Ready for Review',revision:1};
  const {data,error}=await supabase.from('kay_resume_documents').insert(payload).select('*').single();
  if(error)throw error;
  state.resumeDocs.unshift(data);
  renderResumeVault();
  openResumeEditor(data.id);
- $('resumeEditorStatus').textContent=result.usedFullRequirements
-   ?'ATS-aligned review draft created from your master and the saved job requirements. Only real experience was used. Please review and approve.'
-   :'Draft created using the job title and saved fit notes, NOT the full job requirements. For a stronger ATS match, add the full requirements in Job Details and tailor again.';
+ $('resumeEditorStatus').textContent=result.analysis.hasFullRequirements
+   ?'Document-wide, evidence-based first-pass alignment. Review the fit analysis and every experience bullet before approving.'
+   :'This is only a first-pass match from the saved role notes, not full AI tailoring. Add the complete job requirements for a thorough review.';
 }
 
 const fmtDate=v=>{if(!v)return '—';const d=new Date(v+'T12:00:00');return d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})};
