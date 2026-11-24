@@ -557,6 +557,31 @@ body.cardExpansionOpen{overflow:hidden}
 .card.cardExpanded .pleasureGrid{max-width:1380px}
 .card.cardExpanded .systemGrid{max-height:none!important}
 @media(max-width:600px){.card.cardExpanded>.cardHeader{padding:12px;gap:8px}.card.cardExpanded .cardTitle{font-size:18px}.cardExpandBtn{font-size:10px;padding:8px}}
+
+/* Resume Vault: the master and each tailored file have a visible, honest status. */
+.resumeVaultPanel{grid-column:span 12;min-height:320px}
+.resumeVaultToolbar{display:flex;flex-wrap:wrap;align-items:center;gap:9px;padding:0 20px 10px}
+.resumeVaultSearch{display:none;min-width:200px;flex:1;background:#07151e;border:1px solid #2b5265;border-radius:10px;padding:11px;color:var(--text)}
+.cardExpanded .resumeVaultSearch{display:block}
+.resumeVaultStatus{font-size:12px;color:#b7cbd6;padding:2px 20px 12px;line-height:1.4}
+.resumeVaultGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;padding:0 20px 16px}
+.resumeTile{display:grid;grid-template-columns:minmax(0,1fr) 94px;gap:12px;align-items:stretch;border:1px solid #2b4e60;border-radius:15px;background:#0a1a24;padding:15px;min-width:0;cursor:pointer}
+.resumeTile:hover,.resumeTile:focus-within{border-color:var(--cyan)}
+.resumeTileTitle{font-size:16px;font-weight:900;line-height:1.27;overflow-wrap:anywhere}
+.resumeTileMeta{font-size:11px;color:#a7bbc7;margin-top:7px;line-height:1.4;overflow-wrap:anywhere}
+.resumeTileStatus{font-size:10px;font-weight:900;color:#ffcf83;margin-top:8px}
+.resumeTileStatus.ready{color:var(--green)}
+.resumeTileButtons{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
+.resumeTileButtons button{font-size:10px;border-radius:8px;padding:8px 10px}
+.resumeDocArt{border:1px solid #41687c;border-radius:12px;background:linear-gradient(140deg,#164053,#0c2636);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;text-align:center;padding:8px;min-height:116px}
+.resumeDocArt .resumeDocIcon{font-size:29px;line-height:1}
+.resumeDocArt .resumeDocType{font-size:10px;font-weight:900;letter-spacing:.08em;color:#c8edfb}
+.resumeDocArt .resumeDocState{font-size:9px;color:#b5c7d1;overflow-wrap:anywhere}
+.resumeVaultFooter{font-size:11px;color:var(--muted);padding:0 20px 16px;line-height:1.4}
+.cardExpanded .resumeVaultGrid{grid-template-columns:repeat(auto-fit,minmax(330px,1fr))}
+.cardExpanded .resumeVaultStatus{padding-top:5px}
+@media(max-width:620px){.resumeVaultToolbar{padding:0 12px 12px}.resumeVaultGrid{grid-template-columns:1fr!important;padding:0 12px 12px}.resumeVaultStatus{padding:0 12px 12px}.resumeVaultFooter{padding:0 12px 12px}.resumeTile{grid-template-columns:minmax(0,1fr) 82px;padding:11px}}
+
 </style>
 </head>
 <body>
@@ -674,6 +699,25 @@ body.cardExpansionOpen{overflow:hidden}
         <div class="kpi" id="careerAppsCard" role="button" tabindex="0" style="cursor:pointer"><strong id="careerApps">—</strong><span>Applications / recruiter<br><span class="cardSub">Tap to open</span></span></div>
       </div>
       <div id="careerRows" class="careerBody scroll"><div class="careerCategoryNote">Every non-closed job is available below. Industry views retain Strategic Move and Immediate Income roles.</div></div>
+    </section>
+
+
+    <section id="resumeVaultPanel" class="card resumeVaultPanel">
+      <div class="cardHeader">
+        <div><div class="cardTitle">📄 My Résumé Vault</div><div class="cardSub">Master résumé + job-specific versions · tap a card to review · expand for every document</div></div>
+        <span id="resumeVaultCount" class="badge">LOADING</span>
+      </div>
+      <div class="resumeVaultToolbar">
+        <button id="resumeMasterUpload" class="btn" type="button">↑ Add master résumé</button>
+        <input id="resumeMasterFile" type="file" accept=".docx,.doc,.pdf" hidden>
+        <button id="resumeVaultImport" class="btn primary" type="button">↑ Import tailored résumés / ZIP</button>
+        <input id="resumeVaultFiles" type="file" accept=".zip,.docx,.doc,.pdf" multiple hidden>
+        <input id="resumeVaultSearch" class="resumeVaultSearch" type="search" placeholder="Search résumé, company, or job" aria-label="Search resume vault">
+        <button id="resumeVaultViewAll" class="btn" type="button">⛶ View all full-screen</button>
+      </div>
+      <div id="resumeVaultStatus" class="resumeVaultStatus" role="status">Checking private résumé storage…</div>
+      <div id="resumeVaultBody" class="resumeVaultGrid"></div>
+      <div class="resumeVaultFooter">The app only labels a résumé <strong>Ready</strong> when its actual file is linked in private storage. Missing uploads are never shown as downloadable files.</div>
     </section>
 
     <section id="moneySnapshotCard" class="card trio financeEntry" title="Open Financial Command Center">
@@ -1129,12 +1173,95 @@ async function importResumeFiles(files,jobId=null){
   if(!j){unmatched.push(f.name);continue;}
   try{await storeResumeForJob(f,j);saved++;}catch(e){fail.push(f.name+': '+e.message);}
  }
- if(saved){renderCareer();if(activeJobId){const j=state.jobs.find(j=>j.id===activeJobId);if(j&&$('jobResume'))$('jobResume').textContent='Download tailored résumé ↓';}}
+ if(saved){renderCareer();renderResumeVault();if(activeJobId){const j=state.jobs.find(j=>j.id===activeJobId);if(j&&$('jobResume'))$('jobResume').textContent='Download tailored résumé ↓';}}
  alert('Uploaded '+saved+' résumé(s).'+(unmatched.length?'\nUnmatched: '+unmatched.slice(0,6).join(', '):'')+(fail.length?'\nErrors: '+fail.slice(0,6).join('; '):''));
 }
 
 let state={tasks:[],projects:[],briefs:[],sources:[],jobs:[],plans:[],planTasks:[],milestones:[],risks:[],decisions:[],financePayments:[],financeAccounts:[],financeAlerts:[],emailActions:[],creditGoals:[],creditAccounts:[],creditSnapshots:[],cigars:[],wines:[],icloudEvents:[],icloudStatus:'',user:null},activeTaskId=null,activeJobId=null,currentJobLane=null,activeProjectId=null,activeFinancePaymentId=null,activeCreditAccountId=null;
 const esc=(v='')=>String(v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+/* Private, user-owned Resume Vault. Job-specific filenames are not proof a file exists. */
+let masterResumeRecord=null, resumeVaultSearchTerm='',resumeMasterLoadError='';
+async function loadMasterResume(){
+ masterResumeRecord=null;resumeMasterLoadError='';
+ if(!state.user?.id){renderResumeVault();return;}
+ const folder=state.user.id+'/master';
+ const {data,error}=await supabase.storage.from(RESUME_BUCKET).list(folder,{limit:75,sortBy:{column:'created_at',order:'desc'}});
+ if(error){resumeMasterLoadError=error.message;renderResumeVault();return;}
+ const found=(data||[]).filter(x=>/\.(docx|doc|pdf)$/i.test(x.name||'')).sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||'')))[0];
+ if(found)masterResumeRecord={...found,path:folder+'/'+found.name};
+ renderResumeVault();
+}
+async function uploadMasterResume(file){
+ if(!state.user?.id)throw Error('Sign in to Kay Command first.');
+ if(!/\.(docx|doc|pdf)$/i.test(file.name||''))throw Error('Choose a Word or PDF résumé.');
+ if(file.size>10485760)throw Error('10 MB maximum.');
+ const path=state.user.id+'/master/'+Date.now()+'_'+file.name.replace(/[^a-zA-Z0-9_.-]/g,'_');
+ const mime=/\.pdf$/i.test(file.name)?'application/pdf':/\.doc$/i.test(file.name)?'application/msword':'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+ const {error}=await supabase.storage.from(RESUME_BUCKET).upload(path,file,{contentType:mime,upsert:false});
+ if(error)throw error;
+ await loadMasterResume();
+}
+function renderResumeVault(){
+ const body=$('resumeVaultBody');
+ if(!body)return;
+ const jobs=[...(state.jobs||[])].filter(j=>String(j.tailored_resume_name||'').trim());
+ const linked=jobs.filter(hasReadyTailoredResume).length;
+ const full=$('resumeVaultPanel').classList.contains('cardExpanded');
+ const needle=resumeVaultSearchTerm.toLowerCase();
+ const matches=jobs.filter(j=>[j.title,j.employer,j.tailored_resume_name].some(x=>String(x||'').toLowerCase().includes(needle)))
+   .sort((a,b)=>Number(hasReadyTailoredResume(b))-Number(hasReadyTailoredResume(a))||String(b.created_at||'').localeCompare(String(a.created_at||'')));
+ const view=full?matches:matches.slice(0,3);
+ $('resumeVaultCount').textContent=linked+'/'+jobs.length+' TAILORED READY';
+ $('resumeVaultStatus').textContent=linked+' of '+jobs.length+' tailored résumé files linked · '+(masterResumeRecord?'Master résumé available':'Master résumé not uploaded to Kay Command')+(resumeMasterLoadError?' · Storage check: '+resumeMasterLoadError:'');
+ const masterName=masterResumeRecord?.name?.replace(/^\d+_/,'')||'Kaia Strickland · Master Résumé 2026';
+ const master=`<article class="resumeTile"><div><div class="resumeTileTitle">★ Master Résumé</div><div class="resumeTileMeta">${esc(masterName)}<br>Source for all future tailored versions</div><div class="resumeTileStatus ${masterResumeRecord?'ready':''}">${masterResumeRecord?'✓ READY TO DOWNLOAD':'NOT YET UPLOADED TO THIS APP'}</div><div class="resumeTileButtons"><button class="btn" data-vault-master ${masterResumeRecord?'':'disabled'}>${masterResumeRecord?'Open / download':'Upload required'}</button><button class="btn" data-vault-master-upload>↑ Upload</button></div></div><div class="resumeDocArt" aria-label="Document placeholder, not a rendered document preview"><div class="resumeDocIcon">📄</div><div class="resumeDocType">MASTER</div><div class="resumeDocState">${masterResumeRecord?'Stored privately':'No file linked'}</div></div></article>`;
+ const tiles=view.map(j=>{
+  const ready=hasReadyTailoredResume(j);
+  const name=String(j.tailored_resume_name||'');
+  const kind=name.split('.').pop().toUpperCase();
+  return `<article class="resumeTile" role="button" tabindex="0" data-vault-job="${esc(j.id)}" aria-label="Review résumé for ${esc(j.title||'role')} at ${esc(j.employer||'employer')}"><div><div class="resumeTileTitle">${esc(j.title||'Job-specific résumé')}</div><div class="resumeTileMeta">${esc(j.employer||'Employer not recorded')}<br>${esc(name)}</div><div class="resumeTileStatus ${ready?'ready':''}">${ready?'✓ READY TO DOWNLOAD':'FILE NOT UPLOADED'}</div><div class="resumeTileButtons"><button class="btn" data-vault-job-open="${esc(j.id)}">View job</button><button class="btn" data-vault-download="${esc(j.id)}" ${ready?'':'disabled'}>${ready?'Open résumé':'Upload pending'}</button></div></div><div class="resumeDocArt" aria-label="Document placeholder, not a rendered résumé preview"><div class="resumeDocIcon">📑</div><div class="resumeDocType">${esc(kind||'DOC')}</div><div class="resumeDocState">${ready?'Private file':'Expected filename only'}</div></div></article>`;
+ }).join('');
+ const more=!full&&matches.length>view.length?`<div class="resumeVaultFooter">+${matches.length-view.length} more job-specific résumés. Choose “View all full-screen” above to review every record.</div>`:'';
+ body.innerHTML=master+tiles+more+(full&&matches.length===0?'<div class="resumeVaultFooter">No résumés match this search.</div>':'');
+}
+function openVaultJob(id){
+ const j=state.jobs.find(x=>String(x.id)===String(id));if(!j)return;
+ currentJobLane='All Active & In Progress';
+ $('jobModalTitle').textContent='Career Command · Résumé';
+ $('jobModalMeta').textContent='Job details and corresponding résumé';
+ $('jobModal').classList.add('show');
+ openJob(j.id);
+}
+$('resumeVaultBody').addEventListener('click',e=>{
+ const master=e.target.closest('[data-vault-master]');
+ if(master){if(masterResumeRecord)openResumeFromJob({tailored_resume_url:'storage://'+RESUME_BUCKET+'/'+masterResumeRecord.path,tailored_resume_name:masterResumeRecord.name});return;}
+ if(e.target.closest('[data-vault-master-upload]')){$('resumeMasterFile').click();return;}
+ const dl=e.target.closest('[data-vault-download]');
+ if(dl){const j=state.jobs.find(x=>String(x.id)===dl.dataset.vaultDownload);if(j&&hasReadyTailoredResume(j))openResumeFromJob(j);return;}
+ const job=e.target.closest('[data-vault-job-open],[data-vault-job]');
+ if(job)openVaultJob(job.dataset.vaultJobOpen||job.dataset.vaultJob);
+});
+$('resumeVaultBody').addEventListener('keydown',e=>{
+ if(e.target.matches('[data-vault-job]')&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openVaultJob(e.target.dataset.vaultJob);}
+});
+$('resumeVaultSearch').addEventListener('input',e=>{resumeVaultSearchTerm=e.target.value.trim();renderResumeVault();});
+$('resumeVaultViewAll').onclick=()=>expandDashboardCard($('resumeVaultPanel'));
+$('resumeMasterUpload').onclick=()=>$('resumeMasterFile').click();
+$('resumeMasterFile').onchange=async e=>{
+ const file=e.target.files?.[0];e.target.value='';if(!file)return;
+ $('resumeVaultStatus').textContent='Saving master résumé to private storage…';
+ try{await uploadMasterResume(file);}
+ catch(error){$('resumeVaultStatus').textContent='Master résumé upload failed: '+(error.message||error);}
+};
+$('resumeVaultImport').onclick=()=>$('resumeVaultFiles').click();
+$('resumeVaultFiles').onchange=async e=>{
+ const files=e.target.files;e.target.value='';if(!files?.length)return;
+ $('resumeVaultStatus').textContent='Importing job-specific résumé files…';
+ await importResumeFiles(files);
+ renderResumeVault();
+};
+
 const fmtDate=v=>{if(!v)return '—';const d=new Date(v+'T12:00:00');return d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})};
 const daysUntil=v=>{const a=new Date();a.setHours(0,0,0,0);const b=new Date(v+'T12:00:00');return Math.max(0,Math.ceil((b-a)/86400000))};
 const source=(n)=>state.sources.find(x=>String(x.source||x.name||'').toLowerCase()===n.toLowerCase());
@@ -1361,7 +1488,7 @@ async function loadAll(){
  if(p.error||t.error||b.error){$('liveBar').textContent='● Data sync error';appendChat('assistant',p.error?.message||t.error?.message||b.error?.message);return}
  state.projects=p.data||[];state.tasks=t.data||[];state.briefs=b.data||[];state.sources=s.error?[]:(s.data||[]);state.jobs=j?.error?[]:(j?.data||[]);state.plans=pl?.error?[]:(pl?.data||[]);state.planTasks=pt?.error?[]:(pt?.data||[]);state.milestones=ms?.error?[]:(ms?.data||[]);state.risks=rs?.error?[]:(rs?.data||[]);state.decisions=ds?.error?[]:(ds?.data||[]);state.financePayments=fp?.error?[]:(fp?.data||[]);state.financeAccounts=fa?.error?[]:(fa?.data||[]);state.financeAlerts=fal?.error?[]:(fal?.data||[]);state.emailActions=ea?.error?[]:(ea?.data||[]);state.creditGoals=cg?.error?[]:(cg?.data||[]);state.creditAccounts=ca?.error?[]:(ca?.data||[]);state.creditSnapshots=cs?.error?[]:(cs?.data||[]);state.cigars=ci?.error?[]:(ci?.data||[]);state.wines=wi?.error?[]:(wi?.data||[]);
  await loadICloudEvents();
- renderAll();$('liveBar').textContent='● Live data loaded';
+ renderAll();await loadMasterResume();$('liveBar').textContent='● Live data loaded';
  startRealtimeSync();
 }
 
@@ -1690,7 +1817,7 @@ $('bflComplete').onclick=async()=>{
  t.is_done=next;$('bflMessage').textContent=next?'✓ Workout completed!':'Workout reopened.';renderAll();
 };
 
-function renderAll(){renderBfl();setGreeting();renderCountdownStrip();renderBriefs();renderActions();renderCareer();renderMoney();renderInbox();renderCalendar();renderProjects();renderSystems();bindSummaryCountBadges();renderDailyPleasures()}
+function renderAll(){renderBfl();setGreeting();renderCountdownStrip();renderBriefs();renderActions();renderCareer();renderResumeVault();renderMoney();renderInbox();renderCalendar();renderProjects();renderSystems();bindSummaryCountBadges();renderDailyPleasures()}
 function renderBriefs(){
  const latest=state.briefs[0];
  const raw=String(latest?.content||latest?.brief||latest?.summary||latest?.message||latest?.title||'').trim();
