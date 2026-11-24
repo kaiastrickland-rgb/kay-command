@@ -3008,66 +3008,50 @@ function renderJobList(lane){
  const jobs=jobsForLane(lane);
  $('jobList').innerHTML=jobs.length?jobs.map(j=>{
   const applied=/^applied$/i.test(String(j.status||''));
-  const opened=!!j.apply_opened_at;
+  const saved=matchedResumeForJob(j);
   const held=j.keep_in_lane_until_next_scan===true;
-  return `<div class="jobItem ${applied&&held?'appliedHold':''}" data-job="${j.id}">
+  return `<div class="jobItem ${applied&&held?'appliedHold':''}" data-job="${esc(j.id)}">
    <div class="jobTop">
-    <div style="min-width:0"><div class="jobTitle">${esc(j.title||'Untitled role')}</div><div class="jobMeta">${[j.employer,j.category,j.lane,j.location,j.work_arrangement].filter(Boolean).map(esc).join(' · ')}</div></div>
-    <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;justify-content:flex-end">
-      <div class="jobStatus">${esc(j.status||'Open')}</div>
-      <button class="inlineApply ${opened?'opened':''}" data-apply="${j.id}" ${j.apply_url?'':'disabled'}>${opened?'Opened ✓':'Apply ↗'}</button>
-      <button class="inlineResume" data-resume="${j.id}" ${hasReadyTailoredResume(j)?'':'disabled'}>${hasReadyTailoredResume(j)?'Tailored résumé ↗':'Résumé pending'}</button>
-      <button class="inlineApplied" data-applied="${j.id}" ${applied?'disabled':''}>${applied?'Applied ✓':'I Applied ✓'}</button>
-    </div>
+     <div><div class="jobTitle">${esc(j.title||'Untitled role')}</div><div class="jobMeta">${[j.employer,j.category,j.lane,j.location,j.work_arrangement].filter(Boolean).map(esc).join(' · ')}</div></div>
+     <div class="jobActionColumn">
+       <div class="jobStatus">${esc(j.status||'Open')}</div>
+       <button class="inlineApply" data-apply="${esc(j.id)}" ${j.apply_url?'':'disabled'}>${applied?'Open':'Apply'}</button>
+       ${applied?'':`<button class="inlineApplied" data-applied="${esc(j.id)}">I Applied ✓</button>`}
+     </div>
    </div>
-   <div class="jobMeta">${esc(j.compensation||'Comp not listed')} · ${applied && j.applied_at?`Applied ${new Date(j.applied_at).toLocaleDateString()}`:`${opened&&j.apply_opened_at?`Opened ${new Date(j.apply_opened_at).toLocaleDateString()}`+` · `:''}${jobFreshnessLabel(j)}${jobFreshnessLabel(j)?' · ':''}First seen ${jobFirstSeenDate(j)?jobFirstSeenDate(j).toLocaleDateString(undefined,{month:'short',day:'numeric'}):'—'}`}</div>
+   <div class="jobMeta">${esc(j.compensation||'Compensation not listed')} · ${applied&&j.applied_at?'Applied '+new Date(j.applied_at).toLocaleDateString():jobFreshnessLabel(j)}</div>
+   <div class="jobTailorRow"><button class="inlineResume" data-tailor="${esc(j.id)}">${saved?'View / Edit Tailored Résumé':'Tailor My Résumé'}</button></div>
   </div>`;
  }).join(''):'<div class="cardSub">No jobs in this category yet.</div>';
-
- document.querySelectorAll('.jobItem').forEach(x=>x.onclick=e=>{
-   if(e.target.closest('[data-apply]')||e.target.closest('[data-resume]')||e.target.closest('[data-applied]'))return;
-   openJob(x.dataset.job)
+ document.querySelectorAll('.jobItem').forEach(item=>item.onclick=e=>{
+  if(e.target.closest('button'))return;
+  openJob(item.dataset.job);
  });
-
- function openTailoredResume(j){openResumeFromJob(j);}
-
-document.querySelectorAll('[data-resume]').forEach(b=>b.onclick=e=>{
-   e.stopPropagation();
-   const j=state.jobs.find(x=>String(x.id)===String(b.dataset.resume));if(!hasReadyTailoredResume(j))return;
-   openTailoredResume(j);
+ document.querySelectorAll('#jobList [data-tailor]').forEach(button=>button.onclick=async e=>{
+  e.stopPropagation();const job=state.jobs.find(x=>String(x.id)===String(button.dataset.tailor));if(!job)return;
+  button.disabled=true;button.textContent='Preparing résumé…';
+  try{await tailorResumeForJob(job);}
+  catch(err){alert('Could not tailor résumé: '+(err.message||err));}
+  finally{button.disabled=false;renderJobList(lane);}
  });
-
- document.querySelectorAll('[data-apply]').forEach(b=>b.onclick=async e=>{
-   e.stopPropagation();
-   const j=state.jobs.find(x=>String(x.id)===String(b.dataset.apply));if(!j)return;
-   if(j.apply_url)window.open(j.apply_url,'_blank','noopener');
-   const now=new Date().toISOString();
-   const {error}=await supabase.from('kay_jobs').update({apply_opened_at:now,updated_at:now}).eq('id',j.id);
-   if(error)return alert(error.message);
-   j.apply_opened_at=now;
-   b.classList.add('opened');
-   b.textContent='Opened ✓';
-   await logJobAction(j,`Opened application page for ${j.title} at ${j.employer}; job remains in its current lane until Kay confirms I Applied.`);
-   const meta=b.closest('.jobItem')?.querySelectorAll('.jobMeta');
-   if(meta?.length>1) renderJobList(lane);
+ document.querySelectorAll('#jobList [data-apply]').forEach(button=>button.onclick=async e=>{
+  e.stopPropagation();const j=state.jobs.find(x=>String(x.id)===String(button.dataset.apply));if(!j||!j.apply_url)return;
+  window.open(j.apply_url,'_blank','noopener');
+  const now=new Date().toISOString();
+  const {error}=await supabase.from('kay_jobs').update({apply_opened_at:now,updated_at:now}).eq('id',j.id).eq('user_id',state.user.id);
+  if(error){alert('Opened listing, but could not save visit: '+error.message);return;}
+  j.apply_opened_at=now;
+  await logJobAction(j,'Opened application page for '+j.title+' at '+j.employer+'; application not marked submitted.');
  });
-
- document.querySelectorAll('[data-applied]').forEach(b=>b.onclick=async e=>{
-   e.stopPropagation();
-   const j=state.jobs.find(x=>String(x.id)===String(b.dataset.applied));if(!j)return;
-   if(/^applied$/i.test(String(j.status||'')))return;
-   const now=new Date().toISOString();
-   const {error}=await supabase.from('kay_jobs').update({
-     status:'Applied',
-     applied_at:now,
-     keep_in_lane_until_next_scan:true,
-     updated_at:now
-   }).eq('id',j.id);
-   if(error)return alert(error.message);
-   j.status='Applied';j.applied_at=now;j.keep_in_lane_until_next_scan=true;
-   await logJobAction(j,`Marked ${j.title} at ${j.employer} as Applied from the dashboard; keep visible in its current lane until the next career scan.`);
-   renderCareer();
-   renderJobList(lane);
+ document.querySelectorAll('#jobList [data-applied]').forEach(button=>button.onclick=async e=>{
+  e.stopPropagation();const j=state.jobs.find(x=>String(x.id)===String(button.dataset.applied));if(!j)return;
+  const now=new Date().toISOString();
+  const {error}=await supabase.from('kay_jobs').update({status:'Applied',applied_at:now,keep_in_lane_until_next_scan:true,updated_at:now})
+   .eq('id',j.id).eq('user_id',state.user.id);
+  if(error){alert('Could not save application status: '+error.message);return;}
+  j.status='Applied';j.applied_at=now;j.keep_in_lane_until_next_scan=true;
+  await logJobAction(j,'Marked '+j.title+' at '+j.employer+' as Applied.');
+  renderCareer();renderJobList(lane);
  });
 }
 function openJob(id){
@@ -3077,14 +3061,18 @@ function openJob(id){
  $('jobDetailMeta').textContent=[j.employer,j.category,j.lane,j.location,j.work_arrangement,j.compensation,j.status].filter(Boolean).join(' · ');
  $('jobDetailText').textContent=j.fit_note||'No additional fit notes are saved for this role.';
  $('jobApply').disabled=!j.apply_url;
- $('jobApply').textContent=j.apply_opened_at?'Opened ✓ — open again':'Apply';
- $('jobApply').classList.toggle('opened',!!j.apply_opened_at);
- const resumeReady=hasReadyTailoredResume(j);
- $('jobResume').disabled=!resumeReady;
- $('jobResume').textContent=resumeReady?'Open tailored résumé ↗':'Tailored résumé pending';
- $('jobResume').title=resumeReady?(j.tailored_resume_name||'Open the résumé tailored for this job'):'A secure tailored résumé has not been attached yet.';
- $('jobMarkApplied').disabled=/^applied$/i.test(String(j.status||''));
- $('jobMarkApplied').textContent=/^applied$/i.test(String(j.status||''))?'Applied ✓':'Mark applied';
+ const applied=/^applied$/i.test(String(j.status||''));
+ $('jobApply').textContent=applied?'Open':'Apply';
+ $('jobApply').classList.remove('opened');
+ $('jobResume').disabled=false;
+ $('jobResume').textContent=matchedResumeForJob(j)?'View / Edit Tailored Résumé':'Tailor My Résumé';
+ $('jobMarkApplied').hidden=applied;
+ $('jobMarkApplied').disabled=applied;
+ $('jobMarkApplied').textContent='I Applied ✓';
+ if($('jobRequirementText'))$('jobRequirementText').value=j.job_description||'';
+ if($('jobTailorMsg'))$('jobTailorMsg').textContent=j.job_description
+  ?'Full job requirements saved. Tailor My Résumé will use them with your master résumé.'
+  :'Only the title and saved fit notes are currently available. Add full requirements above for a stronger ATS match.';
  const statusSelect=$('jobStatusSelect');
  if(statusSelect){
    const status=String(j.status||'Open');
@@ -3105,13 +3093,13 @@ async function logJobAction(j,message){
   await supabase.from('kay_chat_messages').insert({user_id:state.user?.id||null,role:'system',message:`Career Command action: ${message}`});
  }catch(e){}
 }
-$('jobResumeUpload').onclick=()=>$('jobResumeFile').click();
-$('jobResumeFile').onchange=async e=>{await importResumeFiles(e.target.files,activeJobId);e.target.value='';};
-$('resumeBulkImport').onclick=()=>$('resumeBulkFiles').click();
-$('resumeBulkFiles').onchange=async e=>{await importResumeFiles(e.target.files);e.target.value='';};
-$('jobResume').onclick=()=>{
- const j=state.jobs.find(x=>x.id===activeJobId);if(!hasReadyTailoredResume(j))return;
- openTailoredResume(j);
+$('jobResume').onclick=async()=>{
+ const j=state.jobs.find(x=>x.id===activeJobId);if(!j)return;
+ const button=$('jobResume');button.disabled=true;
+ if($('jobTailorMsg'))$('jobTailorMsg').textContent='Preparing résumé draft using verified experience…';
+ try{await tailorResumeForJob(j);openJob(j.id);}
+ catch(e){if($('jobTailorMsg'))$('jobTailorMsg').textContent='Tailoring failed: '+(e.message||e);}
+ finally{button.disabled=false;}
 };
 $('jobApply').onclick=async()=>{
  const j=state.jobs.find(x=>x.id===activeJobId);if(!j)return;
