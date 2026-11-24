@@ -593,6 +593,14 @@ body.resumeTileOpen{overflow:hidden}
 .resumeTileDismiss{position:fixed;right:16px;top:12px;z-index:49;border:1px solid #4b97ae;border-radius:10px;background:#123545;color:#fff;padding:10px 14px;font-weight:900}
 .resumeTileExpanded .resumeTileButtons{margin-top:24px}
 @media(max-width:620px){.resumeTile.resumeTileExpanded{grid-template-columns:1fr!important;padding:64px 18px 20px!important}.resumeTileExpanded .resumeDocArt{height:210px;max-width:none}}
+
+/* Keep Expand/Close reachable on a narrow iPhone even in action-heavy headers. */
+@media(max-width:620px){
+ .card>.cardHeader{flex-wrap:wrap}
+ .cardExpandBtn{font-size:0!important;padding:8px 10px!important;min-width:36px;margin-left:auto}
+ .cardExpandBtn::before{content:'⛶';font-size:18px}
+ .cardExpandBtn[aria-expanded="true"]::before{content:'✕'}
+}
 </style>
 </head>
 <body>
