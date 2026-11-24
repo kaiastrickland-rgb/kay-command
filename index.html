@@ -715,12 +715,13 @@ body.resumeTileOpen{overflow:hidden}
         <div id="topCurrentDate" class="topDate"></div>
       </div>
       <div class="topActions">
-        <button id="refreshBtn" class="btn">↻ Refresh</button>
+        <button id="refreshBtn" class="btn" title="Reload all dashboard data and request upstream source synchronization">↻ Refresh All</button>
         <button id="signOutBtn" class="btn">Sign out</button>
       </div>
     </div>
 </header>
 
+  <div id="syncHealthLine" role="status" aria-live="polite" style="padding:8px 16px 10px;font-size:11px;color:#b1cdd9;line-height:1.5;border-bottom:1px solid #27404b">Checking saved data timestamps…</div>
   <main class="grid">
 
 
@@ -1722,7 +1723,7 @@ function startRealtimeSync(){
    );
  });
  realtimeChannel=channel.subscribe(status=>{
-   if(status==='SUBSCRIBED')$('liveBar').textContent='● Live push connected';
+   if(status==='SUBSCRIBED')console.info('Kay Command realtime listener connected; this does not imply provider data is current.');
  });
 }
 
@@ -1751,11 +1752,14 @@ async function loadAll(){
   supabase.from('kay_wines').select('*').eq('is_active',true).order('sort_order',{ascending:true}),
    supabase.from('kay_resume_documents').select('*').order('updated_at',{ascending:false})
  ]);
- if(p.error||t.error||b.error){$('liveBar').textContent='● Data sync error';appendChat('assistant',p.error?.message||t.error?.message||b.error?.message);return}
+ if(p.error||t.error||b.error){$('liveBar').textContent='● Data load error';throw new Error(p.error?.message||t.error?.message||b.error?.message)}
  state.projects=p.data||[];state.tasks=t.data||[];state.briefs=b.data||[];state.sources=s.error?[]:(s.data||[]);state.jobs=j?.error?[]:(j?.data||[]);state.resumeDocs=rd?.error?[]:(rd?.data||[]);state.plans=pl?.error?[]:(pl?.data||[]);state.planTasks=pt?.error?[]:(pt?.data||[]);state.milestones=ms?.error?[]:(ms?.data||[]);state.risks=rs?.error?[]:(rs?.data||[]);state.decisions=ds?.error?[]:(ds?.data||[]);state.financePayments=fp?.error?[]:(fp?.data||[]);state.financeAccounts=fa?.error?[]:(fa?.data||[]);state.financeAlerts=fal?.error?[]:(fal?.data||[]);state.emailActions=ea?.error?[]:(ea?.data||[]);state.creditGoals=cg?.error?[]:(cg?.data||[]);state.creditAccounts=ca?.error?[]:(ca?.data||[]);state.creditSnapshots=cs?.error?[]:(cs?.data||[]);state.cigars=ci?.error?[]:(ci?.data||[]);state.wines=wi?.error?[]:(wi?.data||[]);
  await loadICloudEvents();
- renderAll();$('liveBar').textContent='● Live data loaded';
+ const renderFailures=renderAll();
+ renderSyncHealth();
+ if(!renderFailures.length)$('liveBar').textContent='● Latest saved dashboard data loaded · '+new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
  startRealtimeSync();
+ return {renderFailures,loadedAt:new Date().toISOString()};
 }
 
 
@@ -2083,7 +2087,15 @@ $('bflComplete').onclick=async()=>{
  t.is_done=next;$('bflMessage').textContent=next?'✓ Workout completed!':'Workout reopened.';renderAll();
 };
 
-function renderAll(){renderBfl();setGreeting();renderCountdownStrip();renderBriefs();renderActions();renderCareer();renderResumeVault();renderMoney();renderInbox();renderCalendar();renderProjects();renderSystems();bindSummaryCountBadges();renderDailyPleasures()}
+function renderAll(){
+ const sections=[['Body-for-LIFE',renderBfl],['Greeting',setGreeting],['Countdowns',renderCountdownStrip],['Executive brief',renderBriefs],['Action Center',renderActions],['Career',renderCareer],['Résumés',renderResumeVault],['Money',renderMoney],['Email',renderInbox],['Calendar',renderCalendar],['Projects',renderProjects],['Systems',renderSystems],['Card actions',bindSummaryCountBadges],['Smoke & Sip',renderDailyPleasures]];
+ const failed=[];
+ for(const [name,render] of sections){try{render();}catch(e){console.error('Dashboard panel failed: '+name,e);failed.push(name);}}
+ const status=$('syncHealthLine');
+ if(status)status.dataset.renderErrors=failed.join(', ');
+ if(failed.length){$('liveBar').textContent='⚠ Some panels failed to render: '+failed.join(', ');}
+ return failed;
+}
 function renderBriefs(){
  const latest=state.briefs[0];
  const raw=String(latest?.content||latest?.brief||latest?.summary||latest?.message||latest?.title||'').trim();
@@ -2575,15 +2587,18 @@ function renderInbox(){
  }).join('');
 }
 async function loadICloudEvents(){
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),8000);
  try{
-   const r=await fetch('/api/icloud-calendar?days=7',{cache:'no-store'});
+   const r=await fetch('/api/icloud-calendar?days=7',{cache:'no-store',signal:controller.signal});
    const data=await r.json().catch(()=>({}));
-   state.icloudEvents=r.ok&&Array.isArray(data.events)?data.events:[];
-   state.icloudStatus=r.ok?'connected':(data.configured===false?'not-connected':'error');
+   if(!r.ok)throw new Error(data.error||'iCloud calendar temporarily unavailable');
+   state.icloudEvents=Array.isArray(data.events)?data.events:[];
+   state.icloudStatus='connected';
  }catch(e){
-   state.icloudEvents=[];
-   state.icloudStatus='error';
- }
+   console.warn('iCloud calendar read unavailable',e);
+   state.icloudStatus=e.name==='AbortError'?'timed-out':'error';
+   // Keep the previous successful list rather than clearing the calendar on a temporary failure.
+ }finally{clearTimeout(timer);}
 }
 function calendarEventKey(e){
  return [String(e.title||e.summary||'').trim().toLowerCase(),String(e.start||'').slice(0,16),String(e.end||'').slice(0,16)].join('|');
