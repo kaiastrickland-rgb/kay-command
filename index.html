@@ -1371,6 +1371,21 @@ const esc=(v='')=>String(v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'
 
 /* Kay Résumés: actual saved document contents, not one filename per job. */
 let activeResumeId=null, resumeEditorDirty=false, resumeIsEditing=false, resumeVaultSearchTerm='';
+let resumeAIConnected=null;
+async function checkResumeAIConnection(){
+ try{
+  const r=await fetch('/api/tailor-resume',{cache:'no-store'});
+  const data=await r.json();
+  resumeAIConnected=r.ok&&data.configured===true;
+ }catch(_){resumeAIConnected=false;}
+ const pane=$('jobTailorMsg');
+ if(pane&&activeJobId){
+  const j=state.jobs.find(x=>String(x.id)===String(activeJobId));
+  if(j&&!matchedResumeForJob(j)&&resumeAIConnected===false)pane.textContent='Full AI résumé tailoring is not connected yet. No weak automatic draft will be generated.';
+ }
+}
+setTimeout(checkResumeAIConnection,0);
+
 function resumeLines(text){return String(text||'').replace(/\r/g,'').split('\n').map(x=>x.replace(/\uF0B7/g,'•'));}
 function renderResumePaper(text){
  return window.KayResumeEngine.render(text);
@@ -1496,9 +1511,6 @@ $('resumeDownload').onclick=async()=>{
  finally{$('resumeDownload').disabled=false;}
 };
 function matchedResumeForJob(j){return(state.resumeDocs||[]).find(d=>String(d.linked_job_id)===String(j.id))||null;}
-function buildJobTailoredResume(master,job){
- return window.KayResumeEngine.align(master.content_text,job);
-}
 async function tailorResumeForJob(job,{force=false}={}){
  if(!job)return;
  const found=matchedResumeForJob(job);
@@ -3148,9 +3160,10 @@ function openJob(id){
  $('jobMarkApplied').disabled=applied;
  $('jobMarkApplied').textContent='I Applied ✓';
  if($('jobRequirementText'))$('jobRequirementText').value=j.job_description||'';
- if($('jobTailorMsg'))$('jobTailorMsg').textContent=j.job_description
-  ?'Full job requirements saved. Tailor My Résumé will use them with your master résumé.'
-  :'Only the title and saved fit notes are currently available. Add full requirements above for a stronger ATS match.';
+ if($('jobTailorMsg'))$('jobTailorMsg').textContent=resumeAIConnected===false&&!matchedResumeForJob(j)
+  ?'AI engine is not connected yet. The button will not generate a superficial copy-and-paste draft.'
+  :j.job_description?'Full role requirements saved. Full-document AI rewrite will use them and your verified experience.'
+  :'Full role requirements are needed. Paste them above before tailoring.';
  const statusSelect=$('jobStatusSelect');
  if(statusSelect){
    const status=String(j.status||'Open');
