@@ -1531,6 +1531,31 @@ const fmtDate=v=>{if(!v)return '—';const d=new Date(v+'T12:00:00');return d.to
 const daysUntil=v=>{const a=new Date();a.setHours(0,0,0,0);const b=new Date(v+'T12:00:00');return Math.max(0,Math.ceil((b-a)/86400000))};
 const source=(n)=>state.sources.find(x=>String(x.source||x.name||'').toLowerCase()===n.toLowerCase());
 const sourceGood=s=>/connected|synced|ready|healthy|active|ok|live/i.test(String(s||''));
+function sourceFreshness(sourceName,maxMinutes=180){
+ const row=source(sourceName),status=String(row?.status||'unknown');
+ const ts=row?.last_sync_at?Date.parse(row.last_sync_at):NaN;
+ const ageMins=Number.isFinite(ts)?Math.round((Date.now()-ts)/60000):null;
+ const connected=sourceGood(status);
+ const current=connected&&ageMins!==null&&ageMins>=-10&&ageMins<=maxMinutes&&
+   !/reconciling|error|stale|failed|pending|blocked/i.test(status);
+ return {row,status,ageMins,connected,current,seen:ageMins!==null};
+}
+function syncAgeLabel(f){
+ if(!f.seen)return 'never verified';
+ const when=new Date(f.row.last_sync_at).toLocaleDateString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+ return f.current?'current '+when:'last saved '+when;
+}
+function renderSyncHealth(){
+ const container=$('syncHealthLine');if(!container)return;
+ const entries=[['Gmail',sourceFreshness('Gmail',120)],['Calendar',sourceFreshness('Calendar',180)],['Fieldy',sourceFreshness('Fieldy',90)],['Finances',sourceFreshness('Finances',120)],['Tasks',sourceFreshness('Tasks/Projects',120)]];
+ const segments=entries.map(([name,v])=>name+': '+(v.current?'✓':v.connected?'⚠':'○')+' '+(v.current?'current':v.status==='reconciling'?'reconciling':'stale'));
+ const req=source('Unified Refresh');const requested=/^(requested|processing|partial)$/i.test(String(req?.status||''));
+ const requestedAt=req?.details?.requested_at;
+ container.textContent=segments.join('  ·  ')+(requested?'  ·  ⏳ Upstream refresh '+req.status+(requestedAt?' ('+new Date(requestedAt).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})+')':''):'')+
+  (container.dataset.renderErrors?' · ⚠ Panels: '+container.dataset.renderErrors:'');
+ container.title='Connected sources can be stale. This line reflects verified snapshot times, not just account connectivity. Tap Refresh All to request an upstream sync and reload stored data.';
+}
+
 const today=()=>{const d=new Date();d.setHours(0,0,0,0);return d};
 function dueWeek(t){if(!t.due_date)return false;const d=new Date(t.due_date+'T12:00:00'),e=today();e.setDate(e.getDate()+7);return d>=today()&&d<=e}
 function atRisk(t){if(t.is_done)return false;const txt=`${t.name} ${t.details||''}`;if(/risk|blocked|overdue|dependency|late/i.test(txt))return true;if(t.due_date)return new Date(t.due_date+'T12:00:00')<today();return false}
@@ -2560,10 +2585,11 @@ function renderInbox(){
  const g=source('Gmail'),d=(g&&typeof g.details==='object')?g.details:{};
  const unread=d.unread_count??d.inbox_unread??d.unread;
  const rows=(state.emailActions||[]).filter(x=>x.is_unread!==false).sort((a,b)=>(Number(a.priority_rank||999)-Number(b.priority_rank||999)) || (new Date(b.email_ts||0)-new Date(a.email_ts||0)));
- $('gmailBadge').textContent=sourceGood(g?.status)?'LIVE':'CHECK';
+ const gmailFresh=sourceFreshness('Gmail',120);
+ $('gmailBadge').textContent=gmailFresh.current?'LIVE':gmailFresh.status==='reconciling'?'PARTIAL':'STALE';
  $('unreadCount').textContent=(unread!==null&&unread!==undefined)?Number(unread).toLocaleString():'—';
  $('priorityCount').textContent=rows.length || d.priority_alerts || d.priority_count || '0';
- $('gmailSync').textContent=g?.last_sync_at?`Last pull ${new Date(g.last_sync_at).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}`:'Last pull —';
+ $('gmailSync').textContent='Gmail '+syncAgeLabel(gmailFresh)+(d.action_reconciliation==='pending'?' · Action list awaiting reconciliation':'');
 
  const list=$('emailActionList');
  if(!list)return;
@@ -2645,8 +2671,8 @@ function renderCalendar(){
  const events=combined.filter(e=>{const k=calendarEventKey(e);if(seen.has(k))return false;seen.add(k);return true})
    .sort((a,b)=>String(a.start||'').localeCompare(String(b.start||'')))
    .slice(0,20);
- const googleLive=sourceGood(c?.status),iCloudLive=state.icloudStatus==='connected';
- $('calendarBadge').textContent=(googleLive||iCloudLive)?'LIVE':'CHECK';
+ const googleFresh=sourceFreshness('Calendar',180),googleLive=googleFresh.current,iCloudLive=state.icloudStatus==='connected';
+ $('calendarBadge').textContent=googleLive&&iCloudLive?'GOOGLE + ICLOUD':googleLive?'GOOGLE LIVE':iCloudLive?'ICLOUD LIVE':'STALE';
  const box=$('calendarText');
  if(events.length){
    const groups=new Map();
@@ -2812,11 +2838,18 @@ $('projectModal').onclick=e=>{if(e.target===$('projectModal'))$('projectModal').
 document.querySelectorAll('.projectTab').forEach(b=>b.onclick=()=>showProjectTab(b.dataset.ptab));
 
 function renderSystems(){
- const rows=[['Database','Synced','Supabase live workspace'],['Gmail',source('Gmail')?.status||'Not connected',source('Gmail')?.last_sync_at?'Recently synced':'No sync time'],['Calendar',source('Calendar')?.status||'Not connected',source('Calendar')?.last_sync_at?'Recently synced':'No sync time'],['Finances',state.financeAccounts.length?'CONNECTED':(source('Finances')?.status||'Not connected'),state.financeAccounts.length?'Sequence + Navy Federal + Apple linked':'Private financial connection'],['Command Chat','Ready','Task commands available']];
- const good=rows.filter(r=>sourceGood(r[1])).length;$('systemsBadge').textContent=`${good}/${rows.length} ONLINE`;
+ const sources=[['Gmail','Gmail',120],['Calendar','Calendar',180],['Money Snapshot','Finances',120],['Fieldy','Fieldy',90],['Action Center','Tasks/Projects',120]];
+ const rows=[['Database','CONNECTED','Authenticated Supabase records; source data can still be stale'],...sources.map(([display,name,threshold])=>{
+   const f=sourceFreshness(name,threshold);
+   const details=f.row?.details||{};
+   const note=name==='Fieldy'?'Live connector · recording classification is separate':name==='Gmail'&&details.action_reconciliation==='pending'?'Inbox counts updated; email action list pending':name==='Calendar'&&state.icloudStatus==='connected'?'Google + iCloud events':'Provider snapshot';
+   const status=f.current?'CURRENT':f.status==='reconciling'?'RECONCILING':f.status==='connected'?'STALE':'CHECK';
+   return [display,status,syncAgeLabel(f)+' · '+note];
+ })];
+ const good=rows.filter(r=>r[1]==='CURRENT'||r[1]==='CONNECTED').length;
+ $('systemsBadge').textContent=good+'/'+rows.length+' CURRENT';
  $('systemGrid').innerHTML=rows.map(r=>`<div class="system"><div class="systemTop"><span>${esc(r[0])}</span><span class="systemStatus">${esc(r[1])}</span></div><div class="systemMeta">${esc(r[2])}</div></div>`).join('');
 }
-
 function populateNewTaskProjects(){
  const sel=$('newTaskProject');
  if(!sel)return;
