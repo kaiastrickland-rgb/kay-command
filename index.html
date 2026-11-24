@@ -601,6 +601,31 @@ body.resumeTileOpen{overflow:hidden}
  .cardExpandBtn::before{content:'⛶';font-size:18px}
  .cardExpandBtn[aria-expanded="true"]::before{content:'✕'}
 }
+
+/* Large centered pop-up views: the dashboard remains visible behind a dimmed backdrop. */
+.card.cardExpanded{
+ inset:auto!important;top:50%!important;left:50%!important;right:auto!important;bottom:auto!important;
+ transform:translate(-50%,-50%)!important;
+ width:min(94vw,1320px)!important;height:min(88dvh,1000px)!important;
+ max-width:1320px!important;max-height:88dvh!important;
+ border:1px solid #47738a!important;border-radius:22px!important;
+ box-shadow:0 0 0 100vmax rgba(2,8,13,.75),0 28px 90px rgba(0,0,0,.72)!important;
+}
+.resumeTile.resumeTileExpanded{
+ inset:auto!important;top:50%!important;left:50%!important;right:auto!important;bottom:auto!important;
+ transform:translate(-50%,-50%)!important;
+ width:min(91vw,990px)!important;height:min(84dvh,850px)!important;
+ max-width:990px!important;max-height:84dvh!important;
+ border:1px solid #47738a!important;border-radius:22px!important;
+ box-shadow:0 0 0 100vmax rgba(2,8,13,.82),0 28px 90px rgba(0,0,0,.75)!important;
+}
+.resumeTileDismiss{position:sticky!important;float:right;top:0!important;right:0!important;z-index:2;margin:-4px -4px 10px 8px}
+@media(max-width:620px){
+ .card.cardExpanded{width:96vw!important;height:92dvh!important;max-height:92dvh!important;border-radius:16px!important}
+ .resumeTile.resumeTileExpanded{width:95vw!important;height:88dvh!important;max-height:88dvh!important;border-radius:16px!important}
+ .resumeTileDismiss{margin:-48px -5px 6px 0}
+}
+
 </style>
 </head>
 <body>
@@ -732,7 +757,7 @@ body.resumeTileOpen{overflow:hidden}
         <button id="resumeVaultImport" class="btn primary" type="button">↑ Import tailored résumés / ZIP</button>
         <input id="resumeVaultFiles" type="file" accept=".zip,.docx,.doc,.pdf" multiple hidden>
         <input id="resumeVaultSearch" class="resumeVaultSearch" type="search" placeholder="Search résumé, company, or job" aria-label="Search resume vault">
-        <button id="resumeVaultViewAll" class="btn" type="button">⛶ View all full-screen</button>
+        <button id="resumeVaultViewAll" class="btn" type="button">↗ View all</button>
       </div>
       <div id="resumeVaultStatus" class="resumeVaultStatus" role="status">Checking private résumé storage…</div>
       <div id="resumeVaultBody" class="resumeVaultGrid"></div>
@@ -1220,8 +1245,8 @@ function expandResumeTile(tile){
  document.body.classList.add('resumeTileOpen');
  const close=document.createElement('button');
  close.type='button';close.className='resumeTileDismiss';close.dataset.vaultTileClose='1';
- close.textContent='↙ Close résumé card';
- close.setAttribute('aria-label','Close full-screen résumé card');
+ close.textContent='✕ Close';
+ close.setAttribute('aria-label','Close enlarged résumé card');
  tile.appendChild(close);
  close.focus({preventScroll:true});
  tile.scrollTop=0;
@@ -1272,7 +1297,7 @@ function renderResumeVault(){
   const kind=name.split('.').pop().toUpperCase();
   return `<article class="resumeTile" role="button" tabindex="0" data-vault-job="${esc(j.id)}" aria-label="Review résumé for ${esc(j.title||'role')} at ${esc(j.employer||'employer')}"><div><div class="resumeTileTitle">${esc(j.title||'Job-specific résumé')}</div><div class="resumeTileMeta">${esc(j.employer||'Employer not recorded')}<br>${esc(name)}</div><div class="resumeTileStatus ${ready?'ready':''}">${ready?'✓ READY TO DOWNLOAD':'FILE NOT UPLOADED'}</div><div class="resumeTileButtons"><button class="btn" data-vault-job-open="${esc(j.id)}">View job</button><button class="btn" data-vault-download="${esc(j.id)}" ${ready?'':'disabled'}>${ready?'Open résumé':'Upload pending'}</button></div></div><div class="resumeDocArt" aria-label="Document placeholder, not a rendered résumé preview"><div class="resumeDocIcon">📑</div><div class="resumeDocType">${esc(kind||'DOC')}</div><div class="resumeDocState">${ready?'Private file':'Expected filename only'}</div></div></article>`;
  }).join('');
- const more=!full&&matches.length>view.length?`<div class="resumeVaultFooter">+${matches.length-view.length} more job-specific résumés. Choose “View all full-screen” above to review every record.</div>`:'';
+ const more=!full&&matches.length>view.length?`<div class="resumeVaultFooter">+${matches.length-view.length} more job-specific résumés. Choose “View all” above to review every record.</div>`:'';
  body.innerHTML=master+tiles+more+(full&&matches.length===0?'<div class="resumeVaultFooter">No résumés match this search.</div>':'');
 }
 function openVaultJob(id){
@@ -3126,14 +3151,14 @@ supabase.auth.onAuthStateChange((event,session)=>{
  }
 });
 
-/* Click a card or its expand control to use the full screen without cloning its live controls. */
+/* Click a card or its expand control to use the large pop-up without cloning its live controls. */
 let expandedDashboardCard=null, expandedDashboardReturnFocus=null, expandedDashboardScroll=0;
 function closeDashboardCard(){
  if(!expandedDashboardCard)return;
  const card=expandedDashboardCard;
  card.classList.remove('cardExpanded');
  const toggle=card.querySelector(':scope > .cardHeader .cardExpandBtn');
- if(toggle){toggle.textContent='⛶ Expand';toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-label','Expand '+(card.querySelector('.cardTitle')?.textContent||'card'));}
+ if(toggle){toggle.textContent='↗ Enlarge';toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-label','Expand '+(card.querySelector('.cardTitle')?.textContent||'card'));}
  document.body.classList.remove('cardExpansionOpen');
  expandedDashboardCard=null;
  if(card.id==='resumeVaultPanel')renderResumeVault();
@@ -3150,7 +3175,7 @@ function expandDashboardCard(card){
  card.classList.add('cardExpanded');
  document.body.classList.add('cardExpansionOpen');
  const toggle=expandedDashboardReturnFocus;
- if(toggle){toggle.textContent='↙ Close';toggle.setAttribute('aria-expanded','true');toggle.setAttribute('aria-label','Close full-screen card');toggle.focus({preventScroll:true});}
+ if(toggle){toggle.textContent='↙ Close';toggle.setAttribute('aria-expanded','true');toggle.setAttribute('aria-label','Close enlarged card');toggle.focus({preventScroll:true});}
  card.scrollTop=0;
  if(card.id==='resumeVaultPanel')renderResumeVault();
 }
@@ -3159,7 +3184,7 @@ function installDashboardCardExpansion(){
   const header=card.querySelector(':scope > .cardHeader');
   if(!header||header.querySelector('.cardExpandBtn'))return;
   const btn=document.createElement('button');
-  btn.type='button';btn.className='cardExpandBtn';btn.textContent='⛶ Expand';
+  btn.type='button';btn.className='cardExpandBtn';btn.textContent='↗ Enlarge';
   btn.setAttribute('aria-expanded','false');
   btn.setAttribute('aria-label','Expand '+(card.querySelector('.cardTitle')?.textContent||'dashboard card'));
   header.appendChild(btn);
