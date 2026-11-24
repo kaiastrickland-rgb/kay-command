@@ -738,6 +738,13 @@ body.resumeTileOpen{overflow:hidden}
 .resumeAnalysis p{font-size:11px;opacity:.8}
 @media(max-width:760px){.resumeEditorToolbar .btn{flex:1 1 calc(50% - 8px);min-width:0!important;font-size:11px!important}.resumePagePaper{padding:18px;font-size:11px}.resumePagePaper .xrHeader h1{font-size:22px}.resumePagePaper .xrSkillRow{display:block}.resumePagePaper .xrSkillLabel{margin-bottom:3px}.resumeAnalysisGrid{grid-template-columns:1fr}}
 
+
+/* All editor actions have one consistent size, radius and baseline. */
+.resumeEditorToolbar{display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:10px}
+.resumeEditorToolbar .btn{width:178px!important;min-width:178px!important;max-width:178px!important;height:44px!important;min-height:44px!important;flex:0 0 178px!important;border-radius:10px!important;display:inline-flex!important;align-items:center;justify-content:center;padding:8px 10px!important;font-size:12px!important;line-height:1.2!important}
+.resumeEditorToolbar .btn[hidden]{display:none!important}
+@media(max-width:630px){.resumeEditorToolbar .btn{min-width:0!important;max-width:none!important;width:calc(50% - 5px)!important;flex:1 1 calc(50% - 5px)!important}}
+
 </style>
 </head>
 <body>
@@ -1394,7 +1401,7 @@ function renderResumeAnalysis(doc){
  const job=state.jobs.find(j=>String(j.id)===String(doc?.linked_job_id));
  if(!job){el.hidden=true;el.innerHTML='';return;}
  const master=state.resumeDocs.find(x=>x.kind==='master');
- const report=window.KayResumeEngine.analyze(master?.content_text||doc.content_text,job);
+ const report=doc?.tailoring_analysis?.matched?.length ? doc.tailoring_analysis : window.KayResumeEngine.analyze(master?.content_text||doc.content_text,job);
  el.hidden=false;
  const matches=report.matched.map(x=>'<li>'+esc(x)+'</li>').join('')||'<li>Not enough verified evidence to score yet</li>';
  const gaps=report.gaps.map(x=>'<li>'+esc(x)+'</li>').join('')||'<li>No specific gaps identified in saved requirements</li>';
@@ -1492,32 +1499,54 @@ function matchedResumeForJob(j){return(state.resumeDocs||[]).find(d=>String(d.li
 function buildJobTailoredResume(master,job){
  return window.KayResumeEngine.align(master.content_text,job);
 }
-async function tailorResumeForJob(job){
+async function tailorResumeForJob(job,{force=false}={}){
  if(!job)return;
- const found=matchedResumeForJob(job);if(found){openResumeEditor(found.id);return;}
- const master=(state.resumeDocs||[]).find(d=>d.kind==='master');if(!master){alert('Master résumé not loaded. Refresh Kay Command.');return;}
- const r=$('jobRequirementText');
- const requirements=String(r?.value||'').trim();
+ const found=matchedResumeForJob(job);
+ if(found&&!force){openResumeEditor(found.id);return;}
+ const master=(state.resumeDocs||[]).find(d=>d.kind==='master');
+ if(!master)throw Error('Verified master résumé not found. Refresh Kay Command.');
+ const input=$('jobRequirementText');
+ const requirements=String((activeJobId===job.id?input?.value:null)||job.job_description||'').trim();
  if(requirements&&requirements!==String(job.job_description||'').trim()){
   const {error}=await supabase.from('kay_jobs').update({job_description:requirements,updated_at:new Date().toISOString()}).eq('id',job.id).eq('user_id',state.user.id);
   if(error)throw error;job.job_description=requirements;
  }
- const result=buildJobTailoredResume(master,job);
- const label='Tailored · '+job.title;
- const payload={user_id:state.user.id,kind:'tailored',title:label,
+ const {data:{session}}=await supabase.auth.getSession();
+ if(!session?.access_token)throw Error('Sign in again to use full AI résumé tailoring.');
+ const response=await fetch('/api/tailor-resume',{
+  method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+  body:JSON.stringify({job_id:job.id,job_description:requirements,master_structure:window.KayResumeEngine.parse(master.content_text)})
+ });
+ const result=await response.json().catch(()=>({error:'AI tailoring service returned no response.'}));
+ if(!response.ok)throw Error(result.error||'The full résumé analysis could not be completed.');
+ if(!result.resume||!Array.isArray(result.resume.experience))throw Error('AI did not return a valid complete résumé.');
+ const content=window.KayResumeEngine.serialize(result.resume);
+ const parsed=window.KayResumeEngine.parse(content);
+ const expected=window.KayResumeEngine.parse(master.content_text);
+ if(parsed.experience.length!==expected.experience.length)throw Error('AI omitted parts of the verified career history.');
+ const label='Tailored · '+job.title,now=new Date().toISOString();
+ const analysis={...result.analysis,source:job.apply_url||'',created_at:now};
+ let data,error;
+ if(found){
+  const write=await supabase.from('kay_resume_documents').update({
+   content_text:content,tailoring_analysis:analysis,tailoring_method:'verified_ai_rewrite',
+   status:'Ready for Review',revision:found.revision+1,approved_content:null,approved_at:null,updated_at:now
+  }).eq('id',found.id).eq('user_id',state.user.id).eq('revision',found.revision).select('*').maybeSingle();
+  data=write.data;error=write.error;
+  if(!data&&!error)throw Error('This résumé changed in another session. Refresh before regenerating it.');
+ }else{
+  const payload={user_id:state.user.id,kind:'tailored',title:label,
    employer:job.employer||null,target_role:job.title,linked_job_id:job.id,
    source_filename:'Kaia_Strickland_'+String(job.title||'Role').replace(/[^a-z0-9_ ]/gi,'').replace(/\s+/g,'_')+'.docx',
-   content_text:result.content,tailoring_analysis:result.analysis,tailoring_method:'structured_first_pass',status:'Ready for Review',revision:1};
- const {data,error}=await supabase.from('kay_resume_documents').insert(payload).select('*').single();
+   content_text:content,tailoring_analysis:analysis,tailoring_method:'verified_ai_rewrite',status:'Ready for Review',revision:1};
+  const write=await supabase.from('kay_resume_documents').insert(payload).select('*').single();
+  data=write.data;error=write.error;
+ }
  if(error)throw error;
- state.resumeDocs.unshift(data);
- renderResumeVault();
- openResumeEditor(data.id);
- $('resumeEditorStatus').textContent=result.analysis.hasFullRequirements
-   ?'Document-wide, evidence-based first-pass alignment. Review the fit analysis and every experience bullet before approving.'
-   :'This is only a first-pass match from the saved role notes, not full AI tailoring. Add the complete job requirements for a thorough review.';
+ state.resumeDocs=found?state.resumeDocs.map(x=>x.id===data.id?data:x):[data,...state.resumeDocs];
+ renderResumeVault();openResumeEditor(data.id);
+ $('resumeEditorStatus').textContent='Full-document AI rewrite saved as a REVIEW DRAFT. Check every claim and approve before submitting. Your master résumé has not changed.';
 }
-
 const fmtDate=v=>{if(!v)return '—';const d=new Date(v+'T12:00:00');return d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})};
 const daysUntil=v=>{const a=new Date();a.setHours(0,0,0,0);const b=new Date(v+'T12:00:00');return Math.max(0,Math.ceil((b-a)/86400000))};
 const source=(n)=>state.sources.find(x=>String(x.source||x.name||'').toLowerCase()===n.toLowerCase());
