@@ -22,7 +22,7 @@
 </main>
 <script type="module">
 import {createClient} from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-const supabase=createClient('https://najlvczgxwvqjvpvfzji.supabase.co','sb_publishable_4S9mvRol3OhFYpADykEGDw_MP-IhaZu',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage}});
+const supabase=createClient('https://najlvczgxwvqjvpvfzji.supabase.co','sb_publishable_4S9mvRol3OhFYpADykEGDw_MP-IhaZu',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:window.localStorage,experimental:{passkey:true}}});
 const $=s=>document.getElementById(s);
 const CATEGORY_KEYS={'orion':'Project Orion','kroger-other':'Kroger Other','vice':'VICE','better-systems':'Better Systems','other-business':'Other Business','personal':'Personal','needs-review':'Needs Review'};
 const rawFilter=new URLSearchParams(location.search).get('group')||'all';
@@ -51,7 +51,10 @@ addSection(el,'🧭 Decisions',rows('decisions',m.id),a=>makeEntry(a.decision,[a
 addSection(el,'🔗 Dependencies',rows('dependencies',m.id),a=>makeEntry(a.dependency,[a.owner&&'Owner: '+a.owner,a.due_date&&'Due: '+a.due_date,a.status&&'Status: '+a.status].filter(Boolean).join(' · ')));
 addSection(el,'📍 Follow-ups',rows('followups',m.id),a=>makeEntry(a.follow_up,[a.owner&&'Owner: '+a.owner,a.due_date&&'Due: '+a.due_date,a.status&&'Status: '+a.status].filter(Boolean).join(' · ')));
 el.append(node('div','Meeting notes are saved in KAY COMMAND. Only clearly assigned, verified commitments should become personal Action Center tasks.','hint'));history.replaceState(null,'','#'+encodeURIComponent(m.id))}
-async function load(){try{const {data:{user},error:authErr}=await supabase.auth.getUser();if(authErr||!user){showNotice('This is your private meeting library. Open KAY COMMAND, sign in or restore your trusted-device session, then return here.',true);$('meetingList').replaceChildren(node('div','Sign in through KAY COMMAND to view your saved notes.','empty'));return}
+async function load(){try{const {data:{user},error:authErr}=await supabase.auth.getUser();if(authErr||!user){showNotice('This is your private meeting library. Unlock with your saved passkey, or use the setup code once from the main KAY COMMAND page.',true);
+const wrap=node('div',null,'empty');append(wrap,node('p','Your meeting notes are protected. Choose how to unlock this browser.'));
+const passkey=node('button','🔐 Unlock with Face ID / Passkey','tab');passkey.type='button';passkey.onclick=async()=>{passkey.disabled=true;try{if(typeof supabase.auth.signInWithPasskey!=='function')throw Error('Passkeys are unavailable');const {error}=await supabase.auth.signInWithPasskey();if(error)throw error;$('notice').style.display='none';await load()}catch(e){showNotice('Passkey unlock unavailable: '+(e.message||String(e))+'. Use the private setup code in KAY COMMAND if needed.',true)}finally{passkey.disabled=false}};
+const fallback=node('a','Use private setup code','back');fallback.href='/';fallback.style.marginLeft='10px';append(wrap,passkey,fallback);$('meetingList').replaceChildren(wrap);return}
 const [m,p]=await Promise.all([supabase.from('kay_meetings').select('id,title,source,workspace,meeting_type,meeting_category,started_at,ended_at,executive_summary,key_points,participants,email_status,project_id,status,created_at').eq('user_id',user.id).order('started_at',{ascending:false}).limit(300),supabase.from('kay_projects').select('id,name').eq('user_id',user.id)]);
 if(m.error)throw m.error;if(p.error)throw p.error;meetings=m.data||[];projects=p.data||[];currentUserId=user.id;
 const ids=meetings.map(x=>x.id);
