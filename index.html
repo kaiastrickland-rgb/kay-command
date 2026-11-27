@@ -791,7 +791,7 @@ body.resumeTileOpen{overflow:hidden}
       </div>
       <div class="topActions">
         <button id="refreshBtn" class="btn" title="Reload all dashboard data and request upstream source synchronization">↻ Refresh All</button>
-        <button id="signOutBtn" class="btn">Sign out</button>
+        <button id="setupPasskeyBtn" class="btn" type="button" title="Set up a passkey that can sync across your devices">🔐 Save Passkey</button><button id="signOutBtn" class="btn">Sign out</button>
       </div>
     </div>
 </header>
@@ -1304,15 +1304,22 @@ body.resumeTileOpen{overflow:hidden}
 <div id="authModal" class="auth">
  <div class="authBox">
   <div class="sectionLabel">KAY COMMAND ACCESS</div>
-  <h2>Restore this device</h2>
-  <p class="cardSub">If your saved trusted-device code still works, use it below. If not, use the one-time email sign-in to restore this Safari/iPad session securely.</p>
-  <input id="deviceCodeInput" type="password" autocomplete="off" placeholder="Private device access code">
-  <button id="trustDeviceBtn" class="btn primary" style="width:100%">Trust this device</button>
-  <div style="display:flex;align-items:center;gap:10px;margin:14px 0;color:#6f8794;font-size:10px"><span style="height:1px;background:#294957;flex:1"></span>OR<span style="height:1px;background:#294957;flex:1"></span></div>
-  <input id="authEmailInput" type="email" inputmode="email" autocomplete="email" placeholder="Email for Kay Command">
-  <button id="emailSignInBtn" class="btn" style="width:100%">Send one-time sign-in link</button>
-  <p id="authMsg" class="cardSub"></p>
-  <p class="cardSub" style="margin-top:8px">After a successful sign-in, this browser keeps the Supabase session and refreshes it automatically. Use Sign Out to forget this device.</p>
+  <h2>Welcome back</h2>
+  <p class="cardSub">Recognized browsers open automatically. On a new device or a separate in-app browser, use your synced passkey. No recurring email links.</p>
+  <button id="passkeySignInBtn" class="btn primary" type="button" style="width:100%">🔐 Continue with Face ID / Passkey</button>
+  <details style="margin-top:18px;border:1px solid #294957;border-radius:12px;padding:12px">
+   <summary style="cursor:pointer;font-weight:800">First-time setup or use my private code</summary>
+   <p class="cardSub">Enter your existing private access code once on this browser. It will be remembered here unless browser storage is cleared.</p>
+   <input id="deviceCodeInput" type="password" autocomplete="off" placeholder="Private access code">
+   <button id="trustDeviceBtn" class="btn" type="button" style="width:100%">Remember this browser</button>
+   <details style="margin-top:12px">
+    <summary style="cursor:pointer;font-size:12px;color:#95adbc">Recovery option (only if your code is unavailable)</summary>
+    <input id="authEmailInput" type="email" inputmode="email" autocomplete="email" placeholder="Email for account recovery">
+    <button id="emailSignInBtn" class="btn" type="button" style="width:100%">Send recovery link</button>
+   </details>
+  </details>
+  <p id="authMsg" class="cardSub" role="status" aria-live="polite"></p>
+  <p class="cardSub" style="margin-top:8px">A saved passkey can sync through Apple Passwords or another compatible manager. Each browser keeps its own secure session; clearing its storage or signing out may require unlocking again.</p>
  </div>
 </div>
 
@@ -1327,7 +1334,8 @@ const supabase=createClient(SUPABASE_URL,SUPABASE_KEY,{
   persistSession:true,
   autoRefreshToken:true,
   detectSessionInUrl:true,
-  storage:window.localStorage
+  storage:window.localStorage,
+  experimental:{passkey:true}
  }
 });
 const $=id=>document.getElementById(id);
@@ -1745,6 +1753,46 @@ renderDailyPleasures();
    $('authModal').classList.add('show');
  }
 }
+
+async function signInWithSyncedPasskey(){
+ const btn=$('passkeySignInBtn');const status=$('authMsg');
+ btn.disabled=true;status.textContent='Checking your passkey…';
+ try{
+  if(typeof supabase.auth.signInWithPasskey!=='function')throw new Error('Passkey sign-in is not available in this browser.');
+  const {data,error}=await supabase.auth.signInWithPasskey();
+  if(error)throw error;
+  const session=data?.session||(await supabase.auth.getSession()).data?.session;
+  if(!session)throw new Error('No session was returned.');
+  applySignedInSession(session);
+  status.textContent='';
+  await loadAll();
+ }catch(error){
+  const message=String(error?.message||error||'Passkey sign-in was not completed');
+  status.textContent=/passkey_disabled|webauthn.*disabled|not enabled/i.test(message)
+   ? 'Passkey sign-in needs to be enabled for KAY COMMAND. Your existing private-code option still works.'
+   : 'Passkey sign-in was not completed: '+message;
+ }finally{btn.disabled=false;}
+}
+$('passkeySignInBtn').onclick=signInWithSyncedPasskey;
+$('setupPasskeyBtn').onclick=async()=>{
+ const btn=$('setupPasskeyBtn');
+ if(!state.user){$('authModal').classList.add('show');return;}
+ btn.disabled=true;
+ const label=btn.textContent;btn.textContent='Setting up…';
+ try{
+  if(typeof supabase.auth.registerPasskey!=='function')throw new Error('Passkeys are not available on this browser.');
+  const {data,error}=await supabase.auth.registerPasskey();
+  if(error)throw error;
+  // A synced passkey can restore a session in browsers without storing the private code.
+  try{localStorage.removeItem(TRUSTED_DEVICE_CODE_KEY)}catch(e){}
+  alert('Passkey saved. Compatible devices can now use Face ID or their device unlock to open KAY COMMAND. Your existing session remains signed in.');
+ }catch(error){
+  const message=String(error?.message||error);
+  alert(/passkey_disabled|not enabled/i.test(message)
+   ? 'Passkeys must be enabled in Supabase Authentication for this project before setup can finish.'
+   : 'Could not save a passkey: '+message);
+ }finally{btn.disabled=false;btn.textContent=label;}
+};
 
 $('trustDeviceBtn').onclick=async()=>{
  const code=$('deviceCodeInput').value.trim();
