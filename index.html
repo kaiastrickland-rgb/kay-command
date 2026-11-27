@@ -559,7 +559,10 @@ body.cardExpansionOpen{overflow:hidden}
 @media(max-width:600px){.card.cardExpanded>.cardHeader{padding:12px;gap:8px}.card.cardExpanded .cardTitle{font-size:18px}.cardExpandBtn{font-size:10px;padding:8px}}
 
 /* Resume Vault: the master and each tailored file have a visible, honest status. */
-.resumeVaultPanel{grid-column:span 12;min-height:320px}
+.resumeVaultPanel,.myMeetingsPanel{grid-column:span 6;min-width:0;min-height:320px}
+.myMeetingsPanel .meetingPreview{padding:0 20px 16px}
+.myMeetingsPanel .meetingPreview a{display:inline-block;margin-top:12px;text-decoration:none}
+@media(max-width:900px){.resumeVaultPanel,.myMeetingsPanel{grid-column:span 12}}
 .resumeVaultToolbar{display:flex;flex-wrap:wrap;align-items:center;gap:9px;padding:0 20px 10px}
 .resumeVaultSearch{display:none;min-width:200px;flex:1;background:#07151e;border:1px solid #2b5265;border-radius:10px;padding:11px;color:var(--text)}
 .cardExpanded .resumeVaultSearch{display:block}
@@ -940,6 +943,11 @@ body.resumeTileOpen{overflow:hidden}
       <div id="resumeVaultStatus" class="resumeVaultStatus" role="status">Loading actual résumé documents…</div>
       <div id="resumeVaultBody" class="resumeVaultGrid"></div>
       <div class="resumeVaultFooter">Job-specific drafts appear here only when you click Tailor My Résumé on a job. Your master stays unchanged.</div>
+    </section>
+
+    <section id="myMeetingsPanel" class="card myMeetingsPanel">
+      <div class="cardHeader"><div><div class="cardTitle">🗒️ My Meetings</div><div class="cardSub">Saved meeting notes and action items</div></div></div>
+      <div class="meetingPreview"><div class="cardSub">Browse your existing meeting library by category.</div><a class="btn" href="/meetings.html?group=all">Open Meeting Library ↗</a></div>
     </section>
 
     <section id="bflSection" class="card bflPanel">
